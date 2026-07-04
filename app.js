@@ -1320,22 +1320,23 @@ function youtubeHub(compact = false) {
   const featured = db.videos.find((v) => v.featured === "yes") || db.videos[0],
     groups = db.siteSettings.youtubeCategories;
   if (!featured) return '<div class="empty">ยังไม่มีวิดีโอ</div>';
-  return `<div class="featured-watch"><div class="featured-player">${featured.embedUrl ? `<iframe src="${featured.embedUrl}" title="${featured.title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${featured.url}" target="_blank" style="background:${featured.color}">${featured.thumbnail ? `<img src="${featured.thumbnail}" alt="${featured.title}">` : ""}<span class="big-play">▶</span><small>เปิดดูบน YouTube</small></a>`}</div><div class="featured-copy"><span class="eyebrow">Featured video</span><h2>${featured.title}</h2><p>${artistName(featured.artistId)} · ${featured.views}</p><a class="btn" href="${featured.url}" target="_blank">เปิดบน YouTube ↗</a></div></div>${groups
+  return `<div class="featured-watch ${compact?'home-featured-watch':''}"><div class="featured-player">${featured.embedUrl ? `<iframe src="${featured.embedUrl}" title="${featured.title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${featured.url}" target="_blank" style="background:${featured.color}">${featured.thumbnail ? `<img src="${featured.thumbnail}" alt="${featured.title}">` : ""}<span class="big-play">▶</span><small>เปิดดูบน YouTube</small></a>`}</div><div class="featured-copy"><span class="eyebrow">Featured video</span><h2>${featured.title}</h2><p>${artistName(featured.artistId)} · ${featured.views}</p><a class="btn" href="${featured.url}" target="_blank">เปิดบน YouTube ↗</a></div></div>${groups
     .map((group, index) => {
       const {id: key, title, description: desc, linkLabel, linkUrl} = group;
       const items = db.videos.filter(
         (v) => v.category === key && v.id !== featured.id,
       );
       if (compact && !items.length) return "";
-      return `<section class="video-category"><div class="category-title"><div><span>${String(index + 1).padStart(2, '0')}</span><h2>${title}</h2></div><p>${desc || ''}</p>${linkUrl ? `<a class="channel-link" href="${linkUrl}" target="_blank" rel="noopener">${linkLabel || 'Open link ↗'}</a>` : ''}</div><div class="hub-grid">${
+      return `<section class="video-category ${compact?'home-video-category':''}"><div class="category-title"><div><span>${String(index + 1).padStart(2, '0')}</span><h2>${title}</h2></div><p>${desc || ''}</p>${linkUrl ? `<a class="channel-link" href="${linkUrl}" target="_blank" rel="noopener">${linkLabel || 'Open link ↗'}</a>` : ''}</div>${compact?'<div class="home-video-carousel"><button class="carousel-arrow prev" type="button" aria-label="Previous videos" onclick="scrollHomeVideos(this,-1)">←</button>':''}<div class="hub-grid">${
         items
-          .slice(0, compact ? 3 : 99)
+          .slice(0, compact ? 99 : 99)
           .map(videoTile)
           .join("") || '<div class="empty">เพิ่มวิดีโอได้จากหลังบ้าน</div>'
-      }</div></section>`;
+      }</div>${compact?'<button class="carousel-arrow next" type="button" aria-label="Next videos" onclick="scrollHomeVideos(this,1)">→</button></div>':''}</section>`;
     })
     .join("")}`;
 }
+function scrollHomeVideos(button,direction){const carousel=button.closest('.home-video-carousel'),grid=carousel?.querySelector('.hub-grid');if(!grid)return;grid.scrollBy({left:direction*Math.max(260,grid.clientWidth*.82),behavior:'smooth'});}
 function youtubePage() {
   app.innerHTML =
     nav("videos") +
