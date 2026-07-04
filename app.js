@@ -904,12 +904,31 @@ const save = () => {
     syncDatabaseInBackground();
     return true;
   } catch (error) {
-    alert(
-      "พื้นที่จัดเก็บในเบราว์เซอร์เต็ม กรุณาลดขนาดหรือลบวิดีโอ/รูปบางรายการ",
-    );
+    // Base64 media can exceed the browser's small localStorage quota. Keep it
+    // in memory and upload directly to Supabase; only the resulting URLs are
+    // written back to localStorage after synchronization.
+    if (error?.name === 'QuotaExceededError' || error?.code === 22) {
+      updateDatabaseStatusUi('พื้นที่บนเบราว์เซอร์เต็ม กำลังอัปโหลดไฟล์ขึ้น Supabase...', false);
+      syncDatabaseInBackground();
+      return true;
+    }
+    alert(`บันทึกบนเบราว์เซอร์ไม่สำเร็จ: ${error.message}`);
     return false;
   }
 };
+function applySyncedMediaUrls(synced) {
+  if (!synced) return;
+  const mediaFields = {artists:['image'],events:['poster'],awards:['image'],presenters:['logo','announcementImage','announcementVideo'],videos:['thumbnail']};
+  Object.entries(mediaFields).forEach(([table,fields]) => {
+    (synced[table] || []).forEach(remoteItem => {
+      const localItem = (db[table] || []).find(item => item.id === remoteItem.id);
+      if (!localItem) return;
+      fields.forEach(field => { if (remoteItem[field] && !String(remoteItem[field]).startsWith('data:')) localItem[field] = remoteItem[field]; });
+    });
+  });
+  db.siteSettings = synced.siteSettings || db.siteSettings;
+  try { localStorage.setItem("auausave-house-db-v9", JSON.stringify(db)); } catch (error) { console.warn('Local cache:', error.message); }
+}
 async function syncDatabaseInBackground() {
   if (!window.auausaveDB) return;
   try {
@@ -918,7 +937,8 @@ async function syncDatabaseInBackground() {
       updateDatabaseStatusUi('กำลังบันทึกลง Supabase...', false);
       const snapshot = structuredClone(db);
       databaseSyncQueue = databaseSyncQueue.catch(() => {}).then(() => window.auausaveDB.save(snapshot));
-      await databaseSyncQueue;
+      const synced = await databaseSyncQueue;
+      applySyncedMediaUrls(synced);
       adminDatabaseLoaded = true;
       updateDatabaseStatusUi('บันทึกลง Supabase แล้ว', true);
     }

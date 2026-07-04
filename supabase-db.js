@@ -25,6 +25,23 @@
     });
     return result;
   };
+  const uploadEmbeddedMedia = async (value, path) => {
+    if (typeof value === 'string' && value.startsWith('data:')) {
+      const blob = await (await fetch(value)).blob();
+      const ext = blob.type.includes('video') ? (blob.type.includes('webm') ? 'webm' : 'mp4') : (blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg');
+      const safePath = `${path.replace(/[^a-zA-Z0-9/_-]/g,'_')}.${ext}`;
+      const {error} = await client.storage.from(config.mediaBucket).upload(safePath, blob, {upsert:true,contentType:blob.type});
+      if (error) throw error;
+      return client.storage.from(config.mediaBucket).getPublicUrl(safePath).data.publicUrl;
+    }
+    if (Array.isArray(value)) return Promise.all(value.map((item,index)=>uploadEmbeddedMedia(item,`${path}/${index}`)));
+    if (value && typeof value === 'object') {
+      const result = {};
+      for (const [key,item] of Object.entries(value)) result[key] = await uploadEmbeddedMedia(item,`${path}/${key}`);
+      return result;
+    }
+    return value;
+  };
   const mapFromDb = {
     artists: r => ({ id:r.id,name:r.name,realName:r.real_name,role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image:r.image_url }),
     events: r => ({ id:r.id,artistId:r.artist_id,date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'',poster:r.poster_url||'' }),
@@ -113,12 +130,14 @@
       }
       knownIds[table] = new Set([...(existing||[]).map(row=>row.id).filter(id=>!deletedIds.includes(id)), ...ids]);
     }
+    database.siteSettings = await uploadEmbeddedMedia(database.siteSettings || {}, 'settings/homepage');
     const {data:latestSettings,error:settingsReadError} = await client.from('site_settings').select('settings').eq('id','homepage').maybeSingle();
     if (settingsReadError) throw settingsReadError;
     const mergedSettings = mergeSettings(latestSettings?.settings || {}, database.siteSettings || {});
     const {error:settingsError} = await client.from('site_settings').upsert({id:'homepage',settings:mergedSettings},{onConflict:'id'});
     if (settingsError) throw settingsError;
     database.siteSettings = mergedSettings;
+    return database;
   }
 
   async function signIn(email,password){return client.auth.signInWithPassword({email,password});}
