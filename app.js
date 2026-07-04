@@ -889,6 +889,15 @@ db.events.forEach((e) => {
 let route = location.hash.slice(1) || "home";
 const app = document.querySelector("#app");
 let databaseSyncQueue = Promise.resolve();
+function updateDatabaseStatusUi(message, connected) {
+  adminDatabaseStatus = message;
+  const status = document.querySelector('.admin-db-status');
+  if (!status) return;
+  status.classList.toggle('is-connected', Boolean(connected));
+  status.classList.toggle('has-error', !connected);
+  const text = [...status.childNodes].find(node => node.nodeType === 3);
+  if (text) text.nodeValue = message;
+}
 const save = () => {
   try {
     localStorage.setItem("auausave-house-db-v9", JSON.stringify(db));
@@ -906,14 +915,18 @@ async function syncDatabaseInBackground() {
   try {
     const { data } = await window.auausaveDB.session();
     if (data.session) {
+      updateDatabaseStatusUi('กำลังบันทึกลง Supabase...', false);
       const snapshot = structuredClone(db);
       databaseSyncQueue = databaseSyncQueue.catch(() => {}).then(() => window.auausaveDB.save(snapshot));
       await databaseSyncQueue;
+      adminDatabaseLoaded = true;
+      updateDatabaseStatusUi('บันทึกลง Supabase แล้ว', true);
     }
   } catch (error) {
     console.warn("Supabase sync:", error.message);
     adminDatabaseLoaded = false;
-    adminDatabaseStatus = `ซิงก์ไม่สำเร็จ: ${error.message}`;
+    updateDatabaseStatusUi(`บันทึกไม่สำเร็จ: ${error.message}`, false);
+    toast(`บันทึกบนเครื่องแล้ว แต่ส่งขึ้น Supabase ไม่สำเร็จ: ${error.message}`);
   }
 }
 const artistName = (id) =>
@@ -2278,6 +2291,7 @@ admin = function () {
 };
 
 let adminAuthenticated = false;
+let currentAdminEmail = '';
 let adminAuthRequest = 0;
 let adminDatabaseLoaded = false;
 let adminDatabaseStatus = 'กำลังเชื่อมต่อ Supabase...';
@@ -2289,7 +2303,7 @@ admin = function () {
   insertPageContentSettingsForAdminTab();
   document.querySelector('.db-connect-btn')?.remove();
   const main = document.querySelector('.admin-main');
-  if (main && !main.querySelector('.admin-global-header')) main.insertAdjacentHTML('afterbegin', `<header class="admin-global-header"><div class="admin-global-title"><span>ADMIN</span><strong>AUAUSAVE HOUSE</strong></div><div class="admin-global-actions"><span class="admin-db-status ${adminDatabaseLoaded ? 'is-connected' : 'has-error'}"><i></i>${adminDatabaseStatus}</span><a href="#home">ดูหน้าบ้าน ↗</a><button class="btn outline admin-logout-btn" onclick="adminSignOut()">ออกจากระบบ</button></div></header>`);
+  if (main && !main.querySelector('.admin-global-header')) main.insertAdjacentHTML('afterbegin', `<header class="admin-global-header"><div class="admin-global-title"><span>ADMIN</span><strong>AUAUSAVE HOUSE</strong></div><div class="admin-global-actions"><span class="admin-db-status ${adminDatabaseLoaded ? 'is-connected' : 'has-error'}"><i></i>${adminDatabaseStatus}</span>${currentAdminEmail?`<span class="admin-user-email" title="${escapePageText(currentAdminEmail)}"><b>●</b>${escapePageText(currentAdminEmail)}</span>`:''}<a href="#home">ดูหน้าบ้าน ↗</a><button class="btn outline admin-logout-btn" onclick="adminSignOut()">ออกจากระบบ</button></div></header>`);
   applyInterfaceLanguage();
 };
 
@@ -2523,6 +2537,7 @@ async function requestAdminAccess() {
     if (requestId !== adminAuthRequest || location.hash !== '#admin') return;
     if (error) throw error;
     adminAuthenticated = Boolean(data?.session);
+    currentAdminEmail = data?.session?.user?.email || '';
     if (adminAuthenticated) {
       await connectAdminDatabase();
       if (requestId !== adminAuthRequest || location.hash !== '#admin') return;
@@ -2542,9 +2557,10 @@ async function adminSignIn(event) {
   button.disabled = true;
   button.textContent = 'กำลังเข้าสู่ระบบ...';
   try {
-    const { error } = await window.auausaveDB.signIn(values.get('email').trim(), values.get('password'));
+    const { data, error } = await window.auausaveDB.signIn(values.get('email').trim(), values.get('password'));
     if (error) throw error;
     adminAuthenticated = true;
+    currentAdminEmail = data?.user?.email || values.get('email').trim();
     button.textContent = 'กำลังเชื่อมต่อฐานข้อมูล...';
     await connectAdminDatabase();
     admin();
@@ -2557,6 +2573,7 @@ async function adminSignIn(event) {
 async function adminSignOut() {
   try { await window.auausaveDB?.signOut(); } catch (error) { console.info(error.message); }
   adminAuthenticated = false;
+  currentAdminEmail = '';
   adminDatabaseLoaded = false;
   adminDatabaseStatus = 'กำลังเชื่อมต่อ Supabase...';
   adminTab = 'dashboard';
@@ -2687,6 +2704,9 @@ function router() {
 window.addEventListener("hashchange", router);
 window.addEventListener("storage", event => {
   if (event.key !== "auausave-house-db-v9" || !event.newValue) return;
+  // Never re-render an admin session from another tab's localStorage update.
+  // Two signed-in admin tabs would otherwise trigger each other in a refresh loop.
+  if (location.hash === '#admin' || route === 'admin') return;
   try {
     db = JSON.parse(event.newValue);
     ensureDexxEventType();

@@ -1,9 +1,30 @@
 (function () {
   const config = window.SUPABASE_CONFIG;
   if (!config || !window.supabase) return;
-  const client = window.supabase.createClient(config.url, config.publishableKey);
+  const client = window.supabase.createClient(config.url, config.publishableKey, {
+    auth: {
+      // Keep each admin tab independent so two different accounts can work at
+      // the same time without replacing one another's Supabase session.
+      storage: window.sessionStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
 
   const tables = ['artists', 'events', 'awards', 'presenters', 'videos'];
+  const knownIds = {};
+  const mergeSettings = (remote, local) => {
+    if (Array.isArray(local)) return local;
+    if (!local || typeof local !== 'object') return local;
+    const result = remote && typeof remote === 'object' && !Array.isArray(remote) ? {...remote} : {};
+    Object.entries(local).forEach(([key,value]) => {
+      result[key] = value && typeof value === 'object' && !Array.isArray(value)
+        ? mergeSettings(result[key], value)
+        : value;
+    });
+    return result;
+  };
   const mapFromDb = {
     artists: r => ({ id:r.id,name:r.name,realName:r.real_name,role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image:r.image_url }),
     events: r => ({ id:r.id,artistId:r.artist_id,date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'',poster:r.poster_url||'' }),
@@ -25,6 +46,7 @@
       const { data, error } = await client.from(table).select('*');
       if (error) throw error;
       result[table] = data.map(mapFromDb[table]);
+      knownIds[table] = new Set(data.map(row => row.id));
     }
     const [{data:types,error:typeError},{data:series,error:seriesError}] = await Promise.all([
       client.from('event_types').select('*').order('sort_order'),
@@ -33,6 +55,8 @@
     if (typeError || seriesError) throw typeError || seriesError;
     result.masterData.types = types.map(x=>({id:x.id,label:x.name}));
     result.masterData.series = series.map(x=>({id:x.id,label:x.name}));
+    knownIds.event_types = new Set(types.map(row => row.id));
+    knownIds.series = new Set(series.map(row => row.id));
     const {data:settings} = await client.from('site_settings').select('settings').eq('id','homepage').maybeSingle();
     result.siteSettings = settings?.settings || {heroImage:'',heroFit:'cover',heroPosition:'center'};
     return result;
@@ -59,7 +83,9 @@
       const { data:existing, error:readError } = await client.from(table).select('id');
       if (readError) throw readError;
       const localIds = new Set(rows.map(row => row.id));
-      const deletedIds = (existing || []).map(row => row.id).filter(id => !localIds.has(id));
+      // Delete only records that this browser previously loaded. This prevents a
+      // stale admin session from deleting records recently added by another admin.
+      const deletedIds = [...(knownIds[table] || new Set())].filter(id => !localIds.has(id));
       if (deletedIds.length) {
         const { error:deleteError } = await client.from(table).delete().in('id', deletedIds);
         if (deleteError) throw deleteError;
@@ -68,6 +94,7 @@
         const { error } = await client.from(table).upsert(rows, { onConflict:'id' });
         if (error) throw error;
       }
+      knownIds[table] = new Set([...(existing || []).map(row => row.id).filter(id => !deletedIds.includes(id)), ...localIds]);
     }
     const typeRows = database.masterData.types.map((x,i)=>({id:x.id,name:x.label,sort_order:i}));
     const seriesRows = database.masterData.series.map(x=>({id:x.id,name:x.label}));
@@ -75,7 +102,7 @@
       const {data:existing,error:readError} = await client.from(table).select('id');
       if (readError) throw readError;
       const ids = new Set(rows.map(row=>row.id));
-      const deletedIds = (existing||[]).map(row=>row.id).filter(id=>!ids.has(id));
+      const deletedIds = [...(knownIds[table] || new Set())].filter(id=>!ids.has(id));
       if (deletedIds.length) {
         const {error:deleteError} = await client.from(table).delete().in('id',deletedIds);
         if (deleteError) throw deleteError;
@@ -84,9 +111,14 @@
         const {error} = await client.from(table).upsert(rows,{onConflict:'id'});
         if (error) throw error;
       }
+      knownIds[table] = new Set([...(existing||[]).map(row=>row.id).filter(id=>!deletedIds.includes(id)), ...ids]);
     }
-    const {error:settingsError} = await client.from('site_settings').upsert({id:'homepage',settings:database.siteSettings||{}},{onConflict:'id'});
+    const {data:latestSettings,error:settingsReadError} = await client.from('site_settings').select('settings').eq('id','homepage').maybeSingle();
+    if (settingsReadError) throw settingsReadError;
+    const mergedSettings = mergeSettings(latestSettings?.settings || {}, database.siteSettings || {});
+    const {error:settingsError} = await client.from('site_settings').upsert({id:'homepage',settings:mergedSettings},{onConflict:'id'});
     if (settingsError) throw settingsError;
+    database.siteSettings = mergedSettings;
   }
 
   async function signIn(email,password){return client.auth.signInWithPassword({email,password});}
