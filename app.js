@@ -785,6 +785,17 @@ db.siteSettings.homeSections ||= [
 const DEFAULT_HOME_SECTIONS = db.siteSettings.homeSections.map(section => ({...section}));
 function ensureHomePageSettings() {
   db.siteSettings ||= { heroImage: "", heroFit: "cover", heroPosition: "center" };
+  db.siteSettings.personalProfiles ||= {};
+  ['auau','save'].forEach(id => {
+    db.siteSettings.personalProfiles[id] = {
+      zodiac: '', chineseZodiac: '', bloodType: '', education: '', height: '', weight: '',
+      sizing: '', bust: '', waist: '', shirtTops: '', shoe: '', wristSize: '',
+      fingerLeftT: '', fingerLeftI: '', fingerLeftM: '', fingerLeftR: '', fingerLeftL: '',
+      fingerRightT: '', fingerRightI: '', fingerRightM: '', fingerRightR: '', fingerRightL: '',
+      favorites: '', motto: '',
+      ...(db.siteSettings.personalProfiles[id] || {}),
+    };
+  });
   const current = Array.isArray(db.siteSettings.homeSections) ? db.siteSettings.homeSections : [];
   const known = new Set(current.map(section => section.id));
   db.siteSettings.homeSections = [
@@ -2686,5 +2697,66 @@ window.addEventListener("storage", event => {
     console.warn('Local data refresh:', error.message);
   }
 });
+
+function personalProfileLines(value) {
+  return String(value || '').split(/\r?\n/).map(line => {
+    const parts = line.split('|');
+    return { label:(parts.shift() || '').trim(), value:parts.join('|').trim() };
+  }).filter(item => item.label || item.value);
+}
+
+function renderPersonalProfile(artist) {
+  if (!artist || !['auau','save'].includes(artist.id)) return '';
+  ensureHomePageSettings();
+  const info = db.siteSettings.personalProfiles[artist.id] || {};
+  const basics = [
+    ['Birthday', artist.birth], ['Zodiac sign', info.zodiac], ['Chinese zodiac', info.chineseZodiac],
+    ['Blood type', info.bloodType],
+  ].filter(item => item[1]);
+  const list = items => items.map(item => `<div class="personal-row"><span>${escapePageText(item.label)}</span><strong>${escapePageText(item.value)}</strong></div>`).join('');
+  const legacySizing = Object.fromEntries(personalProfileLines(info.sizing).map(item=>[item.label.toLowerCase(),item.value]));
+  const sizeValue = (key, legacyLabel='') => info[key] || legacySizing[legacyLabel.toLowerCase()] || '';
+  const mainSizes = [['Bust',sizeValue('bust','bust')],['Waist',sizeValue('waist','waist')],['Shirt/Tops',sizeValue('shirtTops','shirt/tops')],['Shoe',sizeValue('shoe','shoe')]].filter(item=>item[1]);
+  const fingers = ['T','I','M','R','L'].map(code=>({code,left:info[`fingerLeft${code}`]||'',right:info[`fingerRight${code}`]||''})).filter(item=>item.left||item.right);
+  const hasSizing = info.height || info.weight || mainSizes.length || info.wristSize || fingers.length;
+  const sizingCard = hasSizing ? `<div class="sizing-metrics">${info.height?`<div><span>Height</span><strong>${escapePageText(info.height)}</strong></div>`:''}${info.weight?`<div><span>Weight</span><strong>${escapePageText(info.weight)}</strong></div>`:''}</div>${mainSizes.length?`<div class="sizing-box-grid">${mainSizes.map(item=>`<div><span>${escapePageText(item[0])}</span><strong>${escapePageText(item[1])}</strong></div>`).join('')}</div>`:''}${info.wristSize?`<div class="wrist-size"><span>Wrist Size</span><strong>${escapePageText(info.wristSize)}</strong></div>`:''}${fingers.length?`<div class="finger-table"><div class="finger-row finger-head"><span></span>${fingers.map(item=>`<b>${item.code}</b>`).join('')}</div>${fingers.some(item=>item.left)?`<div class="finger-row"><span>Left</span>${fingers.map(item=>`<strong>${escapePageText(item.left||'')}</strong>`).join('')}</div>`:''}${fingers.some(item=>item.right)?`<div class="finger-row"><span>Right</span>${fingers.map(item=>`<strong>${escapePageText(item.right||'')}</strong>`).join('')}</div>`:''}</div><small class="sizing-note">Finger diameters</small>`:''}` : '<p class="personal-empty">No sizing information yet.</p>';
+  return `<section class="section personal-profile-section"><div class="container"><div class="personal-profile-heading"><span>GET TO KNOW</span><h2>${escapePageText(artist.name)} Profile</h2><p>Personal details, sizing and favorites.</p></div><div class="personal-profile-layout"><article class="personal-profile-card personal-basics"><h3>Personal Information</h3>${list(basics)}${info.education?`<div class="personal-copy"><span>Education</span><p>${escapePageText(info.education)}</p></div>`:''}</article><article class="personal-profile-card personal-sizing"><h3>Sizing</h3>${sizingCard}</article><article class="personal-profile-card personal-favorites"><h3>Favorites</h3>${list(personalProfileLines(info.favorites))||'<p class="personal-empty">No favorites added yet.</p>'}${info.motto?`<blockquote><small>MOTTO</small>${escapePageText(info.motto)}</blockquote>`:''}</article></div></div></section>`;
+}
+
+const renderProfileWithPersonalDetails = profile;
+profile = function (id) {
+  renderProfileWithPersonalDetails(id);
+  if (!['auau','save'].includes(id)) return;
+  const artist = db.artists.find(item => item.id === id);
+  const heroSection = document.querySelector('.profile-head')?.closest('.section');
+  heroSection?.insertAdjacentHTML('afterend', renderPersonalProfile(artist));
+};
+
+function personalProfileAdminPanel() {
+  ensureHomePageSettings();
+  return `<section class="panel personal-profile-admin"><div class="panel-head"><div><small>SOLO ARTIST PROFILE</small><h2>จัดการข้อมูลส่วนตัว AUAU / SAVE</h2><p class="master-note">ข้อมูลนี้จะแสดงเฉพาะหน้าเดี่ยวของศิลปิน</p></div></div><div class="personal-admin-grid">${['auau','save'].map(id=>{const artist=db.artists.find(item=>item.id===id),info=db.siteSettings.personalProfiles[id];return `<article><div><small>${id.toUpperCase()}</small><h3>${escapePageText(artist?.name||id)}</h3><p>${info.education||info.favorites||info.sizing?'มีข้อมูลแล้ว':'ยังไม่ได้เพิ่มข้อมูล'}</p></div><button class="btn outline" onclick="openPersonalProfileForm('${id}')">แก้ไขข้อมูลส่วนตัว</button></article>`}).join('')}</div></section>`;
+}
+
+function openPersonalProfileForm(artistId) {
+  ensureHomePageSettings();
+  const artist=db.artists.find(item=>item.id===artistId), info=db.siteSettings.personalProfiles[artistId]||{};
+  const input=(name,label,placeholder='')=>`<div class="field"><label>${label}</label><input name="${name}" value="${escapePageText(info[name]||'')}" placeholder="${placeholder}"></div>`;
+  const fingerInputs=(side,label)=>`<fieldset class="finger-admin-fieldset"><legend>Finger size (${label})</legend><div class="finger-admin-grid">${['T','I','M','R','L'].map(code=>input(`finger${side}${code}`,code)).join('')}</div></fieldset>`;
+  document.body.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="modal"><div class="modal personal-profile-modal"><div class="modal-head"><h2>ข้อมูลส่วนตัว ${escapePageText(artist?.name||artistId)}</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="savePersonalProfile(event,'${artistId}')"><div class="form-grid"><h3 class="profile-form-heading">Personal Information</h3>${input('zodiac','Zodiac sign')}${input('chineseZodiac','Chinese zodiac')}${input('bloodType','Blood type')}<div class="field full"><label>Education</label><textarea name="education">${escapePageText(info.education||'')}</textarea></div><h3 class="profile-form-heading">Sizing <small>กรอกเฉพาะช่องที่มีข้อมูลได้</small></h3>${input('height','Height','174 cm')}${input('weight','Weight','52 kg')}${input('bust','Bust','31 in')}${input('waist','Waist','26 in')}${input('shirtTops','Shirt/Tops','L')}${input('shoe','Shoe','40 EU')}${input('wristSize','Wrist Size','15–16 cm')}<div></div>${fingerInputs('Left','Left')}${fingerInputs('Right','Right')}<div class="field full"><label>Favorites</label><textarea name="favorites" placeholder="Food | Papaya salad&#10;Color | Red, black, white&#10;Sport | Football">${escapePageText(info.favorites||'')}</textarea><small>หนึ่งรายการต่อหนึ่งบรรทัด รูปแบบ: หัวข้อ | ข้อมูล</small></div><div class="field full"><label>Motto</label><textarea name="motto">${escapePageText(info.motto||'')}</textarea></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึกข้อมูลส่วนตัว</button></div></form></div></div>`);
+}
+
+function savePersonalProfile(event, artistId) {
+  event.preventDefault();
+  db.siteSettings.personalProfiles[artistId] = Object.fromEntries(new FormData(event.currentTarget));
+  save(); closeModal(); admin(); toast('บันทึกข้อมูลส่วนตัวแล้ว');
+}
+
+const renderAdminWithPersonalProfiles = admin;
+admin = function () {
+  renderAdminWithPersonalProfiles();
+  if (!adminAuthenticated || adminTab !== 'artists') return;
+  const target = document.querySelector('.admin-main .panel');
+  target?.insertAdjacentHTML('beforebegin', personalProfileAdminPanel());
+};
 router();
 hydrateFromSupabase();
