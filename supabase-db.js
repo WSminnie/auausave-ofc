@@ -18,6 +18,8 @@
     const now = new Date(), pad = (value,size=2) => String(value).padStart(size,'0');
     return `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}_${pad(now.getMilliseconds(),3)}`;
   };
+  const storageNonce = () => Math.random().toString(36).slice(2,10);
+  const createUniqueStoragePath = (path, ext) => `${path.replace(/[^a-zA-Z0-9/_-]/g,'_')}_${storageTimestamp()}_${storageNonce()}.${ext}`;
   const storagePathFromUrl = value => {
     if (typeof value !== 'string') return '';
     const marker = `/storage/v1/object/public/${config.mediaBucket}/`;
@@ -40,6 +42,14 @@
     const {error} = await client.storage.from(config.mediaBucket).remove(obsoletePaths);
     if (error) console.warn('Storage cleanup:', error.message);
   };
+  const uploadMediaBlob = async (blob, path) => {
+    const ext = blob.type.includes('video') ? (blob.type.includes('webm') ? 'webm' : 'mp4') : (blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg');
+    const uniquePath = createUniqueStoragePath(path,ext);
+    const {error} = await client.storage.from(config.mediaBucket).upload(uniquePath,blob,{upsert:false,contentType:blob.type});
+    if(error)throw error;
+    const publicUrl=client.storage.from(config.mediaBucket).getPublicUrl(uniquePath).data.publicUrl;
+    return `${publicUrl}?v=${storageTimestamp()}_${storageNonce()}`;
+  };
   const mergeSettings = (remote, local) => {
     if (Array.isArray(local)) return local;
     if (!local || typeof local !== 'object') return local;
@@ -54,12 +64,15 @@
   const uploadEmbeddedMedia = async (value, path) => {
     if (typeof value === 'string' && value.startsWith('data:')) {
       const blob = await (await fetch(value)).blob();
-      const ext = blob.type.includes('video') ? (blob.type.includes('webm') ? 'webm' : 'mp4') : (blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg');
-      const safePath = `${path.replace(/[^a-zA-Z0-9/_-]/g,'_')}_${storageTimestamp()}.${ext}`;
-      const {error} = await client.storage.from(config.mediaBucket).upload(safePath, blob, {upsert:true,contentType:blob.type});
-      if (error) throw error;
-      const publicUrl = client.storage.from(config.mediaBucket).getPublicUrl(safePath).data.publicUrl;
-      return `${publicUrl}?v=${storageTimestamp()}`;
+      return uploadMediaBlob(blob,path);
+    }
+    if (typeof value === 'string' && /settings\/homepage\/timeline\/timeline_[^/]+\/poster$/.test(path)) {
+      const currentPath=storagePathFromUrl(value),expectedPrefix=`${path.replace(/[^a-zA-Z0-9/_-]/g,'_')}_`;
+      if(currentPath&&!currentPath.startsWith(expectedPrefix)){
+        const response=await fetch(value);
+        if(!response.ok)throw new Error(`ย้ายรูป Timeline ไม่สำเร็จ (${response.status})`);
+        return uploadMediaBlob(await response.blob(),path);
+      }
     }
     if (Array.isArray(value)) return Promise.all(value.map((item,index)=>{
       const segment = item && typeof item === 'object' && item.id ? String(item.id).replace(/[^a-zA-Z0-9_-]/g,'_') : index;
@@ -121,12 +134,7 @@
         for (const field of mediaFields) {
           if (!copy[field] || !String(copy[field]).startsWith('data:')) continue;
           const blob = await (await fetch(copy[field])).blob();
-          const ext = blob.type.includes('video') ? (blob.type.includes('webm')?'webm':'mp4') : (blob.type.includes('png')?'png':blob.type.includes('webp')?'webp':'jpg');
-          const path = `${table}/${record.id}/${field}_${storageTimestamp()}.${ext}`;
-          const { error } = await client.storage.from(config.mediaBucket).upload(path, blob, {upsert:true,contentType:blob.type});
-          if (error) throw error;
-          const publicUrl = client.storage.from(config.mediaBucket).getPublicUrl(path).data.publicUrl;
-          copy[field] = `${publicUrl}?v=${storageTimestamp()}`;
+          copy[field] = await uploadMediaBlob(blob,`${table}/${record.id}/${field}`);
           record[field] = copy[field];
         }
         return copy;

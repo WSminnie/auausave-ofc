@@ -947,6 +947,7 @@ function applySyncedMediaUrls(synced, snapshot) {
   });
   const applyUploadedSettingsMedia = (current, remote, original) => {
     if (typeof original === 'string' && original.startsWith('data:')) return current === original && typeof remote === 'string' && !remote.startsWith('data:') ? remote : current;
+    if (typeof original === 'string' && original.includes('/storage/v1/object/public/media/') && current === original && typeof remote === 'string' && remote.includes('/storage/v1/object/public/media/')) return remote;
     if (Array.isArray(current) && Array.isArray(original)) return current.map((value,index)=>{
       const originalIndex = value && typeof value === 'object' && value.id
         ? original.findIndex(item => item && typeof item === 'object' && item.id === value.id)
@@ -2634,6 +2635,8 @@ async function connectAdminDatabase() {
     ensureDexxEventType();
     ensureHomePageSettings();
     ensureLocalizationSettings();
+    const hasLegacyTimelineMedia=(db.siteSettings.timeline||[]).some(item=>typeof item.poster==='string'&&/\/settings\/homepage\/timeline\/\d+\/poster\./.test(item.poster));
+    if(hasLegacyTimelineMedia){adminDatabaseStatus='กำลังจัดระเบียบรูป Timeline...';db=await window.auausaveDB.save(structuredClone(db));}
     localStorage.setItem('auausave-house-db-v9', JSON.stringify(db));
     adminDatabaseLoaded = true;
     adminDatabaseStatus = 'เชื่อมต่อ Supabase แล้ว';
