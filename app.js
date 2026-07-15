@@ -745,6 +745,32 @@ seed.events = [
 let db =
   JSON.parse(localStorage.getItem("auausave-house-db-v9") || "null") ||
   structuredClone(seed);
+const ARTIST_ID_ALIASES = {
+  duo: 'AT01',
+  auau: 'AT02',
+  save: 'AT03',
+  mp: 'AT04',
+  a1783509325576: 'AT04',
+  AT01: 'AT01',
+  AT02: 'AT02',
+  AT03: 'AT03',
+  AT04: 'AT04',
+};
+function canonicalArtistId(id) {
+  return ARTIST_ID_ALIASES[String(id || '')] || String(id || '');
+}
+function sameArtistId(a, b) {
+  return canonicalArtistId(a) === canonicalArtistId(b);
+}
+function artistById(id) {
+  const target = canonicalArtistId(id);
+  return db.artists.find(artist => canonicalArtistId(artist.id) === target);
+}
+function sortedArtists() {
+  return [...db.artists].sort((a, b) =>
+    canonicalArtistId(a.id).localeCompare(canonicalArtistId(b.id), undefined, { numeric: true, sensitivity: 'base' })
+  );
+}
 db.masterData ||= {
   types: [
     { id: "event", label: "Event" },
@@ -773,6 +799,52 @@ function ensureDexxEventType() {
   db.masterData ||= { types: [], series: [] };
   if (!db.masterData.types.some(type => type.id === 'dexx')) db.masterData.types.push({ id: 'dexx', label: 'DEXX' });
 }
+function sortedEventTypesForSummary() {
+  const order = ["event", "live", "series", "private", "concert", "dexx"];
+  return [...(db.masterData?.types || [])].sort((a, b) => {
+    const aid = String(a.id || "").toLowerCase();
+    const bid = String(b.id || "").toLowerCase();
+    if (aid === "other" && bid !== "other") return 1;
+    if (bid === "other" && aid !== "other") return -1;
+    const ai = order.indexOf(aid);
+    const bi = order.indexOf(bid);
+    if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    return String(a.label || a.id).localeCompare(String(b.label || b.id), undefined, { sensitivity: "base" });
+  });
+}
+function migrateArtistId(oldId,newId){
+  if(!oldId||!newId||oldId===newId)return;
+  const replaceDeep=value=>{
+    if(value===oldId)return newId;
+    if(Array.isArray(value))return value.map(replaceDeep);
+    if(value&&typeof value==='object'){
+      return Object.entries(value).reduce((result,[key,item])=>{
+        const nextKey=key===oldId?newId:key,nextValue=replaceDeep(item);
+        if(nextKey in result&&result[nextKey]&&typeof result[nextKey]==='object'&&nextValue&&typeof nextValue==='object'&&!Array.isArray(result[nextKey])&&!Array.isArray(nextValue)) result[nextKey]={...result[nextKey],...nextValue};
+        else result[nextKey]=nextValue;
+        return result;
+      },{});
+    }
+    return value;
+  };
+  const oldArtist=db.artists.find(artist=>artist.id===oldId),newArtist=db.artists.find(artist=>artist.id===newId);
+  if(oldArtist&&newArtist)Object.assign(newArtist,{...oldArtist,id:newId,...newArtist});
+  else if(oldArtist)oldArtist.id=newId;
+  db.artists=db.artists.filter((artist,index,self)=>self.findIndex(item=>item.id===artist.id)===index);
+  ['events','awards','presenters','videos'].forEach(table=>{
+    (db[table]||[]).forEach(item=>{
+      if(item.artistId===oldId)item.artistId=newId;
+      if(Array.isArray(item.artistIds))item.artistIds=[...new Set(item.artistIds.map(id=>id===oldId?newId:id))];
+      else if(typeof item.artistIds==='string'&&item.artistIds.includes(oldId))item.artistIds=item.artistIds.replaceAll(oldId,newId);
+    });
+  });
+  db.siteSettings=replaceDeep(db.siteSettings||{});
+}
+migrateArtistId('a1783509325576','AT04');
+migrateArtistId('mp','AT04');
+migrateArtistId('duo','AT01');
+migrateArtistId('auau','AT02');
+migrateArtistId('save','AT03');
 db.siteSettings ||= { heroImage: "", heroFit: "cover", heroPosition: "center" };
 db.siteSettings.homeSections ||= [
   {id:'hero',label:'Hero หน้าหลัก',eyebrow:'AuauSave fanbase · บ้านของอู่อู๋เซฟ',title:'OUR HOUSE.\nOUR STORY.',description:'บ้านแฟนคลับของอู่อู๋เซฟ พื้นที่เก็บทุกโมเมนต์ของ #AuauSave',visible:true},
@@ -787,7 +859,7 @@ function ensureHomePageSettings() {
   db.siteSettings ||= { heroImage: "", heroFit: "cover", heroPosition: "center" };
   db.siteSettings.personalProfiles ||= {};
   db.siteSettings.presenterDates ||= {};
-  ['auau','save'].forEach(id => {
+  ['AT02','AT03'].forEach(id => {
     db.siteSettings.personalProfiles[id] = {
       zodiac: '', chineseZodiac: '', bloodType: '', education: '', height: '', weight: '',
       sizing: '', bust: '', waist: '', shirtTops: '', shoe: '', wristSize: '',
@@ -816,9 +888,9 @@ function ensureHomePageSettings() {
   db.siteSettings.timelineGroups.variety ||= [];
   db.siteSettings.timelineGroups['music-video'] ||= [];
   [...db.siteSettings.timelineGroups.variety,...db.siteSettings.timelineGroups['music-video']].forEach(group=>{
-    if(Array.isArray(group.visibleArtistIds)&&group.visibleArtistIds.length)return;
+    if(Array.isArray(group.visibleArtistIds)&&group.visibleArtistIds.length){group.visibleArtistIds=[...new Set(group.visibleArtistIds.map(canonicalArtistId))];return;}
     const title=String(group.title||'').toUpperCase();
-    group.visibleArtistIds=title.includes('AUAUSAVE')?['duo','auau','save']:title.includes('AUAU')?['auau']:title.includes('SAVE')?['save']:db.artists.map(artist=>artist.id);
+    group.visibleArtistIds=title.includes('AUAUSAVE')?['AT01','AT02','AT03']:title.includes('AUAU')?['AT02']:title.includes('SAVE')?['AT03']:sortedArtists().map(artist=>artist.id);
   });
 }
 const DEFAULT_PAGE_CONTENT = {
@@ -991,7 +1063,7 @@ async function syncDatabaseInBackground() {
   }
 }
 const artistName = (id) =>
-  db.artists.find((a) => a.id === id)?.name || "ไม่ระบุ";
+  artistById(id)?.name || artistById(id)?.nickname || "ไม่ระบุ";
 const versionedMediaUrl = (url, version = '') => {
   if (!url || String(url).startsWith('data:')) return url || '';
   const token = encodeURIComponent(version || 'current');
@@ -1002,8 +1074,11 @@ const timelineDateLabel = item => {
   const monthLabel = monthNumber >= 1 && monthNumber <= 12 ? new Intl.DateTimeFormat('en-US',{month:'short'}).format(new Date(2000,monthNumber-1,1)) : '';
   return [day >= 1 && day <= 31 ? String(day) : '',monthLabel,year].filter(Boolean).join(' ') || (item?.upcoming ? 'UPCOMING' : 'TBA');
 };
-let itemMatchesArtist = (item, artistId) =>
-  item?.artistId === artistId || (item?.artistId === 'duo' && (artistId === 'auau' || artistId === 'save'));
+let itemMatchesArtist = (item, artistId) => {
+  artistId = canonicalArtistId(artistId);
+  const itemId = canonicalArtistId(item?.artistId);
+  return itemId === artistId || (itemId === 'AT01' && (artistId === 'AT02' || artistId === 'AT03'));
+};
 const fmtDate = (d) =>
   new Intl.DateTimeFormat(route === "admin" ? "th-TH" : "en-US", {
     day: "numeric",
@@ -1043,7 +1118,7 @@ function footer() {
   return `<footer class="footer"><div class="container"><span class="eyebrow">The artist community</span><h2>KEEP THE<br>MEMORIES CLOSE.</h2><div class="creator-credit"><span>เว็บไซต์นี้สร้างโดย</span><div><a href="https://x.com/AuauSaveHouseTH" target="_blank">@AuauSaveHouseTH</a><a href="https://x.com/AUAUTNPOFC" target="_blank">@AUAUTNPOFC</a><a href="https://x.com/SAVEWRG_OFC" target="_blank">@SAVEWRG_OFC</a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE HOUSE</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
 }
 function artistCards() {
-  return `<div class="artists">${db.artists.map((a) => `<article class="artist-card" onclick="location.hash='artist/${a.id}'"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<span>${a.initial}</span>`}<small class="tag">${a.id === "duo" ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><span class="arrow">↗</span><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
+  return `<div class="artists">${sortedArtists().map((a) => `<article class="artist-card" onclick="location.hash='artist/${a.id}'"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<span>${a.initial}</span>`}<small class="tag">${sameArtistId(a.id,"duo") ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><span class="arrow">↗</span><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
 }
 function scheduleRows(items = db.events) {
   return items.length
@@ -1111,7 +1186,8 @@ function listing(type) {
     footer();
 }
 function profile(id) {
-  const a = db.artists.find((x) => x.id === id);
+  id = canonicalArtistId(id);
+  const a = artistById(id);
   if (!a) {
     location.hash = "artists";
     return;
@@ -1135,7 +1211,7 @@ function filterCoupleArchiveEvents(type = coupleArchiveEventType) {
   document.querySelectorAll('.couple-event-card').forEach(card => {
     const types = (card.dataset.types || '').split('|');
     const date = card.dataset.date || '';
-    const artistMatch = coupleArchiveArtist === 'all' || card.dataset.artist === coupleArchiveArtist;
+    const artistMatch = coupleArchiveArtist === 'all' || canonicalArtistId(card.dataset.artist) === canonicalArtistId(coupleArchiveArtist);
     card.style.display = artistMatch && (type === 'all' || types.includes(type.toLowerCase())) && (!from || date >= from) && (!to || date <= to) ? '' : 'none';
   });
   document.querySelectorAll('.couple-event-filters:not(.couple-artist-filters) button').forEach(button => button.classList.toggle('active', button.dataset.type === type));
@@ -1144,46 +1220,47 @@ function filterCoupleArchiveEvents(type = coupleArchiveEventType) {
   if (result) result.textContent = `${count} events found`;
 }
 function filterCoupleArchiveArtist(artist) {
-  coupleArchiveArtist = artist;
+  coupleArchiveArtist = artist === 'all' ? 'all' : canonicalArtistId(artist);
   document.querySelectorAll('.couple-artist-filters button').forEach(button => button.classList.toggle('active',button.dataset.artist===artist));
   filterCoupleArchiveEvents();
 }
 
 function artistSeriesSection(artistId) {
+  artistId = canonicalArtistId(artistId);
   const archive = db.siteSettings.artistArchive[artistId];
   if (!archive || archive.visibility?.series === false) return '';
-  const allowedArtists=artistId==='duo'?['duo']:['duo',artistId],series = db.siteSettings.timeline.filter(item=>(item.artistIds||[]).some(id=>allowedArtists.includes(id))).sort((a,b)=>(Number(b.year)||0)-(Number(a.year)||0));
+  const allowedArtists=sameArtistId(artistId,'duo')?['AT01']:['AT01',artistId],series = db.siteSettings.timeline.filter(item=>(item.artistIds||[]).some(id=>allowedArtists.includes(canonicalArtistId(id)))).sort((a,b)=>(Number(b.year)||0)-(Number(a.year)||0));
   const card = item => {const links=(item.links?.length?item.links:(item.url?[{label:'Open',url:item.url}]:[])).map(link=>typeof link==='string'?{label:'Open',url:link}:link).map(link=>{const text=link.label||link.title||'',url=link.url||link.href||(/^https?:\/\//i.test(text)?text:'');return{label:text&&text!==url?text:'Open',url};}).filter(link=>link.url);const imageOrientation=item.imageOrientation==='landscape'?'landscape':'portrait',posterUrl=versionedMediaUrl(item.poster,item.imageVersion||item.id);return `<article class="filmography-card timeline-image-${imageOrientation} ${item.upcoming?'is-upcoming-card':''}" data-timeline-artists="${escapePageText((item.artistIds||[]).join('|'))}">${item.poster?`<img src="${escapePageText(posterUrl)}" alt="${escapePageText(item.title)}">`:`<div class="filmography-placeholder"><span>${escapePageText(item.title.slice(0,2).toUpperCase())}</span></div>`}${item.upcoming?'<span class="timeline-upcoming-badge">UPCOMING</span>':''}<small>${escapePageText(timelineDateLabel(item))}</small><h3>${escapePageText(item.title)}</h3>${item.description?`<p>${escapePageText(item.description)}</p>`:''}${item.note?`<div class="timeline-note">${escapePageText(item.note)}</div>`:''}${links.length?`<div class="archive-card-links">${links.map(link=>`<a href="${escapePageText(link.url)}" target="_blank" rel="noopener noreferrer">${escapePageText(link.label)} ↗</a>`).join('')}</div>`:''}</article>`;};
-  const lane = (title,items,className='',description='',category='series') => {const renderRows=list=>{const group=item=>item.upcoming?'UPCOMING':(item.year||'TBA'),years=[...new Set(list.map(group))];return `<div class="filmography-timeline">${years.map(year=>`<section class="filmography-year-group ${year==='UPCOMING'?'is-upcoming-group':''}"><header><i></i><b>${escapePageText(year)}</b></header><div class="filmography-year-cards">${list.filter(item=>group(item)===year).map(card).join('')}</div></section>`).join('')||'<div class="empty">No items yet.</div>'}</div>`;};const groups=db.siteSettings.timelineGroups?.[category]||[],visibleGroups=groups.filter(group=>!Array.isArray(group.visibleArtistIds)||!group.visibleArtistIds.length||group.visibleArtistIds.includes(artistId)),grouped=visibleGroups.map(group=>({group,items:items.filter(item=>item.groupId===group.id)})).filter(entry=>entry.items.length),ungrouped=items.filter(item=>!visibleGroups.some(group=>group.id===item.groupId)),ungroupedContent=ungrouped.length?(category==='music-video'?renderRows(ungrouped):`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>Other</h4></div>${renderRows(ungrouped)}</section>`):'',body=visibleGroups.length?[...grouped.map(entry=>`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>${escapePageText(entry.group.title)}</h4>${entry.group.description?`<p>${escapePageText(entry.group.description)}</p>`:''}</div>${renderRows(entry.items)}</section>`),ungroupedContent].join(''):renderRows(items);return `<section class="timeline-subsection ${className}"><div class="timeline-subsection-head"><div><h3>${escapePageText(title)}</h3>${description?`<p>${escapePageText(description)}</p>`:''}</div><span>${items.length} items</span></div>${body}</section>`;};
+  const lane = (title,items,className='',description='',category='series') => {const renderRows=list=>{const group=item=>item.upcoming?'UPCOMING':(item.year||'TBA'),years=[...new Set(list.map(group))];return `<div class="filmography-timeline">${years.map(year=>`<section class="filmography-year-group ${year==='UPCOMING'?'is-upcoming-group':''}"><header><i></i><b>${escapePageText(year)}</b></header><div class="filmography-year-cards">${list.filter(item=>group(item)===year).map(card).join('')}</div></section>`).join('')||'<div class="empty">No items yet.</div>'}</div>`;};const groups=db.siteSettings.timelineGroups?.[category]||[],visibleGroups=groups.filter(group=>!Array.isArray(group.visibleArtistIds)||!group.visibleArtistIds.length||group.visibleArtistIds.map(canonicalArtistId).includes(artistId)),grouped=visibleGroups.map(group=>({group,items:items.filter(item=>item.groupId===group.id)})).filter(entry=>entry.items.length),ungrouped=items.filter(item=>!visibleGroups.some(group=>group.id===item.groupId)),ungroupedContent=ungrouped.length?(category==='music-video'?renderRows(ungrouped):`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>Other</h4></div>${renderRows(ungrouped)}</section>`):'',body=visibleGroups.length?[...grouped.map(entry=>`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>${escapePageText(entry.group.title)}</h4>${entry.group.description?`<p>${escapePageText(entry.group.description)}</p>`:''}</div>${renderRows(entry.items)}</section>`),ungroupedContent].join(''):renderRows(items);return `<section class="timeline-subsection ${className}"><div class="timeline-subsection-head"><div><h3>${escapePageText(title)}</h3>${description?`<p>${escapePageText(description)}</p>`:''}</div><span>${items.length} items</span></div>${body}</section>`;};
   const visible=db.siteSettings.timelineVisibility, content=db.siteSettings.timelineCategoryContent||{},regular=[...series].sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));
-  const filters=artistId==='duo'?'':`<div class="timeline-artist-filters"><button class="active" onclick="filterArtistTimeline(this,'all')">All</button><button onclick="filterArtistTimeline(this,'duo')">AUAUSAVE</button><button onclick="filterArtistTimeline(this,'${artistId}')">${escapePageText(artistName(artistId))}</button></div>`;
+  const filters=sameArtistId(artistId,'duo')?'':`<div class="timeline-artist-filters"><button class="active" onclick="filterArtistTimeline(this,'all')">All</button><button onclick="filterArtistTimeline(this,'AT01')">AUAUSAVE</button><button onclick="filterArtistTimeline(this,'${artistId}')">${escapePageText(artistName(artistId))}</button></div>`;
   return `<section class="section artist-filmography" data-artist-timeline="${artistId}"><div class="container"><div class="filmography-head"><small>OUR TIMELINE</small><h2>Timeline</h2><p>Series, variety shows and music videos of ${escapePageText(artistName(artistId))}</p>${filters}</div>${visible.series!==false?lane(content.series?.title||'Series',regular.filter(item=>(item.category||'series')==='series'),' ',content.series?.description||'','series'):''}${visible.variety!==false?lane(content.variety?.title||'Variety Show',regular.filter(item=>item.category==='variety'),' ',content.variety?.description||'','variety'):''}${visible['music-video']!==false?lane(content['music-video']?.title||'Music Video',regular.filter(item=>item.category==='music-video'),' ',content['music-video']?.description||'','music-video'):''}</div></section>`;
 }
-function filterArtistTimeline(button,artist){const section=button.closest('.artist-filmography');section.querySelectorAll('.timeline-artist-filters button').forEach(item=>item.classList.toggle('active',item===button));section.querySelectorAll('.filmography-card').forEach(card=>{const ids=(card.dataset.timelineArtists||'').split('|');card.style.display=artist==='all'||ids.includes(artist)?'':'none';});section.querySelectorAll('.filmography-year-group,.timeline-content-group,.timeline-subsection').forEach(group=>{group.style.display=[...group.querySelectorAll('.filmography-card')].some(card=>card.style.display!=='none')?'':'none';});}
+function filterArtistTimeline(button,artist){artist=canonicalArtistId(artist);const section=button.closest('.artist-filmography');section.querySelectorAll('.timeline-artist-filters button').forEach(item=>item.classList.toggle('active',item===button));section.querySelectorAll('.filmography-card').forEach(card=>{const ids=(card.dataset.timelineArtists||'').split('|').map(canonicalArtistId);card.style.display=artist==='all'||ids.includes(artist)?'':'none';});section.querySelectorAll('.filmography-year-group,.timeline-content-group,.timeline-subsection').forEach(group=>{group.style.display=[...group.querySelectorAll('.filmography-card')].some(card=>card.style.display!=='none')?'':'none';});}
 
 function coupleArchivePage() {
-  const artist = db.artists.find(item => item.id === 'duo');
+  const artist = artistById('duo') || {};
   const events = [...db.events].sort((a,b) => a.date.localeCompare(b.date));
-  const awards = db.awards.filter(item => item.artistId === 'duo').sort((a,b) => Number(b.year)-Number(a.year));
+  const awards = db.awards.filter(item => itemMatchesArtist(item, 'AT01')).sort((a,b) => Number(b.year)-Number(a.year));
   const now = new Date(), monthStart = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`, monthEnd = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(new Date(now.getFullYear(),now.getMonth()+1,0).getDate()).padStart(2,'0')}`;
   const projects = [];
   const filterTypes = db.masterData.types.filter(type => events.some(event => eventHasType(event,type.id)));
   const media = [
     ...events.filter(item => item.poster || item.source).map(item => ({kind:item.poster?'image':'link',src:item.poster||'',url:item.source||'',title:item.title})),
-    ...db.presenters.filter(item => item.artistId === 'duo' && (item.announcementImage || item.announcementVideo)).map(item => ({kind:item.announcementVideo?'video':'image',src:item.announcementVideo||item.announcementImage,url:item.url||'',title:item.brand})),
+    ...db.presenters.filter(item => itemMatchesArtist(item, 'AT01') && (item.announcementImage || item.announcementVideo)).map(item => ({kind:item.announcementVideo?'video':'image',src:item.announcementVideo||item.announcementImage,url:item.url||'',title:item.brand})),
   ];
   app.innerHTML = nav('artists') + `<main class="couple-archive"><section class="couple-profile"><div class="container couple-profile-grid"><div class="couple-profile-image" style="background:${artist.color}">${artist.image?`<img src="${artist.image}" alt="AUAUSAVE">`:`<span>AS</span>`}</div><div><span class="eyebrow">COUPLE ARCHIVE</span><h1>AUAUSAVE</h1><p>${artist.bio || 'The shared journey of Auau and Save, collected in one place.'}</p><a class="couple-hashtag" href="https://x.com/hashtag/AuauSave" target="_blank">#AuauSave ↗</a></div></div></section>
   <section class="section archive-projects"><div class="container"><div class="archive-section-head"><span>02</span><div><small>TOGETHER ON SCREEN</small><h2>Series & Projects</h2></div><p>Series, shared projects, promotions and fan projects.</p></div><div class="archive-project-grid">${projects.map(item=>`<article><small>${item.seriesId ? (db.masterData.series.find(series=>series.id===item.seriesId)?.label || 'SERIES') : 'SERIES'}</small><h3>${item.title}</h3><p>${item.place||'AUAUSAVE project'}</p>${item.source?`<a href="${item.source}" target="_blank">View source ↗</a>`:''}</article>`).join('') || '<div class="empty">No series or project information yet.</div>'}</div></div></section>
   <section class="section"><div class="container"><div class="archive-section-head"><span>02</span><div><small>MEET AUAUSAVE</small><h2>Events</h2></div><p>Search couple schedules by date range and event type.</p></div><div class="couple-event-search"><label>From<input id="coupleEventFrom" type="date" value="${monthStart}" onchange="filterCoupleArchiveEvents()"></label><label>To<input id="coupleEventTo" type="date" value="${monthEnd}" onchange="filterCoupleArchiveEvents()"></label><span class="couple-event-result"></span></div><div class="couple-event-filters"><button class="active" data-type="all" onclick="filterCoupleArchiveEvents('all')">All</button>${filterTypes.map(type=>`<button data-type="${type.id}" onclick="filterCoupleArchiveEvents('${type.id}')">${type.label}</button>`).join('')}</div><div class="couple-event-list">${events.map(item=>`<article class="couple-event-card" data-date="${item.date}" data-types="${eventTypeValues(item.type).map(type=>type.toLowerCase()).join('|')}"><time><b>${day(item.date)}</b><span>${month(item.date)} ${item.date.slice(0,4)}</span></time><div><small>${eventTypeValues(item.type).join(' · ')}</small><h3>${item.title}</h3><p>${item.place||'TBA'}</p></div>${item.source?`<a href="${item.source}" target="_blank">↗</a>`:''}</article>`).join('') || '<div class="empty">No couple events yet.</div>'}</div></div></section>
   <section class="section archive-awards"><div class="container"><div class="archive-section-head"><span>04</span><div><small>SHARED ACHIEVEMENTS</small><h2>Awards</h2></div><p>Awards and recognitions received together.</p></div><div class="archive-award-table"><div class="archive-award-row head"><span>Year</span><span>Award</span><span>Organization / Category</span><span>Result</span></div>${awards.map(item=>`<div class="archive-award-row"><strong>${item.year}</strong><span>${item.title}</span><span>${item.org}</span><span>Recipient</span></div>`).join('') || '<div class="empty">No couple awards yet.</div>'}</div></div></section>
   <section class="section"><div class="container"><div class="archive-section-head"><span>04</span><div><small>PHOTO · VIDEO · SOURCE</small><h2>Media Gallery</h2></div><p>Event photos, short clips and original post links.</p></div><div class="couple-media-grid">${media.map(item=>`<article>${item.kind==='video'?`<video src="${item.src}" controls playsinline></video>`:item.kind==='image'?`<img src="${item.src}" alt="${item.title}">`:'<div class="media-link-art">↗</div>'}<div><h3>${item.title}</h3>${item.url?`<a href="${item.url}" target="_blank">View original post ↗</a>`:''}</div></article>`).join('') || '<div class="empty">No media has been added yet.</div>'}</div></div></section></main>` + footer();
-  document.querySelectorAll('.couple-event-card').forEach((card,index) => card.dataset.artist = events[index]?.artistId || 'duo');
+  document.querySelectorAll('.couple-event-card').forEach((card,index) => card.dataset.artist = canonicalArtistId(events[index]?.artistId || 'AT01'));
   document.querySelector('.couple-event-filters:not(.couple-artist-filters)')?.remove();
-  document.querySelector('.couple-event-search')?.insertAdjacentHTML('afterend', `<div class="couple-event-filters couple-artist-filters"><button class="active" data-artist="all" onclick="filterCoupleArchiveArtist('all')">All</button><button data-artist="duo" onclick="filterCoupleArchiveArtist('duo')">AUAUSAVE</button><button data-artist="auau" onclick="filterCoupleArchiveArtist('auau')">AUAU</button><button data-artist="save" onclick="filterCoupleArchiveArtist('save')">SAVE</button></div>`);
-  const archiveData = db.siteSettings.artistArchive.duo;
+  document.querySelector('.couple-event-search')?.insertAdjacentHTML('afterend', `<div class="couple-event-filters couple-artist-filters"><button class="active" data-artist="all" onclick="filterCoupleArchiveArtist('all')">All</button><button data-artist="AT01" onclick="filterCoupleArchiveArtist('AT01')">AUAUSAVE</button><button data-artist="AT02" onclick="filterCoupleArchiveArtist('AT02')">AUAU</button><button data-artist="AT03" onclick="filterCoupleArchiveArtist('AT03')">SAVE</button></div>`);
+  const archiveData = db.siteSettings.artistArchive.AT01;
   const seriesHeading = [...document.querySelectorAll('.archive-section-head h2')].find(item => item.textContent === 'Series & Projects');
   if (seriesHeading) {
-    seriesHeading.closest('.section').outerHTML = artistSeriesSection('duo');
+    seriesHeading.closest('.section').outerHTML = artistSeriesSection('AT01');
   }
   const galleryHeading = [...document.querySelectorAll('.archive-section-head h2')].find(item => item.textContent === 'Media Gallery');
   if (galleryHeading) {
@@ -1212,9 +1289,10 @@ function coupleArchivePage() {
 
 const renderProfileWithoutImage = profile;
 profile = function (id) {
-  if (id === 'duo') { coupleArchivePage(); return; }
+  id = canonicalArtistId(id);
+  if (sameArtistId(id,'duo')) { coupleArchivePage(); return; }
   renderProfileWithoutImage(id);
-  const artist = db.artists.find((a) => a.id === id),
+  const artist = artistById(id),
     portrait = document.querySelector(".profile-portrait");
   if (artist?.image && portrait)
     portrait.innerHTML = `<img src="${artist.image}" alt="${artist.name}">`;
@@ -1229,7 +1307,7 @@ profile = function (id) {
   if (visibility.events === false) scheduleSection?.remove();
   const awardsSection = [...document.querySelectorAll('main .section')].find(section => section.querySelector('.award-grid'));
   if (visibility.awards === false) awardsSection?.remove();
-  if (artist?.id === 'duo') {
+  if (sameArtistId(artist?.id,'duo')) {
     const facts = [...document.querySelectorAll('.profile-head .facts .fact')];
     facts[0]?.remove();
     const anniversaryLabel = facts[1]?.querySelector('small');
@@ -1339,7 +1417,7 @@ function presenterCards(items = db.presenters) {
       .map((p) => {
         const fit = p.mediaFit || "contain",
           position = p.mediaPosition || "center";
-        return `<article class="presenter-card ${p.announcementImage || p.announcementVideo ? "has-poster" : ""}" style="--brand:${p.color || "#777"}">${p.announcementVideo ? `<div class="presenter-poster video-poster"><video src="${p.announcementVideo}" controls playsinline preload="metadata" style="object-fit:${fit};object-position:${position}"></video></div>` : p.announcementImage ? `<div class="presenter-poster"><img src="${p.announcementImage}" alt="โปสเตอร์ ${p.brand}" style="object-fit:${fit};object-position:${position}"></div>` : ""}<div class="presenter-detail"><div class="brand-mark">${p.logo ? `<img src="${p.logo}" alt="${p.brand}">` : p.brand.slice(0, 2).toUpperCase()}</div><span>${p.artistId === "duo" ? "#AUAUSAVE" : p.artistId.toUpperCase()}</span><h3>${p.brand}</h3><p>${p.role} · ${p.year}</p>${p.url ? `<a href="${p.url}" target="_blank">ดูรายละเอียด ↗</a>` : ""}</div></article>`;
+        return `<article class="presenter-card ${p.announcementImage || p.announcementVideo ? "has-poster" : ""}" style="--brand:${p.color || "#777"}">${p.announcementVideo ? `<div class="presenter-poster video-poster"><video src="${p.announcementVideo}" controls playsinline preload="metadata" style="object-fit:${fit};object-position:${position}"></video></div>` : p.announcementImage ? `<div class="presenter-poster"><img src="${p.announcementImage}" alt="โปสเตอร์ ${p.brand}" style="object-fit:${fit};object-position:${position}"></div>` : ""}<div class="presenter-detail"><div class="brand-mark">${p.logo ? `<img src="${p.logo}" alt="${p.brand}">` : p.brand.slice(0, 2).toUpperCase()}</div><span>${sameArtistId(p.artistId,"duo") ? "#AUAUSAVE" : artistName(p.artistId)}</span><h3>${p.brand}</h3><p>${p.role} · ${p.year}</p>${p.url ? `<a href="${p.url}" target="_blank">ดูรายละเอียด ↗</a>` : ""}</div></article>`;
       })
       .join("") || '<div class="empty">ยังไม่มีข้อมูลพรีเซนเตอร์</div>'
   }</div>`;
@@ -1347,7 +1425,7 @@ function presenterCards(items = db.presenters) {
 function presenterPage() {
   app.innerHTML =
     nav("presenters") +
-    `<main><section class="page-hero"><div class="container"><span class="eyebrow">Brand & Partnership</span><h1>พรีเซนเตอร์</h1><p>รวมแบรนด์ที่ร่วมเดินทางกับอู่อู๋เซฟ ทั้งงานคู่และงานเดี่ยว</p></div></section><section class="section" style="padding-top:25px"><div class="container"><div class="presenter-group"><h2>#AUAUSAVE</h2>${presenterCards(db.presenters.filter((p) => p.artistId === "duo"))}</div><div class="presenter-solo"><div><h2>AUAU</h2>${presenterCards(db.presenters.filter((p) => p.artistId === "auau"))}</div><div><h2>SAVE</h2>${presenterCards(db.presenters.filter((p) => p.artistId === "save"))}</div></div></div></section></main>` +
+    `<main><section class="page-hero"><div class="container"><span class="eyebrow">Brand & Partnership</span><h1>พรีเซนเตอร์</h1><p>รวมแบรนด์ที่ร่วมเดินทางกับอู่อู๋เซฟ ทั้งงานคู่และงานเดี่ยว</p></div></section><section class="section" style="padding-top:25px"><div class="container"><div class="presenter-group"><h2>#AUAUSAVE</h2>${presenterCards(db.presenters.filter((p) => itemMatchesArtist(p, "AT01")))}</div><div class="presenter-solo"><div><h2>AUAU</h2>${presenterCards(db.presenters.filter((p) => itemMatchesArtist(p, "AT02") && !itemMatchesArtist(p, "AT01")))}</div><div><h2>SAVE</h2>${presenterCards(db.presenters.filter((p) => itemMatchesArtist(p, "AT03") && !itemMatchesArtist(p, "AT01")))}</div></div></div></section></main>` +
     footer();
 }
 const renderListingBeforePresenters = listing;
@@ -1441,10 +1519,11 @@ const configs = {
   artists: {
     label: "ศิลปิน",
     icon: "◉",
-    cols: ["ชื่อศิลปิน", "ชื่อจริง", "บทบาท"],
+    cols: ["Nickname", "Name TH", "Name EN", "บทบาท"],
     fields: [
-      ["name", "ชื่อศิลปิน"],
-      ["realName", "ชื่อจริง"],
+      ["name", "Nickname"],
+      ["realName", "Name TH"],
+      ["nameEN", "Name EN"],
       ["role", "บทบาท"],
       ["birth", "วันเกิด"],
       ["initial", "อักษรย่อ"],
@@ -1614,13 +1693,72 @@ function dashboardAdmin() {
       .join("") || '<div class="empty">ยังไม่มีงานที่กำลังจะมาถึง</div>'
   }</section></div></main></div></div>`;
 }
-let dashYearFrom = 2026,
-  dashYearTo = 2026,
+function dashboardDefaultRange() {
+  const now = new Date();
+  return { year: now.getFullYear(), month: now.getMonth() + 1 };
+}
+const initialDashboardRange = dashboardDefaultRange();
+let dashYearFrom = initialDashboardRange.year,
+  dashYearTo = initialDashboardRange.year,
   dashMonthFrom = 1,
-  dashMonthTo = 12;
+  dashMonthTo = initialDashboardRange.month;
+let lastValidDashboardRange = {
+  yearFrom: dashYearFrom,
+  yearTo: dashYearTo,
+  monthFrom: dashMonthFrom,
+  monthTo: dashMonthTo,
+};
+function dashboardRangeStartValue() {
+  return dashYearFrom * 100 + dashMonthFrom;
+}
+function dashboardRangeEndValue() {
+  return dashYearTo * 100 + dashMonthTo;
+}
+function rememberDashboardRange() {
+  lastValidDashboardRange = {
+    yearFrom: dashYearFrom,
+    yearTo: dashYearTo,
+    monthFrom: dashMonthFrom,
+    monthTo: dashMonthTo,
+  };
+}
+function restoreDashboardRange() {
+  dashYearFrom = lastValidDashboardRange.yearFrom;
+  dashYearTo = lastValidDashboardRange.yearTo;
+  dashMonthFrom = lastValidDashboardRange.monthFrom;
+  dashMonthTo = lastValidDashboardRange.monthTo;
+  document.querySelectorAll(".dash-filter select").forEach(select => {
+    if (select.dataset.range === "yearFrom") select.value = dashYearFrom;
+    if (select.dataset.range === "yearTo") select.value = dashYearTo;
+    if (select.dataset.range === "monthFrom") select.value = dashMonthFrom;
+    if (select.dataset.range === "monthTo") select.value = dashMonthTo;
+  });
+}
+function setDashboardRange(part, value) {
+  if (part === "yearFrom") dashYearFrom = Number(value);
+  if (part === "yearTo") dashYearTo = Number(value);
+  if (part === "monthFrom") dashMonthFrom = Number(value);
+  if (part === "monthTo") dashMonthTo = Number(value);
+  if (dashboardRangeStartValue() > dashboardRangeEndValue()) {
+    alert("ช่วงเวลาค้นหาไม่ถูกต้อง: วันเริ่มต้นต้องไม่มากกว่าวันสิ้นสุด");
+    restoreDashboardRange();
+    return;
+  }
+  rememberDashboardRange();
+  applyDashboardRange();
+}
+function resetDashboardRange() {
+  const range = dashboardDefaultRange();
+  dashYearFrom = range.year;
+  dashYearTo = range.year;
+  dashMonthFrom = 1;
+  dashMonthTo = range.month;
+  rememberDashboardRange();
+  dashboardAdmin();
+}
 function dashboardFilterControls() {
   const years = [
-      ...new Set(db.events.map((e) => Number(e.date.slice(0, 4)))),
+      ...new Set([dashboardDefaultRange().year, ...db.events.map((e) => Number(e.date.slice(0, 4)))]),
     ].sort((a, b) => a - b),
     monthNames = [
       "มกราคม",
@@ -1636,11 +1774,9 @@ function dashboardFilterControls() {
       "พฤศจิกายน",
       "ธันวาคม",
     ];
-  return `<section class="dash-filter"><div class="dash-filter-title"><span>⌕</span><div><b>ค้นหาตามช่วงเวลา</b><small>ข้อมูลบน Dashboard จะเปลี่ยนตามช่วงที่เลือก</small></div></div><div class="dash-filter-fields"><label>จากปี<select onchange="dashYearFrom=Number(this.value);applyDashboardRange()">${years.map((y) => `<option ${y === dashYearFrom ? "selected" : ""}>${y}</option>`).join("")}</select></label><label>ถึงปี<select onchange="dashYearTo=Number(this.value);applyDashboardRange()">${years.map((y) => `<option ${y === dashYearTo ? "selected" : ""}>${y}</option>`).join("")}</select></label><label>จากเดือน<select onchange="dashMonthFrom=Number(this.value);applyDashboardRange()">${monthNames.map((m, i) => `<option value="${i + 1}" ${i + 1 === dashMonthFrom ? "selected" : ""}>${m}</option>`).join("")}</select></label><label>ถึงเดือน<select onchange="dashMonthTo=Number(this.value);applyDashboardRange()">${monthNames.map((m, i) => `<option value="${i + 1}" ${i + 1 === dashMonthTo ? "selected" : ""}>${m}</option>`).join("")}</select></label><button onclick="dashYearFrom=2026;dashYearTo=2026;dashMonthFrom=1;dashMonthTo=12;dashboardAdmin()">รีเซ็ต</button></div><p class="dash-range-text" id="dashRangeText"></p></section>`;
+  return `<section class="dash-filter"><div class="dash-filter-title"><span>⌕</span><div><b>ค้นหาตามช่วงเวลา</b><small>ข้อมูลบน Dashboard จะเปลี่ยนตามช่วงที่เลือก</small></div></div><div class="dash-filter-fields"><label>จากปี<select data-range="yearFrom" onchange="setDashboardRange('yearFrom',this.value)">${years.map((y) => `<option ${y === dashYearFrom ? "selected" : ""}>${y}</option>`).join("")}</select></label><label>ถึงปี<select data-range="yearTo" onchange="setDashboardRange('yearTo',this.value)">${years.map((y) => `<option ${y === dashYearTo ? "selected" : ""}>${y}</option>`).join("")}</select></label><label>จากเดือน<select data-range="monthFrom" onchange="setDashboardRange('monthFrom',this.value)">${monthNames.map((m, i) => `<option value="${i + 1}" ${i + 1 === dashMonthFrom ? "selected" : ""}>${m}</option>`).join("")}</select></label><label>ถึงเดือน<select data-range="monthTo" onchange="setDashboardRange('monthTo',this.value)">${monthNames.map((m, i) => `<option value="${i + 1}" ${i + 1 === dashMonthTo ? "selected" : ""}>${m}</option>`).join("")}</select></label><button onclick="resetDashboardRange()">รีเซ็ต</button></div><p class="dash-range-text" id="dashRangeText"></p></section>`;
 }
 function applyDashboardRange() {
-  if (dashYearFrom > dashYearTo)
-    [dashYearFrom, dashYearTo] = [dashYearTo, dashYearFrom];
   const start = `${dashYearFrom}-${String(dashMonthFrom).padStart(2, "0")}-01`,
     endDate = new Date(dashYearTo, dashMonthTo, 0),
     end = `${dashYearTo}-${String(dashMonthTo).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`,
@@ -1655,11 +1791,18 @@ function applyDashboardRange() {
       save: items.filter((e) => e.artistId === "save").length,
     },
     stats = document.querySelectorAll(".dashboard-stats article b");
+  const statTitles = document.querySelectorAll(".dashboard-stats article span");
+  if (statTitles.length) {
+    statTitles[0].textContent = "ตารางงานในช่วงที่เลือก";
+    statTitles[1].textContent = "เดือนที่มีกิจกรรม";
+    statTitles[2].textContent = "งานที่กำลังจะมาถึง";
+    statTitles[3].textContent = "ศิลปิน/พาส";
+  }
   if (stats.length) {
     stats[0].textContent = items.length;
     stats[1].textContent = new Set(items.map((e) => e.date.slice(0, 7))).size;
     stats[2].textContent = future.length;
-    stats[3].textContent = new Set(items.map((e) => e.artistId)).size;
+    stats[3].textContent = new Set(items.flatMap(eventArtistIds)).size;
   }
   const statLabels = document.querySelectorAll(
     ".dashboard-stats article small",
@@ -1698,6 +1841,8 @@ function applyDashboardRange() {
       .join("");
     chart.classList.toggle("many-bars", buckets.length > 12);
   }
+  const chartTotal = document.querySelector(".chart-panel .panel-head b");
+  if (chartTotal) chartTotal.textContent = `${items.length} งาน`;
   const metrics = document.querySelectorAll(".path-metric");
   [
     ["duo", paths.duo],
@@ -1883,15 +2028,15 @@ admin = function () {
 const renderDashboardWithFilters = dashboardAdmin;
 dashboardAdmin = function () {
   renderDashboardWithFilters();
-  const counts = db.masterData.types.map((t) => ({
+  const counts = sortedEventTypesForSummary().map((t) => ({
     t,
-    n: db.events.filter((e) => eventHasType(e, t.id)).length,
+    n: dashboardCurrentRangeItems().filter((e) => eventHasType(e, t.id)).length,
   }));
   document
     .querySelector(".dashboard-stats")
     ?.insertAdjacentHTML(
       "afterend",
-      `<section class="dash-type-summary"><div><small>EVENT TYPES</small><h2>สรุปตาม Type</h2></div>${counts.map(({ t, n }) => `<article class="type-card ${t.id}"><span>${t.label}</span><b>${n}</b></article>`).join("")}</section>`,
+      `<section class="dash-type-summary"><div class="dash-type-summary-head"><small>EVENT TYPES</small><h2>สรุปตาม Type</h2></div><div class="dash-type-table dash-type-table-horizontal" style="--type-count:${Math.max(counts.length, 1)}"><div class="dash-type-row head">${counts.map(({ t }) => `<span><i class="master-dot ${t.id}"></i>${escapePageText(t.label)}</span>`).join("")}</div><div class="dash-type-row values">${counts.map(({ t, n }) => `<div class="type-card ${t.id}"><b>${n}</b></div>`).join("")}</div></div></section>`,
     );
 };
 let publicTypeFilter = "all";
@@ -1923,7 +2068,7 @@ function presenterAdminDate(item) {
 }
 function rowCells(type, x) {
   if (type === "artists")
-    return `<td><b>${x.name}</b></td><td>${x.realName}</td><td>${x.role}</td>`;
+    return `<td><b>${x.name}</b></td><td>${x.realName || ''}</td><td>${x.nameEN || ''}</td><td>${x.role}</td>`;
   if (type === "events")
     return `<td><b>${x.title}</b></td><td>${artistName(x.artistId)}</td><td>${fmtDate(x.date)}</td>`;
   if (type === "presenters")
@@ -1942,7 +2087,7 @@ function openForm(type, id) {
         const val = item[key] || "";
         const required = isRequired === false ? "" : " required";
         if (kind === "artist")
-          return `<div class="field"><label>${label}</label><select name="${key}"${required}><option value="">เลือกศิลปิน</option>${db.artists.map((a) => `<option value="${a.id}" ${val === a.id ? "selected" : ""}>${a.name}</option>`).join("")}</select></div>`;
+          return `<div class="field"><label>${label}</label><select name="${key}"${required}><option value="">เลือกศิลปิน</option>${sortedArtists().map((a) => `<option value="${a.id}" ${sameArtistId(val,a.id) ? "selected" : ""}>${a.name}</option>`).join("")}</select></div>`;
         if (kind === "textarea")
           return `<div class="field full"><label>${label}</label><textarea name="${key}"${required}>${val}</textarea></div>`;
         return `<div class="field"><label>${label}</label><input type="${kind || "text"}" name="${key}" value="${val}"${required}></div>`;
@@ -2479,8 +2624,8 @@ openForm = function (type, id) {
   const item = id ? db[type].find(entry => entry.id === id) : {};
   const select = document.querySelector('#modal select[name="artistId"]');
   if (!select) return;
-  const selected = item.artistId === 'duo' ? ['duo'] : item.artistId ? [item.artistId] : [];
-  select.outerHTML = `<div class="multi-artist-picker" data-multi-artist-picker><p>เลือกได้มากกว่า 1 ศิลปิน</p><input type="hidden" name="artistId" value="${item.artistId || ''}"><label><input type="checkbox" name="artistChoice" value="duo" ${selected.includes('duo')?'checked':''} onchange="syncMultiArtistSelection(this)"><span>#AUAUSAVE <small>เพิ่มให้ AUAU และ SAVE อัตโนมัติ</small></span></label><label><input type="checkbox" name="artistChoice" value="auau" ${selected.includes('auau')?'checked':''} onchange="syncMultiArtistSelection(this)"><span>AUAU</span></label><label><input type="checkbox" name="artistChoice" value="save" ${selected.includes('save')?'checked':''} onchange="syncMultiArtistSelection(this)"><span>SAVE</span></label></div>`;
+  const selected = (item.artistId ? [item.artistId] : []).map(canonicalArtistId);
+  select.outerHTML = `<div class="multi-artist-picker" data-multi-artist-picker><p>เลือกได้มากกว่า 1 ศิลปิน</p><input type="hidden" name="artistId" value="${canonicalArtistId(item.artistId || '')}">${sortedArtists().map(artist=>`<label><input type="checkbox" name="artistChoice" value="${artist.id}" ${selected.includes(canonicalArtistId(artist.id))?'checked':''} onchange="syncMultiArtistSelection(this)"><span>${escapePageText(sameArtistId(artist.id,'duo')?'#AUAUSAVE':artist.name)}${sameArtistId(artist.id,'duo')?'<small>เพิ่มให้ AUAU และ SAVE อัตโนมัติ</small>':''}</span></label>`).join('')}</div>`;
   syncMultiArtistSelection();
 };
 
@@ -2488,13 +2633,13 @@ function syncMultiArtistSelection(changed) {
   const picker = document.querySelector('#modal [data-multi-artist-picker]');
   if (!picker) return;
   const checks = [...picker.querySelectorAll('[name="artistChoice"]')];
-  if (changed?.checked && changed.value === 'duo') checks.forEach(check => { if (check !== changed) check.checked = false; });
-  if (changed?.checked && changed.value !== 'duo') {
-    const duo = checks.find(check => check.value === 'duo');
+  if (changed?.checked && sameArtistId(changed.value,'duo')) checks.forEach(check => { if (check !== changed) check.checked = false; });
+  if (changed?.checked && !sameArtistId(changed.value,'duo')) {
+    const duo = checks.find(check => sameArtistId(check.value,'duo'));
     if (duo) duo.checked = false;
   }
-  const selected = checks.filter(check => check.checked).map(check => check.value);
-  const artistId = selected.includes('duo') || (selected.includes('auau') && selected.includes('save')) ? 'duo' : selected[0] || '';
+  const selected = checks.filter(check => check.checked).map(check => canonicalArtistId(check.value));
+  const artistId = selected.includes('AT01') || (selected.includes('AT02') && selected.includes('AT03')) ? 'AT01' : selected[0] || '';
   picker.querySelector('[name="artistId"]').value = artistId;
   checks[0]?.setCustomValidity(artistId ? '' : 'กรุณาเลือกศิลปินอย่างน้อย 1 คน');
 }
@@ -2503,9 +2648,9 @@ const renderPresenterPageWithMultiArtists = presenterPage;
 presenterPage = function () {
   renderPresenterPageWithMultiArtists();
   const duoGroup = document.querySelector('.presenter-group'), soloGroups = document.querySelectorAll('.presenter-solo > div');
-  if (duoGroup) duoGroup.innerHTML = `<h2>#AUAUSAVE</h2>${presenterCards(db.presenters.filter(item => itemMatchesArtist(item, 'duo')))}`;
-  if (soloGroups[0]) soloGroups[0].innerHTML = `<h2>AUAU</h2>${presenterCards(db.presenters.filter(item => item.artistId === 'auau'))}`;
-  if (soloGroups[1]) soloGroups[1].innerHTML = `<h2>SAVE</h2>${presenterCards(db.presenters.filter(item => item.artistId === 'save'))}`;
+  if (duoGroup) duoGroup.innerHTML = `<h2>#AUAUSAVE</h2>${presenterCards(db.presenters.filter(item => itemMatchesArtist(item, 'AT01')))}`;
+  if (soloGroups[0]) soloGroups[0].innerHTML = `<h2>AUAU</h2>${presenterCards(db.presenters.filter(item => itemMatchesArtist(item, 'AT02') && !itemMatchesArtist(item, 'AT01')))}`;
+  if (soloGroups[1]) soloGroups[1].innerHTML = `<h2>SAVE</h2>${presenterCards(db.presenters.filter(item => itemMatchesArtist(item, 'AT03') && !itemMatchesArtist(item, 'AT01')))}`;
 };
 
 const renderAdminWithYoutubeManager = admin;
@@ -2569,12 +2714,12 @@ admin = function () {
 
 let artistAdminTab = 'content';
 function artistArchiveAdminPanel() {
-  return `<section class="panel artist-archive-admin"><div class="panel-head"><div><small>ARTIST PAGE CONTENT</small><h2>จัดการ Series</h2><p class="master-note">เพิ่มปี รายละเอียด และลิงก์ได้หลายรายการในแต่ละซีรีส์</p></div></div>${db.artists.map(artist=>{const data=db.siteSettings.artistArchive[artist.id];return `<article class="archive-admin-artist"><h3>${artist.name}</h3><div class="archive-visibility"><b>การแสดงผลหน้าบ้าน</b><div>${['series','events','awards'].map(kind=>`<label><input type="checkbox" ${data.visibility[kind]!==false?'checked':''} onchange="toggleArtistArchiveSection('${artist.id}','${kind}',this.checked)"><span>${kind[0].toUpperCase()+kind.slice(1)}</span></label>`).join('')}</div></div><div class="archive-admin-kind"><div><b>SERIES</b><button type="button" data-archive-add="${artist.id}-series" onclick="openArtistArchiveItemForm('${artist.id}','series')">+ เพิ่ม</button></div>${data.series.map((item,index)=>`<p><span>${item.year?`<small>${escapePageText(item.year)}</small> `:''}${escapePageText(item.title)}</span><span><button onclick="moveArtistArchiveItem('${artist.id}','series',${index},-1)" ${index===0?'disabled':''}>↑</button><button onclick="moveArtistArchiveItem('${artist.id}','series',${index},1)" ${index===data.series.length-1?'disabled':''}>↓</button><button title="แก้ไข" onclick="openArtistArchiveItemForm('${artist.id}','series',${index})">✎</button><button title="คัดลอกไปศิลปินอื่น" onclick="copyArtistArchiveItem('${artist.id}','series',${index})">⧉</button><button title="ลบ" onclick="removeArtistArchiveItem('${artist.id}','series',${index})">⌫</button></span></p>`).join('')||'<small>ยังไม่มีข้อมูล</small>'}</div></article>`}).join('')}</section>`;
+  return `<section class="panel artist-archive-admin"><div class="panel-head"><div><small>ARTIST PAGE CONTENT</small><h2>จัดการ Series</h2><p class="master-note">เพิ่มปี รายละเอียด และลิงก์ได้หลายรายการในแต่ละซีรีส์</p></div></div>${sortedArtists().map(artist=>{const data=db.siteSettings.artistArchive[artist.id];return `<article class="archive-admin-artist"><h3>${artist.name}</h3><div class="archive-visibility"><b>การแสดงผลหน้าบ้าน</b><div>${['series','events','awards'].map(kind=>`<label><input type="checkbox" ${data.visibility[kind]!==false?'checked':''} onchange="toggleArtistArchiveSection('${artist.id}','${kind}',this.checked)"><span>${kind[0].toUpperCase()+kind.slice(1)}</span></label>`).join('')}</div></div><div class="archive-admin-kind"><div><b>SERIES</b><button type="button" data-archive-add="${artist.id}-series" onclick="openArtistArchiveItemForm('${artist.id}','series')">+ เพิ่ม</button></div>${data.series.map((item,index)=>`<p><span>${item.year?`<small>${escapePageText(item.year)}</small> `:''}${escapePageText(item.title)}</span><span><button onclick="moveArtistArchiveItem('${artist.id}','series',${index},-1)" ${index===0?'disabled':''}>↑</button><button onclick="moveArtistArchiveItem('${artist.id}','series',${index},1)" ${index===data.series.length-1?'disabled':''}>↓</button><button title="แก้ไข" onclick="openArtistArchiveItemForm('${artist.id}','series',${index})">✎</button><button title="คัดลอกไปศิลปินอื่น" onclick="copyArtistArchiveItem('${artist.id}','series',${index})">⧉</button><button title="ลบ" onclick="removeArtistArchiveItem('${artist.id}','series',${index})">⌫</button></span></p>`).join('')||'<small>ยังไม่มีข้อมูล</small>'}</div></article>`}).join('')}</section>`;
 }
 function toggleArtistArchiveSection(artistId,kind,visible){db.siteSettings.artistArchive[artistId].visibility[kind]=visible;save();toast(`${visible?'เปิด':'ปิด'} ${kind[0].toUpperCase()+kind.slice(1)} แล้ว`);}
 
 const artistPageSectionDefs={timeline:{label:'Timeline',visibilityKey:'series'},events:{label:'Events',visibilityKey:'events'},awards:{label:'Awards',visibilityKey:'awards'}};
-function artistPageSectionManager(){ensureHomePageSettings();return `<section class="panel"><div class="panel-head"><div><small>ARTIST PAGE LAYOUT</small><h2>ลำดับและการแสดงผล</h2><p class="master-note">จัดลำดับและเปิดหรือปิดส่วนต่าง ๆ แยกตามหน้าศิลปิน</p></div></div><div class="artist-section-manager-grid">${db.artists.map(artist=>{const archive=db.siteSettings.artistArchive[artist.id];return `<article class="artist-section-manager-card"><h3>${escapePageText(artist.name)}</h3><div class="artist-section-manager-list">${archive.sectionOrder.map((kind,index)=>{const def=artistPageSectionDefs[kind];const visible=archive.visibility[def.visibilityKey]!==false;return `<div class="artist-section-manager-row"><span class="artist-section-order">${String(index+1).padStart(2,'0')}</span><b>${def.label}</b><span class="artist-section-actions"><button type="button" onclick="moveArtistPageSection('${artist.id}','${kind}',-1)" ${index===0?'disabled':''} aria-label="เลื่อนขึ้น">↑</button><button type="button" onclick="moveArtistPageSection('${artist.id}','${kind}',1)" ${index===archive.sectionOrder.length-1?'disabled':''} aria-label="เลื่อนลง">↓</button><label class="artist-section-switch"><input type="checkbox" ${visible?'checked':''} onchange="toggleArtistPageSection('${artist.id}','${kind}',this.checked)"><span>${visible?'แสดง':'ซ่อน'}</span></label></span></div>`}).join('')}</div></article>`}).join('')}</div></section>`;}
+function artistPageSectionManager(){ensureHomePageSettings();return `<section class="panel"><div class="panel-head"><div><small>ARTIST PAGE LAYOUT</small><h2>ลำดับและการแสดงผล</h2><p class="master-note">จัดลำดับและเปิดหรือปิดส่วนต่าง ๆ แยกตามหน้าศิลปิน</p></div></div><div class="artist-section-manager-grid">${sortedArtists().map(artist=>{const archive=db.siteSettings.artistArchive[artist.id];return `<article class="artist-section-manager-card"><h3>${escapePageText(artist.name)}</h3><div class="artist-section-manager-list">${archive.sectionOrder.map((kind,index)=>{const def=artistPageSectionDefs[kind];const visible=archive.visibility[def.visibilityKey]!==false;return `<div class="artist-section-manager-row"><span class="artist-section-order">${String(index+1).padStart(2,'0')}</span><b>${def.label}</b><span class="artist-section-actions"><button type="button" onclick="moveArtistPageSection('${artist.id}','${kind}',-1)" ${index===0?'disabled':''} aria-label="เลื่อนขึ้น">↑</button><button type="button" onclick="moveArtistPageSection('${artist.id}','${kind}',1)" ${index===archive.sectionOrder.length-1?'disabled':''} aria-label="เลื่อนลง">↓</button><label class="artist-section-switch"><input type="checkbox" ${visible?'checked':''} onchange="toggleArtistPageSection('${artist.id}','${kind}',this.checked)"><span>${visible?'แสดง':'ซ่อน'}</span></label></span></div>`}).join('')}</div></article>`}).join('')}</div></section>`;}
 function moveArtistPageSection(artistId,kind,direction){ensureHomePageSettings();const order=db.siteSettings.artistArchive[artistId].sectionOrder;const from=order.indexOf(kind),to=from+direction;if(from<0||to<0||to>=order.length)return;[order[from],order[to]]=[order[to],order[from]];save();admin();toast('บันทึกลำดับแล้ว');}
 function toggleArtistPageSection(artistId,kind,visible){ensureHomePageSettings();const def=artistPageSectionDefs[kind];if(!def)return;db.siteSettings.artistArchive[artistId].visibility[def.visibilityKey]=visible;save();admin();toast(`${visible?'เปิด':'ปิด'} ${def.label} แล้ว`);}
 function openArtistArchiveItemForm(artistId,kind,index=''){
@@ -2583,7 +2728,7 @@ function openArtistArchiveItemForm(artistId,kind,index=''){
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>${editing?'แก้ไข':'เพิ่ม'} ${kind.toUpperCase()} · ${escapePageText(artist?.name||'')}</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveArtistArchiveItem(event,'${artistId}','${kind}','${index}')"><div class="form-grid"><div class="field full"><label>ชื่อรายการ</label><input name="title" value="${escapePageText(item.title||'')}" required></div><div class="field full"><label>คำอธิบาย</label><textarea name="description">${escapePageText(item.description||'')}</textarea></div>${galleryFields}</div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึกข้อมูล</button></div></form></div></div>`);
 }
 function saveArtistArchiveItem(event,artistId,kind,index){event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget));const item={title:values.title.trim(),description:(values.description||'').trim()};if(kind==='series'){item.poster=values.poster||'';item.year=(values.year||'').trim();item.links=(values.links||'').split(/\r?\n/).map(link=>link.trim()).filter(Boolean);item.url=item.links[0]||'';}else item.url=(values.url||'').trim();const list=db.siteSettings.artistArchive[artistId][kind];if(index==='')list.push(item);else list[Number(index)]=item;save();closeModal();admin();toast(index===''?'เพิ่มข้อมูลแล้ว':'บันทึกการแก้ไขแล้ว');}
-function copyArtistArchiveItem(artistId,kind,index){const item=db.siteSettings.artistArchive[artistId][kind][index];const targets=db.artists.filter(a=>a.id!==artistId);if(!targets.length){toast('ไม่มีศิลปินอื่นให้คัดลอก');return;}document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>คัดลอก “${escapePageText(item.title)}”</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveArtistArchiveCopy(event,'${artistId}','${kind}',${index})"><div class="form-grid"><div class="field full"><label>เลือกศิลปินปลายทาง (เลือกได้มากกว่า 1)</label>${targets.map(a=>`<label class="checkbox-option"><input type="checkbox" name="targetArtist" value="${a.id}"> ${escapePageText(a.name)}</label>`).join('')}</div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">คัดลอกข้อมูล</button></div></form></div></div>`);}
+function copyArtistArchiveItem(artistId,kind,index){const item=db.siteSettings.artistArchive[artistId][kind][index];const targets=sortedArtists().filter(a=>a.id!==artistId);if(!targets.length){toast('ไม่มีศิลปินอื่นให้คัดลอก');return;}document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>คัดลอก “${escapePageText(item.title)}”</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveArtistArchiveCopy(event,'${artistId}','${kind}',${index})"><div class="form-grid"><div class="field full"><label>เลือกศิลปินปลายทาง (เลือกได้มากกว่า 1)</label>${targets.map(a=>`<label class="checkbox-option"><input type="checkbox" name="targetArtist" value="${a.id}"> ${escapePageText(a.name)}</label>`).join('')}</div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">คัดลอกข้อมูล</button></div></form></div></div>`);}
 function saveArtistArchiveCopy(event,artistId,kind,index){event.preventDefault();const targets=new FormData(event.currentTarget).getAll('targetArtist');if(!targets.length){toast('กรุณาเลือกศิลปินปลายทาง');return;}const source=db.siteSettings.artistArchive[artistId][kind][index];targets.forEach(id=>db.siteSettings.artistArchive[id][kind].push({...source}));save();closeModal();admin();toast(`คัดลอกไป ${targets.length} ศิลปินแล้ว`);}
 function removeArtistArchiveItem(artistId,kind,index){if(!confirm('ยืนยันการลบ?'))return;db.siteSettings.artistArchive[artistId][kind].splice(index,1);save();admin();}
 function moveArtistArchiveItem(artistId,kind,index,direction){const list=db.siteSettings.artistArchive[artistId][kind],target=index+direction;if(target<0||target>=list.length)return;[list[index],list[target]]=[list[target],list[index]];save();admin();}
@@ -2603,15 +2748,16 @@ function timelineAdmin(){
 }
 function openTimelineCategorySettings(category){ensureHomePageSettings();const labels={series:'Series',variety:'Variety Show','music-video':'Music Video'},item=db.siteSettings.timelineCategoryContent[category]||{};document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>แก้ไขหัวข้อ ${labels[category]}</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveTimelineCategorySettings(event,'${category}')"><div class="form-grid"><div class="field full"><label>ชื่อหัวข้อ</label><input name="title" value="${escapePageText(item.title||labels[category])}" required></div><div class="field full"><label>คำอธิบาย</label><textarea name="description">${escapePageText(item.description||'')}</textarea></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึกหัวข้อ</button></div></form></div></div>`);}
 function saveTimelineCategorySettings(event,category){event.preventDefault();db.siteSettings.timelineCategoryContent[category]=Object.fromEntries(new FormData(event.currentTarget));save();closeModal();admin();toast('บันทึกหัวข้อ Timeline แล้ว');}
-function timelineGroupAdminPanel(category){const groups=db.siteSettings.timelineGroups?.[category]||[];return `<section class="panel timeline-group-admin"><div class="panel-head"><div><small>SUB VIDEO GROUPS</small><h2>กลุ่มย่อย ${category==='variety'?'Variety Show':'Music Video'}</h2><p>สร้างกลุ่มเพื่อจัดวิดีโอย่อยเหมือนหมวดรายการ</p></div><button class="btn" onclick="openTimelineGroupForm('${category}')">+ เพิ่มกลุ่ม</button></div><div class="youtube-admin-sections">${groups.map((group,index)=>{const scope=Array.isArray(group.visibleArtistIds)&&group.visibleArtistIds.length?group.visibleArtistIds:db.artists.map(artist=>artist.id);return `<article class="youtube-admin-section"><div class="youtube-admin-section-head"><div class="builder-order"><button onclick="moveTimelineGroup('${category}','${group.id}',-1)" ${index===0?'disabled':''}>↑</button><span>${String(index+1).padStart(2,'0')}</span><button onclick="moveTimelineGroup('${category}','${group.id}',1)" ${index===groups.length-1?'disabled':''}>↓</button></div><div><h3>${escapePageText(group.title)}</h3><p>${escapePageText(group.description||'ไม่มีคำอธิบาย')} · ${db.siteSettings.timeline.filter(item=>item.groupId===group.id).length} รายการ</p><small>แสดงที่: ${scope.map(artistName).join(' · ')}</small></div><div class="actions"><button class="icon-btn" onclick="openTimelineGroupForm('${category}','${group.id}')">✎ แก้ไข</button><button class="icon-btn" onclick="removeTimelineGroup('${category}','${group.id}')">⌫</button></div></div></article>`;}).join('')||'<div class="empty">ยังไม่มีกลุ่มย่อย</div>'}</div></section>`;}
-function openTimelineGroupForm(category,id=''){const item=(db.siteSettings.timelineGroups?.[category]||[]).find(group=>group.id===id)||{},scope=Array.isArray(item.visibleArtistIds)&&item.visibleArtistIds.length?item.visibleArtistIds:db.artists.map(artist=>artist.id);document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>${id?'แก้ไข':'เพิ่ม'}กลุ่มย่อย</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveTimelineGroup(event,'${category}','${id}')"><div class="form-grid"><div class="field full"><label>ชื่อกลุ่ม</label><input name="title" value="${escapePageText(item.title||'')}" required></div><div class="field full"><label>คำอธิบาย</label><textarea name="description">${escapePageText(item.description||'')}</textarea></div><div class="multi-artist-picker"><p>แสดงกลุ่มนี้ในหน้าศิลปิน</p>${db.artists.map(artist=>`<label><input type="checkbox" name="visibleArtistIds" value="${artist.id}" ${scope.includes(artist.id)?'checked':''}><span>${escapePageText(artist.name)}</span></label>`).join('')}</div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึกกลุ่ม</button></div></form></div></div>`);}
-function saveTimelineGroup(event,category,id=''){event.preventDefault();const form=new FormData(event.currentTarget),visibleArtistIds=form.getAll('visibleArtistIds'),values={title:(form.get('title')||'').trim(),description:(form.get('description')||'').trim(),visibleArtistIds},list=db.siteSettings.timelineGroups[category];if(!visibleArtistIds.length){toast('กรุณาเลือกหน้าศิลปินอย่างน้อย 1 หน้า');return;}if(id)Object.assign(list.find(item=>item.id===id),values);else list.push({id:`${category}_${Date.now()}`,...values});save();closeModal();admin();toast('บันทึกกลุ่มย่อยแล้ว');}
+function timelineGroupAdminPanel(category){const groups=db.siteSettings.timelineGroups?.[category]||[];return `<section class="panel timeline-group-admin"><div class="panel-head"><div><small>SUB VIDEO GROUPS</small><h2>กลุ่มย่อย ${category==='variety'?'Variety Show':'Music Video'}</h2><p>สร้างกลุ่มเพื่อจัดวิดีโอย่อยเหมือนหมวดรายการ</p></div><button class="btn" onclick="openTimelineGroupForm('${category}')">+ เพิ่มกลุ่ม</button></div><div class="youtube-admin-sections">${groups.map((group,index)=>{const scope=Array.isArray(group.visibleArtistIds)&&group.visibleArtistIds.length?group.visibleArtistIds:sortedArtists().map(artist=>artist.id);return `<article class="youtube-admin-section"><div class="youtube-admin-section-head"><div class="builder-order"><button onclick="moveTimelineGroup('${category}','${group.id}',-1)" ${index===0?'disabled':''}>↑</button><span>${String(index+1).padStart(2,'0')}</span><button onclick="moveTimelineGroup('${category}','${group.id}',1)" ${index===groups.length-1?'disabled':''}>↓</button></div><div><h3>${escapePageText(group.title)}</h3><p>${escapePageText(group.description||'ไม่มีคำอธิบาย')} · ${db.siteSettings.timeline.filter(item=>item.groupId===group.id).length} รายการ</p><small>แสดงที่: ${scope.map(artistName).join(' · ')}</small></div><div class="actions"><button class="icon-btn" onclick="openTimelineGroupForm('${category}','${group.id}')">✎ แก้ไข</button><button class="icon-btn" onclick="removeTimelineGroup('${category}','${group.id}')">⌫</button></div></div></article>`;}).join('')||'<div class="empty">ยังไม่มีกลุ่มย่อย</div>'}</div></section>`;}
+function openTimelineGroupForm(category,id=''){const item=(db.siteSettings.timelineGroups?.[category]||[]).find(group=>group.id===id)||{},scope=(Array.isArray(item.visibleArtistIds)&&item.visibleArtistIds.length?item.visibleArtistIds:sortedArtists().map(artist=>artist.id)).map(canonicalArtistId);document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>${id?'แก้ไข':'เพิ่ม'}กลุ่มย่อย</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveTimelineGroup(event,'${category}','${id}')"><div class="form-grid"><div class="field full"><label>ชื่อกลุ่ม</label><input name="title" value="${escapePageText(item.title||'')}" required></div><div class="field full"><label>คำอธิบาย</label><textarea name="description">${escapePageText(item.description||'')}</textarea></div><div class="multi-artist-picker"><p>แสดงกลุ่มนี้ในหน้าศิลปิน</p>${sortedArtists().map(artist=>`<label><input type="checkbox" name="visibleArtistIds" value="${artist.id}" ${scope.includes(canonicalArtistId(artist.id))?'checked':''}><span>${escapePageText(artist.name)}</span></label>`).join('')}</div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึกกลุ่ม</button></div></form></div></div>`);}
+function saveTimelineGroup(event,category,id=''){event.preventDefault();const form=new FormData(event.currentTarget),visibleArtistIds=[...new Set(form.getAll('visibleArtistIds').map(canonicalArtistId))],values={title:(form.get('title')||'').trim(),description:(form.get('description')||'').trim(),visibleArtistIds},list=db.siteSettings.timelineGroups[category];if(!visibleArtistIds.length){toast('กรุณาเลือกหน้าศิลปินอย่างน้อย 1 หน้า');return;}if(id)Object.assign(list.find(item=>item.id===id),values);else list.push({id:`${category}_${Date.now()}`,...values});save();closeModal();admin();toast('บันทึกกลุ่มย่อยแล้ว');}
 function moveTimelineGroup(category,id,direction){const list=db.siteSettings.timelineGroups[category],index=list.findIndex(item=>item.id===id),target=index+direction;if(target<0||target>=list.length)return;[list[index],list[target]]=[list[target],list[index]];save();admin();}
 function removeTimelineGroup(category,id){if(db.siteSettings.timeline.some(item=>item.groupId===id)){toast('กรุณาย้ายรายการออกจากกลุ่มนี้ก่อน');return;}if(!confirm('ยืนยันการลบกลุ่ม?'))return;db.siteSettings.timelineGroups[category]=db.siteSettings.timelineGroups[category].filter(item=>item.id!==id);save();admin();}
 function toggleTimelineCategory(category,visible){db.siteSettings.timelineVisibility[category]=visible;save();admin();toast(`${visible?'เปิด':'ปิด'} ${category} แล้ว`);}
 function openTimelineForm(id=''){
   const item=id?(db.siteSettings.timeline.find(entry=>entry.id===id)||{}):{};const links=(item.links?.length?item.links:(item.url?[{label:'Open',url:item.url}]:[])).map(link=>typeof link==='string'?{label:'Open',url:link}:link);const selectedSeries=item.seriesId||db.masterData.series.find(series=>series.label===item.title)?.id||'';
-  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>${id?'แก้ไข':'เพิ่ม'} Timeline</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveTimelineItem(event,'${id}')"><div class="form-grid"><div class="multi-artist-picker"><p>เลือกศิลปินได้มากกว่า 1</p>${db.artists.map(a=>`<label><input type="checkbox" name="artistIds" value="${a.id}" ${(item.artistIds||[]).includes(a.id)||(!id&&a.id==='duo')?'checked':''}><span>${escapePageText(a.name)}</span></label>`).join('')}</div><div class="field"><label>หมวด Timeline</label><select name="category"><option value="series" ${(item.category||'series')==='series'?'selected':''}>Series</option><option value="variety" ${item.category==='variety'?'selected':''}>Variety Show</option><option value="music-video" ${item.category==='music-video'?'selected':''}>Music Video</option></select></div><div class="field"><label>ซีรีส์จาก Master Data</label><select name="seriesId" required><option value="">เลือกรายการ</option>${db.masterData.series.map(series=>`<option value="${series.id}" ${series.id===selectedSeries?'selected':''}>${escapePageText(series.label)}</option>`).join('')}</select></div><div class="field"><label>ปี</label><input name="year" type="number" min="1900" max="2200" value="${escapePageText(item.year||String(new Date().getFullYear()))}" required></div><div class="field timeline-upcoming-field"><label><input name="upcoming" type="checkbox" ${item.upcoming?'checked':''}> แสดงใน Upcoming</label></div><div class="field full"><label>ชื่อที่แสดงหน้าบ้าน</label><input name="displayTitle" value="${escapePageText(item.title||'')}" placeholder="ชื่อที่แสดงบนการ์ด" required></div><div class="field full"><label>รายละเอียด</label><textarea name="description">${escapePageText(item.description||'')}</textarea></div><div class="field full"><label>Note บนการ์ด</label><textarea name="note">${escapePageText(item.note||'')}</textarea></div>${imageUploadTemplate('poster','รูปปก',item.poster||'')}<div class="field full"><label>ลิงก์และชื่อที่แสดง</label><textarea name="links" placeholder="ดูรายการ | https://...&#10;https://...">${escapePageText(links.map(link=>`${link.label||'Open'} | ${link.url||''}`).join('\n'))}</textarea><small>หนึ่งลิงก์ต่อบรรทัด ใส่ URL อย่างเดียว หรือ ชื่อปุ่ม | URL ก็ได้</small></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึก Timeline</button></div></form></div></div>`);
+  const selectedTimelineArtistIds=(item.artistIds||[]).map(canonicalArtistId);
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>${id?'แก้ไข':'เพิ่ม'} Timeline</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveTimelineItem(event,'${id}')"><div class="form-grid"><div class="multi-artist-picker"><p>เลือกศิลปินได้มากกว่า 1</p>${sortedArtists().map(a=>`<label><input type="checkbox" name="artistIds" value="${a.id}" ${selectedTimelineArtistIds.includes(canonicalArtistId(a.id))||(!id&&sameArtistId(a.id,'duo'))?'checked':''}><span>${escapePageText(a.name)}</span></label>`).join('')}</div><div class="field"><label>หมวด Timeline</label><select name="category"><option value="series" ${(item.category||'series')==='series'?'selected':''}>Series</option><option value="variety" ${item.category==='variety'?'selected':''}>Variety Show</option><option value="music-video" ${item.category==='music-video'?'selected':''}>Music Video</option></select></div><div class="field"><label>ซีรีส์จาก Master Data</label><select name="seriesId" required><option value="">เลือกรายการ</option>${db.masterData.series.map(series=>`<option value="${series.id}" ${series.id===selectedSeries?'selected':''}>${escapePageText(series.label)}</option>`).join('')}</select></div><div class="field"><label>ปี</label><input name="year" type="number" min="1900" max="2200" value="${escapePageText(item.year||String(new Date().getFullYear()))}" required></div><div class="field timeline-upcoming-field"><label><input name="upcoming" type="checkbox" ${item.upcoming?'checked':''}> แสดงใน Upcoming</label></div><div class="field full"><label>ชื่อที่แสดงหน้าบ้าน</label><input name="displayTitle" value="${escapePageText(item.title||'')}" placeholder="ชื่อที่แสดงบนการ์ด" required></div><div class="field full"><label>รายละเอียด</label><textarea name="description">${escapePageText(item.description||'')}</textarea></div><div class="field full"><label>Note บนการ์ด</label><textarea name="note">${escapePageText(item.note||'')}</textarea></div>${imageUploadTemplate('poster','รูปปก',item.poster||'')}<div class="field full"><label>ลิงก์และชื่อที่แสดง</label><textarea name="links" placeholder="ดูรายการ | https://...&#10;https://...">${escapePageText(links.map(link=>`${link.label||'Open'} | ${link.url||''}`).join('\n'))}</textarea><small>หนึ่งลิงก์ต่อบรรทัด ใส่ URL อย่างเดียว หรือ ชื่อปุ่ม | URL ก็ได้</small></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึก Timeline</button></div></form></div></div>`);
   const categorySelect=document.querySelector('#modal [name="category"]');categorySelect?.closest('.field')?.insertAdjacentHTML('afterend',`<div class="field timeline-group-field"><label>กลุ่มย่อย</label><select name="groupId"></select><small>ใช้เฉพาะ Variety Show และ Music Video</small></div>`);if(categorySelect){categorySelect.addEventListener('change',()=>updateTimelineCategoryFields(categorySelect.value,''));updateTimelineCategoryFields(item.category||timelineAdminTab,item.groupId||'');}
   if(!id){const category=document.querySelector('#modal [name="category"]');if(category)category.value=timelineAdminTab;}
   const upcomingInput=document.querySelector('#modal [name="upcoming"]'), yearInput=document.querySelector('#modal [name="year"]');
@@ -2622,7 +2768,7 @@ function openTimelineForm(id=''){
 }
 function updateTimelineCategoryFields(category,selected=''){const field=document.querySelector('#modal .timeline-group-field'),select=field?.querySelector('select'),seriesSelect=document.querySelector('#modal [name="seriesId"]'),seriesField=seriesSelect?.closest('.field');if(field&&select){const groups=db.siteSettings.timelineGroups?.[category]||[];field.style.display=category==='series'?'none':'grid';select.innerHTML=`<option value="">ไม่ระบุกลุ่ม</option>${groups.map(group=>`<option value="${group.id}" ${group.id===selected?'selected':''}>${escapePageText(group.title)}</option>`).join('')}`;}if(seriesSelect&&seriesField){const isSeries=category==='series';seriesField.style.display=isSeries?'grid':'none';seriesSelect.disabled=!isSeries;seriesSelect.required=isSeries;}}
 function toggleTimelineYearRequirement(isUpcoming,adjustValue=true){const year=document.querySelector('#modal [name="year"]');if(!year)return;year.required=!isUpcoming;year.disabled=isUpcoming;if(isUpcoming)year.value='';else if(adjustValue&&!year.value)year.value=String(new Date().getFullYear());}
-async function saveTimelineItem(event,id){event.preventDefault();const formElement=event.currentTarget,button=formElement.querySelector('[type="submit"]'),form=new FormData(formElement),artistIds=form.getAll('artistIds'),category=form.get('category')||'series';if(!artistIds.length){toast('กรุณาเลือกศิลปินอย่างน้อย 1 คน');return;}const series=db.masterData.series.find(item=>item.id===form.get('seriesId'));if(category==='series'&&!series){toast('กรุณาเลือกรายการจาก Master Data');return;}const links=(form.get('links')||'').split(/\r?\n/).map(line=>line.trim()).filter(Boolean).map(line=>{if(!line.includes('|'))return{label:'Open',url:line};const split=line.split('|'),label=(split.shift()||'').trim()||'Open',url=split.join('|').trim();return{label,url};}).filter(link=>link.url);const item={id:id||`timeline_${Date.now()}`,artistIds,seriesId:series?.id||'',category,groupId:form.get('groupId')||'',upcoming:form.get('upcoming')==='on',title:(form.get('displayTitle')||'').trim(),year:form.get('year'),day:form.get('day')||'',month:form.get('month')||'',imageOrientation:form.get('imageOrientation')==='landscape'?'landscape':'portrait',imageVersion:String(Date.now()),description:(form.get('description')||'').trim(),note:(form.get('note')||'').trim(),poster:form.get('poster')||'',links};item.url=links[0]?.url||'';const index=db.siteSettings.timeline.findIndex(entry=>entry.id===id),previous=index>=0?structuredClone(db.siteSettings.timeline[index]):null;if(index>=0)db.siteSettings.timeline[index]=item;else db.siteSettings.timeline.unshift(item);button.disabled=true;button.textContent='กำลังบันทึกลง Supabase...';save(false);const synced=await syncDatabaseInBackground();if(!synced){if(previous)db.siteSettings.timeline[index]=previous;else db.siteSettings.timeline=db.siteSettings.timeline.filter(entry=>entry.id!==item.id);save(false);button.disabled=false;button.textContent='บันทึก Timeline';toast('ยังบันทึก Timeline ไม่สำเร็จ กรุณาตรวจสอบข้อความสถานะแล้วลองอีกครั้ง');return;}closeModal();admin();toast('บันทึก Timeline ลง Supabase แล้ว');}
+async function saveTimelineItem(event,id){event.preventDefault();const formElement=event.currentTarget,button=formElement.querySelector('[type="submit"]'),form=new FormData(formElement),artistIds=[...new Set(form.getAll('artistIds').map(canonicalArtistId))],category=form.get('category')||'series';if(!artistIds.length){toast('กรุณาเลือกศิลปินอย่างน้อย 1 คน');return;}const series=db.masterData.series.find(item=>item.id===form.get('seriesId'));if(category==='series'&&!series){toast('กรุณาเลือกรายการจาก Master Data');return;}const links=(form.get('links')||'').split(/\r?\n/).map(line=>line.trim()).filter(Boolean).map(line=>{if(!line.includes('|'))return{label:'Open',url:line};const split=line.split('|'),label=(split.shift()||'').trim()||'Open',url=split.join('|').trim();return{label,url};}).filter(link=>link.url);const item={id:id||`timeline_${Date.now()}`,artistIds,seriesId:series?.id||'',category,groupId:form.get('groupId')||'',upcoming:form.get('upcoming')==='on',title:(form.get('displayTitle')||'').trim(),year:form.get('year'),day:form.get('day')||'',month:form.get('month')||'',imageOrientation:form.get('imageOrientation')==='landscape'?'landscape':'portrait',imageVersion:String(Date.now()),description:(form.get('description')||'').trim(),note:(form.get('note')||'').trim(),poster:form.get('poster')||'',links};item.url=links[0]?.url||'';const index=db.siteSettings.timeline.findIndex(entry=>entry.id===id),previous=index>=0?structuredClone(db.siteSettings.timeline[index]):null;if(index>=0)db.siteSettings.timeline[index]=item;else db.siteSettings.timeline.unshift(item);button.disabled=true;button.textContent='กำลังบันทึกลง Supabase...';save(false);const synced=await syncDatabaseInBackground();if(!synced){if(previous)db.siteSettings.timeline[index]=previous;else db.siteSettings.timeline=db.siteSettings.timeline.filter(entry=>entry.id!==item.id);save(false);button.disabled=false;button.textContent='บันทึก Timeline';toast('ยังบันทึก Timeline ไม่สำเร็จ กรุณาตรวจสอบข้อความสถานะแล้วลองอีกครั้ง');return;}closeModal();admin();toast('บันทึก Timeline ลง Supabase แล้ว');}
 function removeTimelineItem(id){if(!confirm('ยืนยันการลบ Timeline?'))return;db.siteSettings.timeline=db.siteSettings.timeline.filter(item=>item.id!==id);save();admin();}
 function moveTimelineItem(id,direction){const item=db.siteSettings.timeline.find(entry=>entry.id===id);if(!item)return;const categoryItems=db.siteSettings.timeline.filter(entry=>(entry.category||'series')===(item.category||'series')),index=categoryItems.findIndex(entry=>entry.id===id),target=index+direction;if(target<0||target>=categoryItems.length)return;const first=db.siteSettings.timeline.indexOf(categoryItems[index]),second=db.siteSettings.timeline.indexOf(categoryItems[target]);[db.siteSettings.timeline[first],db.siteSettings.timeline[second]]=[db.siteSettings.timeline[second],db.siteSettings.timeline[first]];save();admin();}
 
@@ -2745,7 +2891,7 @@ const EN_INTERFACE = {
   'ภาพรวมหลังบ้าน':'Admin Dashboard','จัดการปฏิทิน':'Manage calendar','จัดการปฏิทินงาน':'Manage event calendar','เพิ่มงานใหม่':'Add event',
   'เลือกเดือน':'Select month','ทั้งหมด':'All','ทุก Type':'All types','รายการ':'List','ปฏิทิน':'Calendar','กลับเดือนนี้':'Current month',
   'ข้อมูลทั้งหมด':'All records','จัดการ':'Actions','เพิ่มข้อมูล':'Add record','แก้ไข':'Edit','ลบ':'Delete','บันทึกข้อมูล':'Save',
-  'ชื่องาน':'Event title','ชื่อศิลปิน':'Artist name','ชื่อจริง':'Real name','บทบาท':'Role','วันที่':'Date','สถานที่':'Location',
+  'ชื่องาน':'Event title','ชื่อศิลปิน':'Nickname','ชื่อจริง':'Name','บทบาท':'Role','วันที่':'Date','สถานที่':'Location',
   'แหล่งข้อมูล':'Source','ลิงก์ข้อมูลต้นทาง':'Source URL','เลือกศิลปิน':'Select artist','ยกเลิก':'Cancel','บันทึกข้อความ':'Save text',
   'คำอธิบาย':'Description','หัวข้อหลัก':'Main title','หัวข้อ':'Title','คำโปรยด้านบน':'Eyebrow','เพิ่มงานใหม่':'Add event',
   'เลือกรูปภาพ':'Choose image','อัปโหลดรูป':'Upload image','การแสดงรูป':'Image fitting','ตำแหน่งรูป':'Image position',
@@ -2859,9 +3005,9 @@ function personalProfileLines(value) {
 }
 
 function renderPersonalProfile(artist) {
-  if (!artist || !['auau','save'].includes(artist.id)) return '';
+  if (!artist || !['AT02','AT03'].includes(canonicalArtistId(artist.id))) return '';
   ensureHomePageSettings();
-  const info = db.siteSettings.personalProfiles[artist.id] || {};
+  const info = db.siteSettings.personalProfiles[canonicalArtistId(artist.id)] || {};
   const basics = [
     ['Birthday', artist.birth], ['Zodiac sign', info.zodiac], ['Chinese zodiac', info.chineseZodiac],
     ['Blood type', info.bloodType],
@@ -2878,21 +3024,23 @@ function renderPersonalProfile(artist) {
 
 const renderProfileWithPersonalDetails = profile;
 profile = function (id) {
+  id = canonicalArtistId(id);
   renderProfileWithPersonalDetails(id);
-  if (!['auau','save'].includes(id)) return;
-  const artist = db.artists.find(item => item.id === id);
+  if (!['AT02','AT03'].includes(id)) return;
+  const artist = artistById(id);
   const heroSection = document.querySelector('.profile-head')?.closest('.section');
   heroSection?.insertAdjacentHTML('afterend', renderPersonalProfile(artist));
 };
 
 function personalProfileAdminPanel() {
   ensureHomePageSettings();
-  return `<section class="panel personal-profile-admin"><div class="panel-head"><div><small>SOLO ARTIST PROFILE</small><h2>จัดการข้อมูลส่วนตัว AUAU / SAVE</h2><p class="master-note">ข้อมูลนี้จะแสดงเฉพาะหน้าเดี่ยวของศิลปิน</p></div></div><div class="personal-admin-grid">${['auau','save'].map(id=>{const artist=db.artists.find(item=>item.id===id),info=db.siteSettings.personalProfiles[id];return `<article><div><small>${id.toUpperCase()}</small><h3>${escapePageText(artist?.name||id)}</h3><p>${info.education||info.favorites||info.sizing?'มีข้อมูลแล้ว':'ยังไม่ได้เพิ่มข้อมูล'}</p></div><button class="btn outline" onclick="openPersonalProfileForm('${id}')">แก้ไขข้อมูลส่วนตัว</button></article>`}).join('')}</div></section>`;
+  return `<section class="panel personal-profile-admin"><div class="panel-head"><div><small>SOLO ARTIST PROFILE</small><h2>จัดการข้อมูลส่วนตัว AUAU / SAVE</h2><p class="master-note">ข้อมูลนี้จะแสดงเฉพาะหน้าเดี่ยวของศิลปิน</p></div></div><div class="personal-admin-grid">${['AT02','AT03'].map(id=>{const artist=artistById(id),info=db.siteSettings.personalProfiles[id]||{};return `<article><div><small>${id}</small><h3>${escapePageText(artist?.name||id)}</h3><p>${info.education||info.favorites||info.sizing?'มีข้อมูลแล้ว':'ยังไม่ได้เพิ่มข้อมูล'}</p></div><button class="btn outline" onclick="openPersonalProfileForm('${id}')">แก้ไขข้อมูลส่วนตัว</button></article>`}).join('')}</div></section>`;
 }
 
 function openPersonalProfileForm(artistId) {
+  artistId = canonicalArtistId(artistId);
   ensureHomePageSettings();
-  const artist=db.artists.find(item=>item.id===artistId), info=db.siteSettings.personalProfiles[artistId]||{};
+  const artist=artistById(artistId), info=db.siteSettings.personalProfiles[artistId]||{};
   const input=(name,label,placeholder='')=>`<div class="field"><label>${label}</label><input name="${name}" value="${escapePageText(info[name]||'')}" placeholder="${placeholder}"></div>`;
   const fingerInputs=(side,label)=>`<fieldset class="finger-admin-fieldset"><legend>Finger size (${label})</legend><div class="finger-admin-grid">${['T','I','M','R','L'].map(code=>input(`finger${side}${code}`,code)).join('')}</div></fieldset>`;
   document.body.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="modal"><div class="modal personal-profile-modal"><div class="modal-head"><h2>ข้อมูลส่วนตัว ${escapePageText(artist?.name||artistId)}</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="savePersonalProfile(event,'${artistId}')"><div class="form-grid"><h3 class="profile-form-heading">Personal Information</h3>${input('zodiac','Zodiac sign')}${input('chineseZodiac','Chinese zodiac')}${input('bloodType','Blood type')}<div class="field full"><label>Education</label><textarea name="education">${escapePageText(info.education||'')}</textarea></div><h3 class="profile-form-heading">Sizing <small>กรอกเฉพาะช่องที่มีข้อมูลได้</small></h3>${input('height','Height','174 cm')}${input('weight','Weight','52 kg')}${input('bust','Bust','31 in')}${input('waist','Waist','26 in')}${input('shirtTops','Shirt/Tops','L')}${input('shoe','Shoe','40 EU')}${input('wristSize','Wrist Size','15–16 cm')}<div></div>${fingerInputs('Left','Left')}${fingerInputs('Right','Right')}<div class="field full"><label>Favorites</label><textarea name="favorites" placeholder="Food | Papaya salad&#10;Color | Red, black, white&#10;Sport | Football">${escapePageText(info.favorites||'')}</textarea><small>หนึ่งรายการต่อหนึ่งบรรทัด รูปแบบ: หัวข้อ | ข้อมูล</small></div><div class="field full"><label>Motto</label><textarea name="motto">${escapePageText(info.motto||'')}</textarea></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึกข้อมูลส่วนตัว</button></div></form></div></div>`);
@@ -2900,6 +3048,7 @@ function openPersonalProfileForm(artistId) {
 
 function savePersonalProfile(event, artistId) {
   event.preventDefault();
+  artistId = canonicalArtistId(artistId);
   db.siteSettings.personalProfiles[artistId] = Object.fromEntries(new FormData(event.currentTarget));
   save(); closeModal(); admin(); toast('บันทึกข้อมูลส่วนตัวแล้ว');
 }
@@ -2964,7 +3113,7 @@ home = function(){
 };
 const renderProfileWithoutLegacyVideos = profile;
 function applyArtistPageSectionLayout(artistId){ensureHomePageSettings();const archive=db.siteSettings.artistArchive[artistId];if(!archive)return;const main=document.querySelector('main');if(!main)return;const headings=[...main.querySelectorAll('h2')];const timeline=main.querySelector('.artist-filmography');const events=(headings.find(h=>h.textContent.trim().toLowerCase()==='events')||headings.find(h=>h.textContent.toLowerCase().includes('schedule')))?.closest('.section');const awards=main.querySelector('.archive-awards')||main.querySelector('.award-grid')?.closest('.section');const sections={timeline,events,awards};Object.entries(sections).forEach(([kind,node])=>{if(!node)return;const def=artistPageSectionDefs[kind];node.style.display=archive.visibility[def.visibilityKey]===false?'none':'';});const nodes=archive.sectionOrder.map(kind=>sections[kind]).filter(Boolean);if(!nodes.length)return;const first=nodes.slice().sort((a,b)=>(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING)?-1:1)[0];const marker=document.createComment('artist-page-sections');first.parentNode.insertBefore(marker,first);archive.sectionOrder.forEach(kind=>{const node=sections[kind];if(node&&archive.visibility[artistPageSectionDefs[kind].visibilityKey]!==false)marker.parentNode.insertBefore(node,marker);});marker.remove();}
-profile = function(id){renderProfileWithoutLegacyVideos(id);[...document.querySelectorAll('main .section')].forEach(section=>{if(section.querySelector('.youtube-grid'))section.remove();});applyArtistPageSectionLayout(id);};
+profile = function(id){id=canonicalArtistId(id);renderProfileWithoutLegacyVideos(id);[...document.querySelectorAll('main .section')].forEach(section=>{if(section.querySelector('.youtube-grid'))section.remove();});applyArtistPageSectionLayout(id);};
 
 function normalizeAdminMenu(){
   const navEl=document.querySelector('.side-nav');if(!navEl)return;
@@ -2992,7 +3141,7 @@ function normalizeBulkEventDate(value){
 function bulkEventArtistIds(value){
   const raw = String(value||'').trim();
   const ids = new Set();
-  const add = id => { if(db.artists.some(artist=>artist.id===id)) ids.add(id); };
+  const add = id => { const target=canonicalArtistId(id); if(db.artists.some(artist=>sameArtistId(artist.id,target))) ids.add(target); };
   const normalizeArtistText = text => String(text||'')
     .toLowerCase()
     .replace(/&/g,' and ')
@@ -3016,7 +3165,7 @@ function bulkEventArtistIds(value){
     }
     return costs[b.length];
   };
-  if(inputCompact.includes('auausave') || inputCompact.includes('auausaveth')) { add('duo'); add('auau'); add('save'); }
+  if(inputCompact.includes('auausave') || inputCompact.includes('auausaveth')) { add('AT01'); add('AT02'); add('AT03'); }
   db.artists.forEach(artist => {
     const keys = [artist.id, artist.name, artist.realName]
       .map(key=>({spaced:normalizeArtistText(key),compact:compactArtistText(key)}))
@@ -3027,9 +3176,9 @@ function bulkEventArtistIds(value){
       const keyTokens = key.spaced.split(' ').filter(token=>token.length>=3);
       return keyTokens.length && keyTokens.every(token=>input.split(' ').some(inputToken=>inputToken===token || distance(inputToken,token)<=1));
     });
-    if(exactMatch || fuzzyMatch || tokenMatch) ids.add(artist.id);
+    if(exactMatch || fuzzyMatch || tokenMatch) ids.add(canonicalArtistId(artist.id));
   });
-  if(!ids.size && /#?\s*auau\s*save/i.test(raw)) { add('duo'); add('auau'); add('save'); }
+  if(!ids.size && /#?\s*auau\s*save/i.test(raw)) { add('AT01'); add('AT02'); add('AT03'); }
   return [...ids];
 }
 function bulkEventArtistId(value){return bulkEventArtistIds(value)[0]||'';}
@@ -3154,16 +3303,16 @@ function ensureHomepageArtistCards(){
   ensureHomePageSettings();
   db.siteSettings.homeArtistCards ||= {};
   db.siteSettings.homeArtistOrder = Array.isArray(db.siteSettings.homeArtistOrder) ? db.siteSettings.homeArtistOrder : [];
-  const artistIds = db.artists.map(artist => artist.id);
+  const artistIds = sortedArtists().map(artist => artist.id);
   db.siteSettings.homeArtistOrder = db.siteSettings.homeArtistOrder.filter(id => artistIds.includes(id));
   db.artists.forEach(artist => {
     if (!db.siteSettings.homeArtistOrder.includes(artist.id)) db.siteSettings.homeArtistOrder.push(artist.id);
-    db.siteSettings.homeArtistCards[artist.id] = {badge: artist.id === 'duo' ? 'COUPLE PATH' : 'SOLO PATH', visible: true, ...(db.siteSettings.homeArtistCards[artist.id] || {})};
+    db.siteSettings.homeArtistCards[artist.id] = {badge: sameArtistId(artist.id,'duo') ? 'COUPLE PATH' : 'SOLO PATH', visible: true, ...(db.siteSettings.homeArtistCards[artist.id] || {})};
   });
 }
 function homepageOrderedArtists(){
   ensureHomepageArtistCards();
-  const map = new Map(db.artists.map(artist => [artist.id, artist]));
+  const map = new Map(sortedArtists().map(artist => [artist.id, artist]));
   return db.siteSettings.homeArtistOrder.map(id => map.get(id)).filter(Boolean);
 }
 const artistCardsBeforeHomepageOrder = artistCards;
@@ -3205,7 +3354,7 @@ function eventArtistIds(item){
     try { ids = JSON.parse(item.artistIds); } catch { ids = []; }
   }
   const base = ids.length ? ids : [item?.artistId].filter(Boolean);
-  return [...new Set(base)].filter(id => db.artists.some(artist => artist.id === id));
+  return [...new Set(base.map(canonicalArtistId))].filter(id => db.artists.some(artist => sameArtistId(artist.id, id)));
 }
 function eventArtistNames(item){
   const ids = eventArtistIds(item);
@@ -3215,9 +3364,10 @@ function eventPrimaryArtistId(item){
   return eventArtistIds(item)[0] || item?.artistId || '';
 }
 itemMatchesArtist = (item, artistId) => {
+  artistId = canonicalArtistId(artistId);
   if (artistId === 'all') return true;
   const ids = eventArtistIds(item);
-  return ids.includes(artistId) || (ids.includes('duo') && (artistId === 'auau' || artistId === 'save'));
+  return ids.includes(artistId) || (ids.includes('AT01') && (artistId === 'AT02' || artistId === 'AT03'));
 };
 const rowCellsBeforeDynamicEventArtists = rowCells;
 rowCells = function(type,x){
@@ -3229,15 +3379,15 @@ scheduleRows = function(items = db.events){
   return items.length ? [...items].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>`<div class="schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div><h3>${escapePageText(e.title)}</h3><p>${escapePageText(eventArtistNames(e))} · ${escapePageText(e.place||'')}</p></div><span class="event-type">${escapePageText(e.type||'')}</span>${e.source ? `<a class="round-arrow" href="${escapePageText(e.source)}" target="_blank" title="ดูต้นทาง">↗</a>` : "<span></span>"}</div>`).join("") : `<div class="empty">ยังไม่มีข้อมูลในขณะนี้</div>`;
 };
 function eventBadge(item){
-  return eventArtistIds(item).map(id => id === 'duo' ? '#AUAUSAVE' : artistName(id)).join(' · ') || 'ไม่ระบุ';
+  return eventArtistIds(item).map(id => sameArtistId(id,'duo') ? '#AUAUSAVE' : artistName(id)).join(' · ') || 'ไม่ระบุ';
 }
 const adminEventCalendarBeforeDynamicArtists = adminEventCalendar;
 adminEventCalendar = function(){
-  const currentFilter = db.artists.some(artist => artist.id === adminEventFilter) ? adminEventFilter : 'all';
+  const currentFilter = db.artists.some(artist => sameArtistId(artist.id, adminEventFilter)) ? canonicalArtistId(adminEventFilter) : 'all';
   adminEventFilter = currentFilter;
   const monthEvents = db.events.filter(e => e.date.startsWith(adminMonth) && itemMatchesArtist(e, adminEventFilter)).sort((a,b)=>a.date.localeCompare(b.date));
   const monthLabel = new Intl.DateTimeFormat(route === "admin" ? "th-TH" : "en-US", {month:"long",year:"numeric"}).format(new Date(`${adminMonth}-01`));
-  const filters = [`<button class="${adminEventFilter==='all'?'active':''}" onclick="adminEventFilter='all';admin()">ทั้งหมด</button>`, ...db.artists.map(artist=>`<button class="${artist.id} ${adminEventFilter===artist.id?'active':''}" onclick="adminEventFilter='${artist.id}';admin()">${escapePageText(artist.id==='duo'?'#AUAUSAVE':artist.name)}</button>`)].join('');
+  const filters = [`<button class="${adminEventFilter==='all'?'active':''}" onclick="adminEventFilter='all';admin()">ทั้งหมด</button>`, ...sortedArtists().map(artist=>`<button class="${artist.id} ${sameArtistId(adminEventFilter,artist.id)?'active':''}" onclick="adminEventFilter='${artist.id}';admin()">${escapePageText(sameArtistId(artist.id,'duo')?'#AUAUSAVE':artist.name)}</button>`)].join('');
   const eventRows = monthEvents.map(e=>`<article class="admin-event-item ${escapePageText(eventPrimaryArtistId(e))}"><div class="admin-event-date"><b>${day(e.date)}</b><span>${month(e.date)}</span></div><div class="admin-event-info"><small>${escapePageText(eventBadge(e))} · ${escapePageText(e.type||'')}</small><h3>${escapePageText(e.title)}</h3><p>${escapePageText(e.place||'')}</p></div><div class="actions"><button class="icon-btn" onclick="openForm('events','${e.id}')">✎ แก้ไข</button><button class="icon-btn" onclick="removeItem('events','${e.id}')">⌫</button></div></article>`).join("") || `<div class="empty">เดือนนี้ยังไม่มีตารางงาน<br><button class="btn" style="margin-top:15px" onclick="openForm('events')">เพิ่มงานแรกของเดือน</button></div>`;
   app.innerHTML = `<div class="admin"><div class="admin-shell"><aside class="sidebar"><div class="brand"><i></i>AUAUSAVE HOUSE</div><div class="side-nav">${Object.entries(configs).map(([k,v])=>`<button data-icon="${v.icon}" class="${k===adminTab?'active':''}" onclick="adminTab='${k}';admin()">${v.icon} &nbsp; ${v.label}</button>`).join("")}</div><a class="back" href="#schedule">← ดูปฏิทินหน้าบ้าน</a></aside><main class="admin-main"><div class="admin-top"><div><small style="color:var(--muted)">CALENDAR MANAGEMENT</small><h1>จัดการปฏิทินงาน</h1></div><button class="btn" onclick="openForm('events')">+ เพิ่มงานใหม่</button></div><section class="admin-cal-tools"><div><label>เลือกเดือน</label><input type="month" value="${adminMonth}" onchange="adminMonth=this.value;admin()"></div><div class="admin-filters dynamic-artist-filters">${filters}</div></section><div class="admin-month-title"><h2>${monthLabel}</h2><span>${monthEvents.length} งาน</span></div><section class="admin-event-list">${eventRows}</section></main></div></div>`;
 };
@@ -3250,7 +3400,7 @@ openForm = function(type,id){
   if(!selected.length && !id && db.artists[0]) selected.push(db.artists[0].id);
   const select = document.querySelector('#modal [name="artistId"]');
   if(select){
-    select.closest('.field').outerHTML = `<div class="multi-artist-picker event-artist-picker"><p>เลือกศิลปินได้มากกว่า 1</p>${db.artists.map(artist=>`<label><input type="checkbox" name="eventArtistIds" value="${artist.id}" ${selected.includes(artist.id)?'checked':''}><span>${escapePageText(artist.name)}</span></label>`).join('')}</div>`;
+  select.closest('.field').outerHTML = `<div class="multi-artist-picker event-artist-picker"><p>เลือกศิลปินได้มากกว่า 1</p>${sortedArtists().map(artist=>`<label><input type="checkbox" name="eventArtistIds" value="${artist.id}" ${selected.map(canonicalArtistId).includes(canonicalArtistId(artist.id))?'checked':''}><span>${escapePageText(artist.name)}</span></label>`).join('')}</div>`;
   }
 };
 const submitFormBeforeDynamicEventArtists = submitForm;
@@ -3275,18 +3425,18 @@ submitForm = function(event,type,id){
   }
 };
 function artistScheduleCardClass(artistId,index){
-  if(artistId==='duo')return'duo-card';
-  if(artistId==='auau')return'auau-card';
-  if(artistId==='save')return'save-card';
+  if(sameArtistId(artistId,'duo'))return'duo-card';
+  if(sameArtistId(artistId,'auau'))return'auau-card';
+  if(sameArtistId(artistId,'save'))return'save-card';
   return `dynamic-artist-card dynamic-artist-card-${index%4}`;
 }
 const homeScheduleSectionBeforeDynamicArtists = homeScheduleSection;
 homeScheduleSection = function(){
   const now = new Date(), ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`, monthLabel = new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(now), monthly = db.events.filter(e => e.date.startsWith(ym));
-  const cards = db.artists.map((artist,index)=>{
-    const title = artist.id === 'duo' ? '#AUAUSAVE' : artist.name;
-    const description = artist.id === 'duo' ? '#AuauSave' : (artist.role || artist.name);
-    return `<article class="schedule-card ${artistScheduleCardClass(artist.id,index)}"><div class="schedule-card-head"><span>${artist.id==='duo'?'COUPLE PATH':'ARTIST PATH'}</span><h3>${escapePageText(title)}</h3><p>${escapePageText(description)}</p></div>${compactSchedule(monthly.filter(e=>itemMatchesArtist(e,artist.id)))}</article>`;
+  const cards = sortedArtists().map((artist,index)=>{
+    const title = sameArtistId(artist.id,'duo') ? '#AUAUSAVE' : artist.name;
+    const description = sameArtistId(artist.id,'duo') ? '#AuauSave' : (artist.role || artist.name);
+    return `<article class="schedule-card ${artistScheduleCardClass(artist.id,index)}"><div class="schedule-card-head"><span>${sameArtistId(artist.id,'duo')?'COUPLE PATH':'ARTIST PATH'}</span><h3>${escapePageText(title)}</h3><p>${escapePageText(description)}</p></div>${compactSchedule(monthly.filter(e=>itemMatchesArtist(e,artist.id)))}</article>`;
   }).join('');
   return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><span class="eyebrow">This month · ${monthLabel}</span><h2>ตารางงานเดือนนี้</h2></div><a class="btn outline" href="#schedule">เปิดปฏิทินทั้งหมด ↗</a></div><div class="schedule-columns dynamic-schedule-columns">${cards}</div></div></section>`;
 };
@@ -3294,27 +3444,27 @@ function ensureHomepageFrontDisplaySettings(){
   ensureHomePageSettings();
   db.siteSettings.homeScheduleCards ||= {};
   db.siteSettings.homeScheduleOrder = Array.isArray(db.siteSettings.homeScheduleOrder) ? db.siteSettings.homeScheduleOrder : [];
-  const artistIds = db.artists.map(artist=>artist.id);
+  const artistIds = sortedArtists().map(artist=>artist.id);
   db.siteSettings.homeScheduleOrder = db.siteSettings.homeScheduleOrder.filter(id=>artistIds.includes(id));
   db.artists.forEach(artist=>{
     if(!db.siteSettings.homeScheduleOrder.includes(artist.id)) db.siteSettings.homeScheduleOrder.push(artist.id);
     db.siteSettings.homeScheduleCards[artist.id] = {
       visible:true,
-      eyebrow: artist.id==='duo' ? 'COUPLE PATH' : 'ARTIST PATH',
-      title: artist.id==='duo' ? '#AUAUSAVE' : artist.name,
-      description: artist.id==='duo' ? '#AuauSave' : (artist.role || artist.name),
+      eyebrow: sameArtistId(artist.id,'duo') ? 'COUPLE PATH' : 'ARTIST PATH',
+      title: sameArtistId(artist.id,'duo') ? '#AUAUSAVE' : artist.name,
+      description: sameArtistId(artist.id,'duo') ? '#AuauSave' : (artist.role || artist.name),
       ...(db.siteSettings.homeScheduleCards[artist.id]||{})
     };
   });
-  const priority = new Map(db.artists.map(artist=>[artist.id,artistSchedulePriority(artist)]));
+  const priority = new Map(sortedArtists().map(artist=>[artist.id,artistSchedulePriority(artist)]));
   db.siteSettings.homeScheduleOrder.sort((a,b)=>(priority.get(a)??50)-(priority.get(b)??50));
   const valid = id => artistIds.includes(id);
-  db.siteSettings.homeTimelineArtistIds = Array.isArray(db.siteSettings.homeTimelineArtistIds) ? db.siteSettings.homeTimelineArtistIds.filter(valid) : ['duo'].filter(valid);
+  db.siteSettings.homeTimelineArtistIds = Array.isArray(db.siteSettings.homeTimelineArtistIds) ? [...new Set(db.siteSettings.homeTimelineArtistIds.map(canonicalArtistId))].filter(valid) : ['AT01'].filter(valid);
   if(!db.siteSettings.homeTimelineArtistIds.length && db.artists[0]) db.siteSettings.homeTimelineArtistIds = [db.artists[0].id];
-  db.siteSettings.homePresenterArtistIds = Array.isArray(db.siteSettings.homePresenterArtistIds) ? db.siteSettings.homePresenterArtistIds.filter(valid) : [...artistIds];
+  db.siteSettings.homePresenterArtistIds = Array.isArray(db.siteSettings.homePresenterArtistIds) ? [...new Set(db.siteSettings.homePresenterArtistIds.map(canonicalArtistId))].filter(valid) : [...artistIds];
   if(!db.siteSettings.homePresenterArtistIds.length) db.siteSettings.homePresenterArtistIds = [...artistIds];
 }
-function homepageScheduleArtists(){ensureHomepageFrontDisplaySettings();const map=new Map(db.artists.map(artist=>[artist.id,artist]));return db.siteSettings.homeScheduleOrder.map(id=>map.get(id)).filter(Boolean);}
+function homepageScheduleArtists(){ensureHomepageFrontDisplaySettings();const map=new Map(sortedArtists().map(artist=>[artist.id,artist]));return db.siteSettings.homeScheduleOrder.map(id=>map.get(id)).filter(Boolean);}
 const homeScheduleSectionBeforeFrontDisplaySettings=homeScheduleSection;
 homeScheduleSection=function(){
   ensureHomepageFrontDisplaySettings();
@@ -3327,35 +3477,35 @@ function homeScheduleDrop(event,targetId){event.preventDefault();ensureHomepageF
 function openHomeScheduleCardEditor(artistId){ensureHomepageFrontDisplaySettings();const artist=db.artists.find(item=>item.id===artistId),card=db.siteSettings.homeScheduleCards[artistId]||{};if(!artist)return;document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>แก้ไขการ์ดตารางงาน ${escapePageText(artist.name)}</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveHomeScheduleCard(event,'${artistId}')"><div class="form-grid"><div class="field"><label>หัวการ์ด</label><input name="eyebrow" value="${escapePageText(card.eyebrow||'')}" placeholder="COUPLE PATH / ARTIST PATH"></div><div class="field"><label>ชื่อบนการ์ด</label><input name="title" value="${escapePageText(card.title||artist.name)}" required></div><div class="field full"><label>คำอธิบาย</label><input name="description" value="${escapePageText(card.description||'')}"></div><div class="field full"><label class="hero-overlay-toggle"><input type="checkbox" name="visible" ${card.visible!==false?'checked':''}><span>แสดงการ์ดนี้บนหน้าบ้าน</span></label></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึกการ์ด</button></div></form></div></div>`);}
 function saveHomeScheduleCard(event,artistId){event.preventDefault();const form=new FormData(event.currentTarget);db.siteSettings.homeScheduleCards[artistId]={...(db.siteSettings.homeScheduleCards[artistId]||{}),eyebrow:(form.get('eyebrow')||'').trim(),title:(form.get('title')||'').trim(),description:(form.get('description')||'').trim(),visible:form.get('visible')==='on'};save();closeModal();pageContentAdmin();toast('บันทึกการ์ดตารางงานแล้ว');}
 function renderHomepageScheduleOrderEditor(){ensureHomepageFrontDisplaySettings();return `<section class="panel homepage-schedule-order-editor"><div class="panel-head"><div><small>SCHEDULE CARD ORDER</small><h2>จัดวางการ์ดตารางงาน</h2><p class="master-note">ลากเพื่อเรียงลำดับ และเปิด/ปิดการ์ดตารางงานบนหน้าแรกได้ เหมือนการ์ดศิลปิน</p></div></div><div class="home-artist-sort-grid home-schedule-sort-grid">${homepageScheduleArtists().map((artist,index)=>{const card=db.siteSettings.homeScheduleCards[artist.id]||{},color=artistDisplayColor(artist.id,index);return `<article draggable="true" ondragstart="homeScheduleDragStart(event,'${artist.id}')" ondragover="event.preventDefault()" ondrop="homeScheduleDrop(event,'${artist.id}')" class="${card.visible===false?'is-hidden':''}"><div class="home-artist-sort-order">↕ ${String(index+1).padStart(2,'0')}</div><div class="home-schedule-sort-thumb ${artistScheduleCardClass(artist.id,index)}" style="background:${color};color:#fff"><span>${escapePageText(card.eyebrow||'')}</span><b>${escapePageText(card.title||artist.name)}</b></div><div><h3>${escapePageText(artist.name)}</h3><p>${card.visible===false?'Hidden':'Visible'}</p></div><button class="btn outline" onclick="openHomeScheduleCardEditor('${artist.id}')">แก้ไข</button></article>`;}).join('')}</div></section>`;}
-function renderHomepageFrontScopeEditor(){ensureHomepageFrontDisplaySettings();const checkbox=(name,selected)=>db.artists.map(artist=>`<label><input type="checkbox" name="${name}" value="${artist.id}" ${selected.includes(artist.id)?'checked':''}><span>${escapePageText(artist.id==='duo'?'#AUAUSAVE':artist.name)}</span></label>`).join('');return `<section class="panel homepage-front-scope-editor"><div class="panel-head"><div><small>FRONT PAGE DISPLAY</small><h2>เลือกศิลปินที่จะแสดงบนหน้าบ้าน</h2><p class="master-note">ใช้กำหนดเฉพาะส่วน Timeline และ Presenters บนหน้าแรก โดยไม่ลบข้อมูลจริงในระบบ</p></div></div><form onsubmit="saveHomepageFrontScope(event)"><div class="homepage-scope-grid"><div class="multi-artist-picker"><p>Timeline บนหน้าแรก</p>${checkbox('homeTimelineArtistIds',db.siteSettings.homeTimelineArtistIds)}</div><div class="multi-artist-picker"><p>Presenters บนหน้าแรก</p>${checkbox('homePresenterArtistIds',db.siteSettings.homePresenterArtistIds)}</div></div><div class="form-actions"><button class="btn" type="submit">บันทึกการแสดงผลหน้าบ้าน</button></div></form></section>`;}
-function saveHomepageFrontScope(event){event.preventDefault();ensureHomepageFrontDisplaySettings();const form=new FormData(event.currentTarget),timeline=form.getAll('homeTimelineArtistIds'),presenters=form.getAll('homePresenterArtistIds');if(!timeline.length||!presenters.length){toast('กรุณาเลือกอย่างน้อย 1 ศิลปินในแต่ละส่วน');return;}db.siteSettings.homeTimelineArtistIds=timeline;db.siteSettings.homePresenterArtistIds=presenters;save();pageContentAdmin();toast('บันทึกการแสดงผลหน้าบ้านแล้ว');}
-function homeScopedArtistIds(item){return eventArtistIds(item).length?eventArtistIds(item):(Array.isArray(item.artistIds)?item.artistIds:[item.artistId].filter(Boolean));}
-function homeTimelineItemMatchesScope(item){ensureHomepageFrontDisplaySettings();const ids=homeScopedArtistIds(item);return db.siteSettings.homeTimelineArtistIds.some(id=>ids.includes(id));}
+function renderHomepageFrontScopeEditor(){ensureHomepageFrontDisplaySettings();const selectedIds=value=>(value||[]).map(canonicalArtistId);const checkbox=(name,selected)=>sortedArtists().map(artist=>`<label><input type="checkbox" name="${name}" value="${artist.id}" ${selectedIds(selected).includes(canonicalArtistId(artist.id))?'checked':''}><span>${escapePageText(sameArtistId(artist.id,'duo')?'#AUAUSAVE':artist.name)}</span></label>`).join('');return `<section class="panel homepage-front-scope-editor"><div class="panel-head"><div><small>FRONT PAGE DISPLAY</small><h2>เลือกศิลปินที่จะแสดงบนหน้าบ้าน</h2><p class="master-note">ใช้กำหนดเฉพาะส่วน Timeline และ Presenters บนหน้าแรก โดยไม่ลบข้อมูลจริงในระบบ</p></div></div><form onsubmit="saveHomepageFrontScope(event)"><div class="homepage-scope-grid"><div class="multi-artist-picker"><p>Timeline บนหน้าแรก</p>${checkbox('homeTimelineArtistIds',db.siteSettings.homeTimelineArtistIds)}</div><div class="multi-artist-picker"><p>Presenters บนหน้าแรก</p>${checkbox('homePresenterArtistIds',db.siteSettings.homePresenterArtistIds)}</div></div><div class="form-actions"><button class="btn" type="submit">บันทึกการแสดงผลหน้าบ้าน</button></div></form></section>`;}
+function saveHomepageFrontScope(event){event.preventDefault();ensureHomepageFrontDisplaySettings();const form=new FormData(event.currentTarget),timeline=[...new Set(form.getAll('homeTimelineArtistIds').map(canonicalArtistId))],presenters=[...new Set(form.getAll('homePresenterArtistIds').map(canonicalArtistId))];if(!timeline.length||!presenters.length){toast('กรุณาเลือกอย่างน้อย 1 ศิลปินในแต่ละส่วน');return;}db.siteSettings.homeTimelineArtistIds=timeline;db.siteSettings.homePresenterArtistIds=presenters;save();pageContentAdmin();toast('บันทึกการแสดงผลหน้าบ้านแล้ว');}
+function homeScopedArtistIds(item){return eventArtistIds(item).length?eventArtistIds(item):(Array.isArray(item.artistIds)?item.artistIds:[item.artistId].filter(Boolean)).map(canonicalArtistId);}
+function homeTimelineItemMatchesScope(item){ensureHomepageFrontDisplaySettings();const ids=homeScopedArtistIds(item);return db.siteSettings.homeTimelineArtistIds.map(canonicalArtistId).some(id=>ids.includes(id));}
 function homeTimelineSection(){ensureHomepageFrontDisplaySettings();const visible=db.siteSettings.timelineVisibility||{},content=db.siteSettings.timelineCategoryContent||{},items=(db.siteSettings.timeline||[]).filter(homeTimelineItemMatchesScope).sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));const card=item=>{const links=(item.links?.length?item.links:(item.url?[{label:'Open',url:item.url}]:[])).map(link=>typeof link==='string'?{label:'Open',url:link}:link).map(link=>{const text=link.label||link.title||'',url=link.url||link.href||(/^https?:\/\//i.test(text)?text:'');return{label:text&&text!==url?text:'Open',url};}).filter(link=>link.url);const imageOrientation=item.imageOrientation==='landscape'?'landscape':'portrait',posterUrl=versionedMediaUrl(item.poster,item.imageVersion||item.id);return `<article class="filmography-card timeline-image-${imageOrientation}">${item.poster?`<img src="${escapePageText(posterUrl)}" alt="${escapePageText(item.title)}">`:`<div class="filmography-placeholder"><span>${escapePageText(item.title.slice(0,2).toUpperCase())}</span></div>`}${item.upcoming?'<span class="timeline-upcoming-badge">UPCOMING</span>':''}<small>${escapePageText(timelineDateLabel(item))}</small><h3>${escapePageText(item.title)}</h3>${item.description?`<p>${escapePageText(item.description)}</p>`:''}${item.note?`<div class="timeline-note">${escapePageText(item.note)}</div>`:''}${links.length?`<div class="archive-card-links">${links.map(link=>`<a href="${escapePageText(link.url)}" target="_blank" rel="noopener noreferrer">${escapePageText(link.label)} ↗</a>`).join('')}</div>`:''}</article>`;};const lane=(category,label)=>{const groupItems=items.filter(item=>(item.category||'series')===category);return groupItems.length&&visible[category]!==false?`<div class="filmography-year-group timeline-subsection"><div class="filmography-year-label"><span></span><b>${escapePageText(content[category]?.title||label)}</b><span></span></div><div class="filmography-grid">${groupItems.map(card).join('')}</div></div>`:'';};return `<section class="section artist-filmography home-timeline"><div class="container"><div class="filmography-head"><small>AUAUSAVE HOUSE</small><h2>Timeline</h2><p>Selected series, variety shows and music videos.</p></div>${lane('series','Series')}${lane('variety','Variety Show')}${lane('music-video','Music Video')}</div></section>`;}
-function homePresenterMatchesScope(item){ensureHomepageFrontDisplaySettings();const ids=homeScopedArtistIds(item);return db.siteSettings.homePresenterArtistIds.some(id=>ids.includes(id));}
+function homePresenterMatchesScope(item){ensureHomepageFrontDisplaySettings();const ids=homeScopedArtistIds(item);return db.siteSettings.homePresenterArtistIds.map(canonicalArtistId).some(id=>ids.includes(id));}
 function homePresenterSection(){ensureHomepageFrontDisplaySettings();const items=db.presenters.filter(homePresenterMatchesScope).slice(0,6);return `<section class="section presenter-home"><div class="container"><div class="section-head"><div><span class="eyebrow">Brand & Partnership</span><h2>Our Presenters</h2></div><a class="btn outline" href="#presenters">View all ↗</a></div>${presenterCards(items)}</div></section>`;}
 const pageContentAdminBeforeFrontDisplaySettings=pageContentAdmin;
 pageContentAdmin=function(){pageContentAdminBeforeFrontDisplaySettings();if(!adminAuthenticated||adminTab!=='pagecontent')return;const main=document.querySelector('.admin-main');if(homeBuilderTab==='order')main?.insertAdjacentHTML('beforeend',renderHomepageScheduleOrderEditor());if(homeBuilderTab==='content')main?.insertAdjacentHTML('beforeend',renderHomepageFrontScopeEditor());};
 const homeBeforeFrontDisplaySettings=home;
 home=function(){homeBeforeFrontDisplaySettings();ensureHomepageFrontDisplaySettings();const main=document.querySelector('main'),footerEl=document.querySelector('footer');document.querySelector('.presenter-home')?.remove();document.querySelector('.home-timeline')?.remove();const timelineVisible=db.siteSettings.homeSections?.find(section=>section.id==='timeline')?.visible!==false,presenterVisible=db.siteSettings.homeSections?.find(section=>section.id==='presenters')?.visible!==false;if(timelineVisible)(footerEl||main)?.insertAdjacentHTML(footerEl?'beforebegin':'beforeend',homeTimelineSection());if(presenterVisible)(footerEl||main)?.insertAdjacentHTML(footerEl?'beforebegin':'beforeend',homePresenterSection());};
 function normalizedArtistKey(idOrArtist){
-  const artist=typeof idOrArtist==='string'?db.artists.find(item=>item.id===idOrArtist):idOrArtist;
+  const artist=typeof idOrArtist==='string'?artistById(idOrArtist):idOrArtist;
   const source=[artist?.id,artist?.name,artist?.realName,artist?.initial].filter(Boolean).join(' ');
   return source.toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'');
 }
 function artistSchedulePriority(artist){
   const key=normalizedArtistKey(artist);
-  if(artist?.id==='duo'||key.includes('auausave'))return 1;
-  if(artist?.id==='auau'||key.includes('auau'))return 2;
-  if(artist?.id==='save'||key.includes('save'))return 3;
+  if(sameArtistId(artist?.id,'duo')||key.includes('auausave'))return 1;
+  if(sameArtistId(artist?.id,'auau')||key.includes('auau'))return 2;
+  if(sameArtistId(artist?.id,'save')||key.includes('save'))return 3;
   if(key.includes('mhiipraew')||key.includes('mhiipreaw')||key.includes('mhipraew')||key.includes('mhipreaw'))return 4;
   return 50;
 }
 function artistDisplayColor(id,index=0){
   const key=normalizedArtistKey(id);
-  if(id==='duo'||key.includes('auausave'))return '#4e8994';
-  if(id==='auau'||key.includes('auau'))return '#5f9272';
-  if(id==='save'||key.includes('save'))return '#d65e64';
+  if(sameArtistId(id,'duo')||key.includes('auausave'))return '#4e8994';
+  if(sameArtistId(id,'auau')||key.includes('auau'))return '#5f9272';
+  if(sameArtistId(id,'save')||key.includes('save'))return '#d65e64';
   if(key.includes('mhiipraew')||key.includes('mhiipreaw')||key.includes('mhipraew')||key.includes('mhipreaw'))return '#d59058';
   const palette=['#8f79ab','#9a7350','#66799c','#b35f84','#3f7f7b','#9c6b66','#6f7597'];
   return palette[index%palette.length];
@@ -3363,7 +3513,7 @@ function artistDisplayColor(id,index=0){
 function calendarArtistColor(id,index=0){
   return artistDisplayColor(id,index);
 }
-function calendarArtistLabel(id){return id==='duo'?'#AUAUSAVE':artistName(id);}
+function calendarArtistLabel(id){return sameArtistId(id,'duo')?'#AUAUSAVE':artistName(id);}
 function calendarEventArtistIds(item){const ids=eventArtistIds(item);return ids.length?ids:[item.artistId].filter(Boolean);}
 calendarPage=function(){
   const calendarArtists=[...db.artists].sort((a,b)=>artistSchedulePriority(a)-artistSchedulePriority(b));
@@ -3391,9 +3541,24 @@ function updateDashboardArtistSummary(items=db.events){
   if(artistStat)artistStat.textContent=summaryArtists.map(artist=>calendarArtistLabel(artist.id)).join(' · ');
   document.querySelectorAll('.dash-upcoming small').forEach(small=>{const eventId=small.closest('.dash-upcoming')?.querySelector('button')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1],event=db.events.find(item=>item.id===eventId);if(event)small.textContent=`${eventBadge(event)} · ${event.place||''}`;});
 }
+function updateDashboardTypeSummary(items=db.events){
+  const section=document.querySelector('.dash-type-summary');if(!section)return;
+  const cards=section.querySelectorAll('.type-card');
+  sortedEventTypesForSummary().forEach((type,index)=>{
+    const card=cards[index];if(!card)return;
+    const count=items.filter(event=>eventHasType(event,type.id)).length;
+    const value=card.querySelector('b');if(value)value.textContent=count;
+  });
+}
 const dashboardAdminBeforeDynamicArtistSummary=dashboardAdmin;
-dashboardAdmin=function(){dashboardAdminBeforeDynamicArtistSummary();const activeItems=[...document.querySelectorAll('.dash-upcoming button')].map(button=>button.getAttribute('onclick')?.match(/'([^']+)'/)?.[1]).filter(Boolean);updateDashboardArtistSummary(db.events);};
+function dashboardCurrentRangeItems(){
+  const start=`${dashYearFrom}-${String(dashMonthFrom).padStart(2,'0')}-01`,
+    endDate=new Date(dashYearTo,dashMonthTo,0),
+    end=`${dashYearTo}-${String(dashMonthTo).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}`;
+  return db.events.filter(e=>e.date>=start&&e.date<=end);
+}
+dashboardAdmin=function(){dashboardAdminBeforeDynamicArtistSummary();const items=dashboardCurrentRangeItems();updateDashboardArtistSummary(items);updateDashboardTypeSummary(items);};
 const applyDashboardRangeBeforeDynamicArtistSummary=applyDashboardRange;
-applyDashboardRange=function(){applyDashboardRangeBeforeDynamicArtistSummary();const start=`${dashYearFrom}-${String(dashMonthFrom).padStart(2,'0')}-01`,endDate=new Date(dashYearTo,dashMonthTo,0),end=`${dashYearTo}-${String(dashMonthTo).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}`,items=db.events.filter(e=>e.date>=start&&e.date<=end);updateDashboardArtistSummary(items);};
+applyDashboardRange=function(){applyDashboardRangeBeforeDynamicArtistSummary();const items=dashboardCurrentRangeItems();updateDashboardArtistSummary(items);updateDashboardTypeSummary(items);};
 router();
 hydrateFromSupabase();

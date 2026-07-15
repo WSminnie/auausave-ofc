@@ -5,7 +5,7 @@
 set role postgres;
 
 create table if not exists public.artists (
-  id text primary key, name text not null, real_name text, role text,
+  id text primary key, nickname text not null, "name_TH" text, "name_EN" text, role text,
   birth text, initial text, color text, bio text, image_url text,
   created_at timestamptz default now(), updated_at timestamptz default now()
 );

@@ -86,14 +86,14 @@
     return value;
   };
   const mapFromDb = {
-    artists: r => ({ id:r.id,name:r.name,realName:r.real_name,role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image:r.image_url }),
+    artists: r => ({ id:r.id,name:r.nickname ?? r.name,realName:r.name_TH ?? r.real_name,nameEN:r.name_EN||'',role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image:r.image_url }),
     events: r => ({ id:r.id,artistId:r.artist_id,date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'',poster:r.poster_url||'' }),
     awards: r => ({ id:r.id,artistId:r.artist_id,year:String(r.award_year),title:r.title,org:r.organization,source:r.source_url||'' }),
     presenters: r => ({ id:r.id,artistId:r.artist_id,brand:r.brand,role:r.role,year:String(r.presenter_year),color:r.color,url:r.source_url||'',logo:r.logo_url||'',announcementImage:r.announcement_image_url||'',announcementVideo:r.announcement_video_url||'',mediaFit:r.media_fit||'contain',mediaPosition:r.media_position||'center' }),
     videos: r => ({ id:r.id,artistId:r.artist_id,title:r.title,views:r.views_label,url:r.youtube_url,embedUrl:r.embed_url||'',category:r.category,featured:r.featured?'yes':'no',color:r.color,thumbnail:r.thumbnail_url||'' })
   };
   const mapToDb = {
-    artists: r => ({ id:r.id,name:r.name,real_name:r.realName,role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image_url:r.image||null }),
+    artists: r => ({ id:r.id,nickname:r.name,name_TH:r.realName||null,name_EN:r.nameEN||null,role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image_url:r.image||null }),
     events: r => ({ id:r.id,artist_id:r.artistId,event_date:r.date,title:r.title,place:r.place,event_type:r.type,series_id:r.seriesId||null,source_url:r.source||null,poster_url:r.poster||null }),
     awards: r => ({ id:r.id,artist_id:r.artistId,award_year:Number(r.year)||null,title:r.title,organization:r.org,source_url:r.source||null }),
     presenters: r => ({ id:r.id,artist_id:r.artistId,brand:r.brand,role:r.role,presenter_year:Number(r.year)||null,color:r.color,source_url:r.url||null,logo_url:r.logo||null,announcement_image_url:r.announcementImage||null,announcement_video_url:r.announcementVideo||null,media_fit:r.mediaFit||'contain',media_position:r.mediaPosition||'center' }),
