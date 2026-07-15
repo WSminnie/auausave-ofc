@@ -1002,7 +1002,7 @@ const timelineDateLabel = item => {
   const monthLabel = monthNumber >= 1 && monthNumber <= 12 ? new Intl.DateTimeFormat('en-US',{month:'short'}).format(new Date(2000,monthNumber-1,1)) : '';
   return [day >= 1 && day <= 31 ? String(day) : '',monthLabel,year].filter(Boolean).join(' ') || (item?.upcoming ? 'UPCOMING' : 'TBA');
 };
-const itemMatchesArtist = (item, artistId) =>
+let itemMatchesArtist = (item, artistId) =>
   item?.artistId === artistId || (item?.artistId === 'duo' && (artistId === 'auau' || artistId === 'save'));
 const fmtDate = (d) =>
   new Intl.DateTimeFormat(route === "admin" ? "th-TH" : "en-US", {
@@ -2989,7 +2989,50 @@ function normalizeBulkEventDate(value){
   const parsed=new Date(Date.UTC(yearNumber,monthNumber-1,dayNumber));
   return parsed.getUTCFullYear()===yearNumber&&parsed.getUTCMonth()===monthNumber-1&&parsed.getUTCDate()===dayNumber?date:'';
 }
-function bulkEventArtistId(value){const text=String(value||'').toLowerCase().replace(/[^a-z]/g,'');if(text.includes('auausave'))return'duo';if(text.includes('auau'))return'auau';if(text.includes('save'))return'save';return'';}
+function bulkEventArtistIds(value){
+  const raw = String(value||'').trim();
+  const ids = new Set();
+  const add = id => { if(db.artists.some(artist=>artist.id===id)) ids.add(id); };
+  const normalizeArtistText = text => String(text||'')
+    .toLowerCase()
+    .replace(/&/g,' and ')
+    .replace(/[^\p{L}\p{N}]+/gu,' ')
+    .trim()
+    .replace(/\s+/g,' ');
+  const compactArtistText = text => normalizeArtistText(text).replace(/\s+/g,'');
+  const input = normalizeArtistText(raw);
+  const inputCompact = compactArtistText(raw);
+  const distance = (a,b) => {
+    if(!a || !b) return Math.max(a.length,b.length);
+    const costs = Array.from({length:b.length+1},(_,index)=>index);
+    for(let i=1;i<=a.length;i++){
+      let diagonal = i - 1;
+      costs[0] = i;
+      for(let j=1;j<=b.length;j++){
+        const above = costs[j];
+        costs[j] = a[i-1]===b[j-1] ? diagonal : Math.min(diagonal+1,costs[j-1]+1,above+1);
+        diagonal = above;
+      }
+    }
+    return costs[b.length];
+  };
+  if(inputCompact.includes('auausave') || inputCompact.includes('auausaveth')) { add('duo'); add('auau'); add('save'); }
+  db.artists.forEach(artist => {
+    const keys = [artist.id, artist.name, artist.realName]
+      .map(key=>({spaced:normalizeArtistText(key),compact:compactArtistText(key)}))
+      .filter(key=>key.compact.length>=3);
+    const exactMatch = keys.some(key => inputCompact===key.compact || inputCompact.includes(key.compact) || key.compact.includes(inputCompact));
+    const fuzzyMatch = keys.some(key => inputCompact.length>=5 && key.compact.length>=5 && distance(inputCompact,key.compact)<=2);
+    const tokenMatch = keys.some(key => {
+      const keyTokens = key.spaced.split(' ').filter(token=>token.length>=3);
+      return keyTokens.length && keyTokens.every(token=>input.split(' ').some(inputToken=>inputToken===token || distance(inputToken,token)<=1));
+    });
+    if(exactMatch || fuzzyMatch || tokenMatch) ids.add(artist.id);
+  });
+  if(!ids.size && /#?\s*auau\s*save/i.test(raw)) { add('duo'); add('auau'); add('save'); }
+  return [...ids];
+}
+function bulkEventArtistId(value){return bulkEventArtistIds(value)[0]||'';}
 function bulkEventTypes(value){const text=String(value||'').toLowerCase(),matches=db.masterData.types.filter(type=>text.includes(String(type.label||type.id).toLowerCase())).map(type=>type.label);return matches.length?[...new Set(matches)].join(' | '):String(value||'').trim().replace(/\s*[,/]\s*/g,' | ');}
 function parseBulkEvents(text){
   const rows=String(text||'').split(/\r?\n/).map(line=>line.split('\t').map(cell=>cell.trim())).filter(row=>row.some(Boolean));
@@ -2999,7 +3042,7 @@ function parseBulkEvents(text){
   const columns={type:1,artist:2,date:3,time:4,title:5};
   if(hasHeader)Object.entries(aliases).forEach(([key,names])=>{const index=normalized.findIndex(value=>names.includes(value));if(index>=0)columns[key]=index;});
   const items=[],errors=[];
-  rows.slice(hasHeader?1:0).forEach((row,index)=>{const rowNumber=index+(hasHeader?2:1),date=normalizeBulkEventDate(row[columns.date]),artistId=bulkEventArtistId(row[columns.artist]),title=String(row[columns.title]||'').trim(),type=bulkEventTypes(row[columns.type]);if(!date||!artistId||!title||!type){errors.push(`แถว ${rowNumber}: ข้อมูล Date, Solo/Partner, Type หรือ Name Event ไม่ครบ/ไม่ถูกต้อง`);return;}items.push({id:`e${Date.now()}_${index}`,artistId,date,title,place:String(row[columns.time]||'').trim(),type,seriesId:'',source:'',poster:''});});
+  rows.slice(hasHeader?1:0).forEach((row,index)=>{const rowNumber=index+(hasHeader?2:1),date=normalizeBulkEventDate(row[columns.date]),artistIds=bulkEventArtistIds(row[columns.artist]),artistId=artistIds[0]||'',title=String(row[columns.title]||'').trim(),type=bulkEventTypes(row[columns.type]);if(!date||!artistId||!title||!type){errors.push(`แถว ${rowNumber}: ข้อมูล Date, Solo/Partner, Type หรือ Name Event ไม่ครบ/ไม่ถูกต้อง`);return;}items.push({id:`e${Date.now()}_${index}`,artistId,artistIds,date,title,place:String(row[columns.time]||'').trim(),type,seriesId:'',source:'',poster:''});});
   return{items,errors};
 }
 function openBulkEventForm(){document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal bulk-event-modal"><div class="modal-head"><div><small>PASTE FROM EXCEL</small><h2>เพิ่มตารางงานหลายรายการ</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="bulk-event-help">คัดลอกตารางจาก Excel แล้ววางด้านล่าง รองรับคอลัมน์ Month, Type, Solo/Partner, Event Date, Time และ Name Event โดยไม่ต้องใส่รูป</p><form onsubmit="saveBulkEvents(event)"><div class="field"><label>ข้อมูลจาก Excel</label><textarea name="excelData" class="bulk-event-textarea" placeholder="Month&#9;Type&#9;Solo/Partner&#9;Event Date&#9;Time&#9;Name Event&#10;JULY&#9;LIVE&#9;#AuauSave&#9;2026.07.08&#9;19.00 น.&#9;8.7 AUAUSAVE X ATIPA LIVE" required></textarea><small>สามารถวางหลายแถวพร้อมกันได้ ระบบจะข้ามหัวตารางให้อัตโนมัติ</small></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">เพิ่มรายการทั้งหมด</button></div></form></div></div>`);}
@@ -3156,5 +3199,142 @@ pageContentAdmin = function(){
   if(homeBuilderTab==='order') main?.insertAdjacentHTML('beforeend',renderHomepageArtistOrderEditor());
   if(homeBuilderTab==='content') main?.insertAdjacentHTML('beforeend',renderHomepageArtistLiveEditor());
 };
+function eventArtistIds(item){
+  let ids = Array.isArray(item?.artistIds) ? item.artistIds : [];
+  if(!ids.length && typeof item?.artistIds === 'string' && item.artistIds.trim().startsWith('[')){
+    try { ids = JSON.parse(item.artistIds); } catch { ids = []; }
+  }
+  const base = ids.length ? ids : [item?.artistId].filter(Boolean);
+  return [...new Set(base)].filter(id => db.artists.some(artist => artist.id === id));
+}
+function eventArtistNames(item){
+  const ids = eventArtistIds(item);
+  return ids.length ? ids.map(artistName).join(' · ') : artistName(item?.artistId);
+}
+function eventPrimaryArtistId(item){
+  return eventArtistIds(item)[0] || item?.artistId || '';
+}
+itemMatchesArtist = (item, artistId) => {
+  if (artistId === 'all') return true;
+  const ids = eventArtistIds(item);
+  return ids.includes(artistId) || (ids.includes('duo') && (artistId === 'auau' || artistId === 'save'));
+};
+const rowCellsBeforeDynamicEventArtists = rowCells;
+rowCells = function(type,x){
+  if(type === 'events') return `<td><b>${escapePageText(x.title)}</b></td><td>${escapePageText(eventArtistNames(x))}</td><td>${fmtDate(x.date)}</td>`;
+  return rowCellsBeforeDynamicEventArtists(type,x);
+};
+const scheduleRowsBeforeDynamicEventArtists = scheduleRows;
+scheduleRows = function(items = db.events){
+  return items.length ? [...items].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>`<div class="schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div><h3>${escapePageText(e.title)}</h3><p>${escapePageText(eventArtistNames(e))} · ${escapePageText(e.place||'')}</p></div><span class="event-type">${escapePageText(e.type||'')}</span>${e.source ? `<a class="round-arrow" href="${escapePageText(e.source)}" target="_blank" title="ดูต้นทาง">↗</a>` : "<span></span>"}</div>`).join("") : `<div class="empty">ยังไม่มีข้อมูลในขณะนี้</div>`;
+};
+function eventBadge(item){
+  return eventArtistIds(item).map(id => id === 'duo' ? '#AUAUSAVE' : artistName(id)).join(' · ') || 'ไม่ระบุ';
+}
+const adminEventCalendarBeforeDynamicArtists = adminEventCalendar;
+adminEventCalendar = function(){
+  const currentFilter = db.artists.some(artist => artist.id === adminEventFilter) ? adminEventFilter : 'all';
+  adminEventFilter = currentFilter;
+  const monthEvents = db.events.filter(e => e.date.startsWith(adminMonth) && itemMatchesArtist(e, adminEventFilter)).sort((a,b)=>a.date.localeCompare(b.date));
+  const monthLabel = new Intl.DateTimeFormat(route === "admin" ? "th-TH" : "en-US", {month:"long",year:"numeric"}).format(new Date(`${adminMonth}-01`));
+  const filters = [`<button class="${adminEventFilter==='all'?'active':''}" onclick="adminEventFilter='all';admin()">ทั้งหมด</button>`, ...db.artists.map(artist=>`<button class="${artist.id} ${adminEventFilter===artist.id?'active':''}" onclick="adminEventFilter='${artist.id}';admin()">${escapePageText(artist.id==='duo'?'#AUAUSAVE':artist.name)}</button>`)].join('');
+  const eventRows = monthEvents.map(e=>`<article class="admin-event-item ${escapePageText(eventPrimaryArtistId(e))}"><div class="admin-event-date"><b>${day(e.date)}</b><span>${month(e.date)}</span></div><div class="admin-event-info"><small>${escapePageText(eventBadge(e))} · ${escapePageText(e.type||'')}</small><h3>${escapePageText(e.title)}</h3><p>${escapePageText(e.place||'')}</p></div><div class="actions"><button class="icon-btn" onclick="openForm('events','${e.id}')">✎ แก้ไข</button><button class="icon-btn" onclick="removeItem('events','${e.id}')">⌫</button></div></article>`).join("") || `<div class="empty">เดือนนี้ยังไม่มีตารางงาน<br><button class="btn" style="margin-top:15px" onclick="openForm('events')">เพิ่มงานแรกของเดือน</button></div>`;
+  app.innerHTML = `<div class="admin"><div class="admin-shell"><aside class="sidebar"><div class="brand"><i></i>AUAUSAVE HOUSE</div><div class="side-nav">${Object.entries(configs).map(([k,v])=>`<button data-icon="${v.icon}" class="${k===adminTab?'active':''}" onclick="adminTab='${k}';admin()">${v.icon} &nbsp; ${v.label}</button>`).join("")}</div><a class="back" href="#schedule">← ดูปฏิทินหน้าบ้าน</a></aside><main class="admin-main"><div class="admin-top"><div><small style="color:var(--muted)">CALENDAR MANAGEMENT</small><h1>จัดการปฏิทินงาน</h1></div><button class="btn" onclick="openForm('events')">+ เพิ่มงานใหม่</button></div><section class="admin-cal-tools"><div><label>เลือกเดือน</label><input type="month" value="${adminMonth}" onchange="adminMonth=this.value;admin()"></div><div class="admin-filters dynamic-artist-filters">${filters}</div></section><div class="admin-month-title"><h2>${monthLabel}</h2><span>${monthEvents.length} งาน</span></div><section class="admin-event-list">${eventRows}</section></main></div></div>`;
+};
+const openFormBeforeDynamicEventArtists = openForm;
+openForm = function(type,id){
+  openFormBeforeDynamicEventArtists(type,id);
+  if(type !== 'events') return;
+  const item = id ? db.events.find(event => event.id === id) : {};
+  const selected = eventArtistIds(item);
+  if(!selected.length && !id && db.artists[0]) selected.push(db.artists[0].id);
+  const select = document.querySelector('#modal [name="artistId"]');
+  if(select){
+    select.closest('.field').outerHTML = `<div class="multi-artist-picker event-artist-picker"><p>เลือกศิลปินได้มากกว่า 1</p>${db.artists.map(artist=>`<label><input type="checkbox" name="eventArtistIds" value="${artist.id}" ${selected.includes(artist.id)?'checked':''}><span>${escapePageText(artist.name)}</span></label>`).join('')}</div>`;
+  }
+};
+const submitFormBeforeDynamicEventArtists = submitForm;
+submitForm = function(event,type,id){
+  let selectedArtistIds = [];
+  let beforeIds = null;
+  if(type === 'events'){
+    selectedArtistIds = [...event.target.querySelectorAll('[name="eventArtistIds"]:checked')].map(input=>input.value);
+    if(!selectedArtistIds.length){event.preventDefault();alert('กรุณาเลือกศิลปินอย่างน้อย 1 คน');return;}
+    beforeIds = new Set(db.events.map(item=>item.id));
+    event.target.querySelectorAll('[name="eventArtistIds"]').forEach(input=>input.disabled=true);
+    const artistIdInput = document.createElement('input');
+    artistIdInput.type='hidden'; artistIdInput.name='artistId'; artistIdInput.value=selectedArtistIds[0];
+    const artistIdsInput = document.createElement('input');
+    artistIdsInput.type='hidden'; artistIdsInput.name='artistIds'; artistIdsInput.value=JSON.stringify(selectedArtistIds);
+    event.target.append(artistIdInput,artistIdsInput);
+  }
+  submitFormBeforeDynamicEventArtists(event,type,id);
+  if(type === 'events'){
+    const item = id ? db.events.find(entry=>entry.id===id) : db.events.find(entry=>!beforeIds.has(entry.id));
+    if(item){item.artistId=selectedArtistIds[0];item.artistIds=selectedArtistIds;save();admin();}
+  }
+};
+function artistScheduleCardClass(artistId,index){
+  if(artistId==='duo')return'duo-card';
+  if(artistId==='auau')return'auau-card';
+  if(artistId==='save')return'save-card';
+  return `dynamic-artist-card dynamic-artist-card-${index%4}`;
+}
+const homeScheduleSectionBeforeDynamicArtists = homeScheduleSection;
+homeScheduleSection = function(){
+  const now = new Date(), ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`, monthLabel = new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(now), monthly = db.events.filter(e => e.date.startsWith(ym));
+  const cards = db.artists.map((artist,index)=>{
+    const title = artist.id === 'duo' ? '#AUAUSAVE' : artist.name;
+    const description = artist.id === 'duo' ? '#AuauSave' : (artist.role || artist.name);
+    return `<article class="schedule-card ${artistScheduleCardClass(artist.id,index)}"><div class="schedule-card-head"><span>${artist.id==='duo'?'COUPLE PATH':'ARTIST PATH'}</span><h3>${escapePageText(title)}</h3><p>${escapePageText(description)}</p></div>${compactSchedule(monthly.filter(e=>itemMatchesArtist(e,artist.id)))}</article>`;
+  }).join('');
+  return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><span class="eyebrow">This month · ${monthLabel}</span><h2>ตารางงานเดือนนี้</h2></div><a class="btn outline" href="#schedule">เปิดปฏิทินทั้งหมด ↗</a></div><div class="schedule-columns dynamic-schedule-columns">${cards}</div></div></section>`;
+};
+function ensureHomepageFrontDisplaySettings(){
+  ensureHomePageSettings();
+  db.siteSettings.homeScheduleCards ||= {};
+  db.siteSettings.homeScheduleOrder = Array.isArray(db.siteSettings.homeScheduleOrder) ? db.siteSettings.homeScheduleOrder : [];
+  const artistIds = db.artists.map(artist=>artist.id);
+  db.siteSettings.homeScheduleOrder = db.siteSettings.homeScheduleOrder.filter(id=>artistIds.includes(id));
+  db.artists.forEach(artist=>{
+    if(!db.siteSettings.homeScheduleOrder.includes(artist.id)) db.siteSettings.homeScheduleOrder.push(artist.id);
+    db.siteSettings.homeScheduleCards[artist.id] = {
+      visible:true,
+      eyebrow: artist.id==='duo' ? 'COUPLE PATH' : 'ARTIST PATH',
+      title: artist.id==='duo' ? '#AUAUSAVE' : artist.name,
+      description: artist.id==='duo' ? '#AuauSave' : (artist.role || artist.name),
+      ...(db.siteSettings.homeScheduleCards[artist.id]||{})
+    };
+  });
+  const valid = id => artistIds.includes(id);
+  db.siteSettings.homeTimelineArtistIds = Array.isArray(db.siteSettings.homeTimelineArtistIds) ? db.siteSettings.homeTimelineArtistIds.filter(valid) : ['duo'].filter(valid);
+  if(!db.siteSettings.homeTimelineArtistIds.length && db.artists[0]) db.siteSettings.homeTimelineArtistIds = [db.artists[0].id];
+  db.siteSettings.homePresenterArtistIds = Array.isArray(db.siteSettings.homePresenterArtistIds) ? db.siteSettings.homePresenterArtistIds.filter(valid) : [...artistIds];
+  if(!db.siteSettings.homePresenterArtistIds.length) db.siteSettings.homePresenterArtistIds = [...artistIds];
+}
+function homepageScheduleArtists(){ensureHomepageFrontDisplaySettings();const map=new Map(db.artists.map(artist=>[artist.id,artist]));return db.siteSettings.homeScheduleOrder.map(id=>map.get(id)).filter(Boolean);}
+const homeScheduleSectionBeforeFrontDisplaySettings=homeScheduleSection;
+homeScheduleSection=function(){
+  ensureHomepageFrontDisplaySettings();
+  const now=new Date(),ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,monthLabel=new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(now),monthly=db.events.filter(e=>e.date.startsWith(ym));
+  const cards=homepageScheduleArtists().filter(artist=>db.siteSettings.homeScheduleCards[artist.id]?.visible!==false).map((artist,index)=>{const card=db.siteSettings.homeScheduleCards[artist.id]||{};return `<article class="schedule-card ${artistScheduleCardClass(artist.id,index)}"><div class="schedule-card-head"><span>${escapePageText(card.eyebrow||'ARTIST PATH')}</span><h3>${escapePageText(card.title||artist.name)}</h3><p>${escapePageText(card.description||'')}</p></div>${compactSchedule(monthly.filter(e=>itemMatchesArtist(e,artist.id)))}</article>`;}).join('');
+  return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><span class="eyebrow">This month · ${monthLabel}</span><h2>This Month Schedule</h2></div><a class="btn outline" href="#schedule">View calendar ↗</a></div><div class="schedule-columns dynamic-schedule-columns">${cards||'<div class="empty">No schedule cards selected.</div>'}</div></div></section>`;
+};
+function homeScheduleDragStart(event,artistId){event.dataTransfer.setData('text/plain',artistId);event.dataTransfer.effectAllowed='move';}
+function homeScheduleDrop(event,targetId){event.preventDefault();ensureHomepageFrontDisplaySettings();const sourceId=event.dataTransfer.getData('text/plain'),list=db.siteSettings.homeScheduleOrder,from=list.indexOf(sourceId),to=list.indexOf(targetId);if(from<0||to<0||from===to)return;const [item]=list.splice(from,1);list.splice(to,0,item);save();pageContentAdmin();toast('บันทึกลำดับการ์ดตารางงานแล้ว');}
+function openHomeScheduleCardEditor(artistId){ensureHomepageFrontDisplaySettings();const artist=db.artists.find(item=>item.id===artistId),card=db.siteSettings.homeScheduleCards[artistId]||{};if(!artist)return;document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>แก้ไขการ์ดตารางงาน ${escapePageText(artist.name)}</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveHomeScheduleCard(event,'${artistId}')"><div class="form-grid"><div class="field"><label>หัวการ์ด</label><input name="eyebrow" value="${escapePageText(card.eyebrow||'')}" placeholder="COUPLE PATH / ARTIST PATH"></div><div class="field"><label>ชื่อบนการ์ด</label><input name="title" value="${escapePageText(card.title||artist.name)}" required></div><div class="field full"><label>คำอธิบาย</label><input name="description" value="${escapePageText(card.description||'')}"></div><div class="field full"><label class="hero-overlay-toggle"><input type="checkbox" name="visible" ${card.visible!==false?'checked':''}><span>แสดงการ์ดนี้บนหน้าบ้าน</span></label></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึกการ์ด</button></div></form></div></div>`);}
+function saveHomeScheduleCard(event,artistId){event.preventDefault();const form=new FormData(event.currentTarget);db.siteSettings.homeScheduleCards[artistId]={...(db.siteSettings.homeScheduleCards[artistId]||{}),eyebrow:(form.get('eyebrow')||'').trim(),title:(form.get('title')||'').trim(),description:(form.get('description')||'').trim(),visible:form.get('visible')==='on'};save();closeModal();pageContentAdmin();toast('บันทึกการ์ดตารางงานแล้ว');}
+function renderHomepageScheduleOrderEditor(){ensureHomepageFrontDisplaySettings();return `<section class="panel homepage-schedule-order-editor"><div class="panel-head"><div><small>SCHEDULE CARD ORDER</small><h2>จัดวางการ์ดตารางงาน</h2><p class="master-note">ลากเพื่อเรียงลำดับ และเปิด/ปิดการ์ดตารางงานบนหน้าแรกได้ เหมือนการ์ดศิลปิน</p></div></div><div class="home-artist-sort-grid home-schedule-sort-grid">${homepageScheduleArtists().map((artist,index)=>{const card=db.siteSettings.homeScheduleCards[artist.id]||{};return `<article draggable="true" ondragstart="homeScheduleDragStart(event,'${artist.id}')" ondragover="event.preventDefault()" ondrop="homeScheduleDrop(event,'${artist.id}')" class="${card.visible===false?'is-hidden':''}"><div class="home-artist-sort-order">↕ ${String(index+1).padStart(2,'0')}</div><div class="home-schedule-sort-thumb ${artistScheduleCardClass(artist.id,index)}"><span>${escapePageText(card.eyebrow||'')}</span><b>${escapePageText(card.title||artist.name)}</b></div><div><h3>${escapePageText(artist.name)}</h3><p>${card.visible===false?'Hidden':'Visible'}</p></div><button class="btn outline" onclick="openHomeScheduleCardEditor('${artist.id}')">แก้ไข</button></article>`;}).join('')}</div></section>`;}
+function renderHomepageFrontScopeEditor(){ensureHomepageFrontDisplaySettings();const checkbox=(name,selected)=>db.artists.map(artist=>`<label><input type="checkbox" name="${name}" value="${artist.id}" ${selected.includes(artist.id)?'checked':''}><span>${escapePageText(artist.id==='duo'?'#AUAUSAVE':artist.name)}</span></label>`).join('');return `<section class="panel homepage-front-scope-editor"><div class="panel-head"><div><small>FRONT PAGE DISPLAY</small><h2>เลือกศิลปินที่จะแสดงบนหน้าบ้าน</h2><p class="master-note">ใช้กำหนดเฉพาะส่วน Timeline และ Presenters บนหน้าแรก โดยไม่ลบข้อมูลจริงในระบบ</p></div></div><form onsubmit="saveHomepageFrontScope(event)"><div class="homepage-scope-grid"><div class="multi-artist-picker"><p>Timeline บนหน้าแรก</p>${checkbox('homeTimelineArtistIds',db.siteSettings.homeTimelineArtistIds)}</div><div class="multi-artist-picker"><p>Presenters บนหน้าแรก</p>${checkbox('homePresenterArtistIds',db.siteSettings.homePresenterArtistIds)}</div></div><div class="form-actions"><button class="btn" type="submit">บันทึกการแสดงผลหน้าบ้าน</button></div></form></section>`;}
+function saveHomepageFrontScope(event){event.preventDefault();ensureHomepageFrontDisplaySettings();const form=new FormData(event.currentTarget),timeline=form.getAll('homeTimelineArtistIds'),presenters=form.getAll('homePresenterArtistIds');if(!timeline.length||!presenters.length){toast('กรุณาเลือกอย่างน้อย 1 ศิลปินในแต่ละส่วน');return;}db.siteSettings.homeTimelineArtistIds=timeline;db.siteSettings.homePresenterArtistIds=presenters;save();pageContentAdmin();toast('บันทึกการแสดงผลหน้าบ้านแล้ว');}
+function homeScopedArtistIds(item){return eventArtistIds(item).length?eventArtistIds(item):(Array.isArray(item.artistIds)?item.artistIds:[item.artistId].filter(Boolean));}
+function homeTimelineItemMatchesScope(item){ensureHomepageFrontDisplaySettings();const ids=homeScopedArtistIds(item);return db.siteSettings.homeTimelineArtistIds.some(id=>ids.includes(id));}
+function homeTimelineSection(){ensureHomepageFrontDisplaySettings();const visible=db.siteSettings.timelineVisibility||{},content=db.siteSettings.timelineCategoryContent||{},items=(db.siteSettings.timeline||[]).filter(homeTimelineItemMatchesScope).sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));const card=item=>{const links=(item.links?.length?item.links:(item.url?[{label:'Open',url:item.url}]:[])).map(link=>typeof link==='string'?{label:'Open',url:link}:link).map(link=>{const text=link.label||link.title||'',url=link.url||link.href||(/^https?:\/\//i.test(text)?text:'');return{label:text&&text!==url?text:'Open',url};}).filter(link=>link.url);const imageOrientation=item.imageOrientation==='landscape'?'landscape':'portrait',posterUrl=versionedMediaUrl(item.poster,item.imageVersion||item.id);return `<article class="filmography-card timeline-image-${imageOrientation}">${item.poster?`<img src="${escapePageText(posterUrl)}" alt="${escapePageText(item.title)}">`:`<div class="filmography-placeholder"><span>${escapePageText(item.title.slice(0,2).toUpperCase())}</span></div>`}${item.upcoming?'<span class="timeline-upcoming-badge">UPCOMING</span>':''}<small>${escapePageText(timelineDateLabel(item))}</small><h3>${escapePageText(item.title)}</h3>${item.description?`<p>${escapePageText(item.description)}</p>`:''}${item.note?`<div class="timeline-note">${escapePageText(item.note)}</div>`:''}${links.length?`<div class="archive-card-links">${links.map(link=>`<a href="${escapePageText(link.url)}" target="_blank" rel="noopener noreferrer">${escapePageText(link.label)} ↗</a>`).join('')}</div>`:''}</article>`;};const lane=(category,label)=>{const groupItems=items.filter(item=>(item.category||'series')===category);return groupItems.length&&visible[category]!==false?`<div class="filmography-year-group timeline-subsection"><div class="filmography-year-label"><span></span><b>${escapePageText(content[category]?.title||label)}</b><span></span></div><div class="filmography-grid">${groupItems.map(card).join('')}</div></div>`:'';};return `<section class="section artist-filmography home-timeline"><div class="container"><div class="filmography-head"><small>AUAUSAVE HOUSE</small><h2>Timeline</h2><p>Selected series, variety shows and music videos.</p></div>${lane('series','Series')}${lane('variety','Variety Show')}${lane('music-video','Music Video')}</div></section>`;}
+function homePresenterMatchesScope(item){ensureHomepageFrontDisplaySettings();const ids=homeScopedArtistIds(item);return db.siteSettings.homePresenterArtistIds.some(id=>ids.includes(id));}
+function homePresenterSection(){ensureHomepageFrontDisplaySettings();const items=db.presenters.filter(homePresenterMatchesScope).slice(0,6);return `<section class="section presenter-home"><div class="container"><div class="section-head"><div><span class="eyebrow">Brand & Partnership</span><h2>Our Presenters</h2></div><a class="btn outline" href="#presenters">View all ↗</a></div>${presenterCards(items)}</div></section>`;}
+const pageContentAdminBeforeFrontDisplaySettings=pageContentAdmin;
+pageContentAdmin=function(){pageContentAdminBeforeFrontDisplaySettings();if(!adminAuthenticated||adminTab!=='pagecontent')return;const main=document.querySelector('.admin-main');if(homeBuilderTab==='order')main?.insertAdjacentHTML('beforeend',renderHomepageScheduleOrderEditor());if(homeBuilderTab==='content')main?.insertAdjacentHTML('beforeend',renderHomepageFrontScopeEditor());};
+const homeBeforeFrontDisplaySettings=home;
+home=function(){homeBeforeFrontDisplaySettings();ensureHomepageFrontDisplaySettings();const main=document.querySelector('main'),footerEl=document.querySelector('footer');document.querySelector('.presenter-home')?.remove();document.querySelector('.home-timeline')?.remove();const timelineVisible=db.siteSettings.homeSections?.find(section=>section.id==='timeline')?.visible!==false,presenterVisible=db.siteSettings.homeSections?.find(section=>section.id==='presenters')?.visible!==false;if(timelineVisible)(footerEl||main)?.insertAdjacentHTML(footerEl?'beforebegin':'beforeend',homeTimelineSection());if(presenterVisible)(footerEl||main)?.insertAdjacentHTML(footerEl?'beforebegin':'beforeend',homePresenterSection());};
 router();
 hydrateFromSupabase();
