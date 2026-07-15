@@ -2975,5 +2975,186 @@ function normalizeAdminMenu(){
 }
 const renderAdminWithStableMenu = admin;
 admin = function(){renderAdminWithStableMenu();if(adminAuthenticated)normalizeAdminMenu();};
+
+function normalizeBulkEventDate(value){
+  const text=String(value||'').trim();
+  if(!text)return'';
+  if(/^\d{5}(?:\.\d+)?$/.test(text)){const date=new Date(Date.UTC(1899,11,30)+Number(text)*86400000);return date.toISOString().slice(0,10);}
+  const parts=text.replace(/[./]/g,'-').split('-').map(part=>part.trim());
+  if(parts.length!==3)return'';
+  let year,monthValue,dayValue;
+  if(parts[0].length===4)[year,monthValue,dayValue]=parts;else [dayValue,monthValue,year]=parts;
+  if(year.length===2)year=`20${year}`;
+  const monthNumber=Number(monthValue),dayNumber=Number(dayValue),yearNumber=Number(year),date=`${yearNumber}-${String(monthNumber).padStart(2,'0')}-${String(dayNumber).padStart(2,'0')}`;
+  const parsed=new Date(Date.UTC(yearNumber,monthNumber-1,dayNumber));
+  return parsed.getUTCFullYear()===yearNumber&&parsed.getUTCMonth()===monthNumber-1&&parsed.getUTCDate()===dayNumber?date:'';
+}
+function bulkEventArtistId(value){const text=String(value||'').toLowerCase().replace(/[^a-z]/g,'');if(text.includes('auausave'))return'duo';if(text.includes('auau'))return'auau';if(text.includes('save'))return'save';return'';}
+function bulkEventTypes(value){const text=String(value||'').toLowerCase(),matches=db.masterData.types.filter(type=>text.includes(String(type.label||type.id).toLowerCase())).map(type=>type.label);return matches.length?[...new Set(matches)].join(' | '):String(value||'').trim().replace(/\s*[,/]\s*/g,' | ');}
+function parseBulkEvents(text){
+  const rows=String(text||'').split(/\r?\n/).map(line=>line.split('\t').map(cell=>cell.trim())).filter(row=>row.some(Boolean));
+  if(!rows.length)return{items:[],errors:['ยังไม่มีข้อมูลที่วาง']};
+  const normalized=rows[0].map(cell=>cell.toLowerCase().replace(/[^a-z]/g,'')),hasHeader=normalized.some(cell=>cell==='eventdate'||cell==='nameevent');
+  const aliases={type:['type'],artist:['solopartner','artist','path'],date:['eventdate','date'],time:['time'],title:['nameevent','eventname','title']};
+  const columns={type:1,artist:2,date:3,time:4,title:5};
+  if(hasHeader)Object.entries(aliases).forEach(([key,names])=>{const index=normalized.findIndex(value=>names.includes(value));if(index>=0)columns[key]=index;});
+  const items=[],errors=[];
+  rows.slice(hasHeader?1:0).forEach((row,index)=>{const rowNumber=index+(hasHeader?2:1),date=normalizeBulkEventDate(row[columns.date]),artistId=bulkEventArtistId(row[columns.artist]),title=String(row[columns.title]||'').trim(),type=bulkEventTypes(row[columns.type]);if(!date||!artistId||!title||!type){errors.push(`แถว ${rowNumber}: ข้อมูล Date, Solo/Partner, Type หรือ Name Event ไม่ครบ/ไม่ถูกต้อง`);return;}items.push({id:`e${Date.now()}_${index}`,artistId,date,title,place:String(row[columns.time]||'').trim(),type,seriesId:'',source:'',poster:''});});
+  return{items,errors};
+}
+function openBulkEventForm(){document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal bulk-event-modal"><div class="modal-head"><div><small>PASTE FROM EXCEL</small><h2>เพิ่มตารางงานหลายรายการ</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="bulk-event-help">คัดลอกตารางจาก Excel แล้ววางด้านล่าง รองรับคอลัมน์ Month, Type, Solo/Partner, Event Date, Time และ Name Event โดยไม่ต้องใส่รูป</p><form onsubmit="saveBulkEvents(event)"><div class="field"><label>ข้อมูลจาก Excel</label><textarea name="excelData" class="bulk-event-textarea" placeholder="Month&#9;Type&#9;Solo/Partner&#9;Event Date&#9;Time&#9;Name Event&#10;JULY&#9;LIVE&#9;#AuauSave&#9;2026.07.08&#9;19.00 น.&#9;8.7 AUAUSAVE X ATIPA LIVE" required></textarea><small>สามารถวางหลายแถวพร้อมกันได้ ระบบจะข้ามหัวตารางให้อัตโนมัติ</small></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">เพิ่มรายการทั้งหมด</button></div></form></div></div>`);}
+function saveBulkEvents(event){event.preventDefault();const result=parseBulkEvents(new FormData(event.currentTarget).get('excelData'));if(result.errors.length){const preview=result.errors.slice(0,5).join('\n');alert(`${preview}${result.errors.length>5?`\nและอีก ${result.errors.length-5} แถว`:''}`);return;}const existing=new Set(db.events.map(item=>`${item.date}|${String(item.title).trim().toLowerCase()}`)),unique=result.items.filter(item=>!existing.has(`${item.date}|${item.title.toLowerCase()}`));if(!unique.length){alert('ไม่พบรายการใหม่ ข้อมูลอาจมีอยู่ในระบบแล้ว');return;}db.events.unshift(...unique);save();closeModal();admin();toast(`เพิ่มตารางงาน ${unique.length} รายการแล้ว`);}
+function addBulkEventButton(){if(!adminAuthenticated||adminTab!=='events')return;const top=document.querySelector('.admin-main .admin-top'),addButton=top?.querySelector('button.btn');if(!top||!addButton||top.querySelector('[data-bulk-events]'))return;const actions=document.createElement('div');actions.className='admin-top-actions';addButton.before(actions);actions.append(addButton);actions.insertAdjacentHTML('afterbegin','<button class="btn outline" data-bulk-events onclick="openBulkEventForm()">⧉ วางจาก Excel</button>');}
+const renderAdminWithBulkEvents=admin;
+admin=function(){renderAdminWithBulkEvents();addBulkEventButton();};
+
+let cropImageState=null;
+function imageCropPreset(field){
+  const orientationSelect=document.querySelector('#modal [name="imageOrientation"]'),canChoose=Boolean(orientationSelect);
+  if(canChoose)return{canChoose,orientation:orientationSelect.value==='landscape'?'landscape':'portrait'};
+  if(field==='heroImage')return{canChoose:false,orientation:'square',ratio:.976,shape:'hero'};
+  if(field==='thumbnail')return{canChoose:false,orientation:'landscape',ratio:16/9,shape:'video'};
+  if(field==='logo')return{canChoose:false,orientation:'square',ratio:1,shape:'logo'};
+  if(field==='announcementImage')return{canChoose:false,orientation:'landscape',ratio:16/10,shape:'presenter'};
+  if(field==='image'&&adminTab==='awards')return{canChoose:false,orientation:'portrait',ratio:2/3,shape:'award'};
+  if(field==='image'&&adminTab==='artists')return{canChoose:false,orientation:'portrait',ratio:3/4,shape:'artist'};
+  if(field==='poster'&&adminTab==='events')return{canChoose:false,orientation:'portrait',ratio:3/4,shape:'event'};
+  return{canChoose:false,orientation:'portrait',ratio:3/4,shape:'timeline'};
+}
+function cropRatio(state=cropImageState){return state.preset.ratio||(state.orientation==='landscape'?16/9:3/4);}
+function cropCanvasSize(){const ratio=cropRatio(),width=1200;return{width,height:Math.round(width/ratio)};}
+function cropFrameClass(){if(!cropImageState)return'';if(cropImageState.preset.canChoose)return cropImageState.orientation==='landscape'?'crop-frame-timeline-landscape':'crop-frame-timeline-portrait';return`crop-frame-${cropImageState.preset.shape||'default'}`;}
+function drawCropPreview(){
+  const state=cropImageState,canvas=document.querySelector('#cropImageCanvas');if(!state||!canvas)return;
+  const size=cropCanvasSize();canvas.width=size.width;canvas.height=size.height;
+  const context=canvas.getContext('2d'),base=Math.max(size.width/state.image.naturalWidth,size.height/state.image.naturalHeight),scale=base*state.zoom,drawWidth=state.image.naturalWidth*scale,drawHeight=state.image.naturalHeight*scale,maxX=Math.max(0,(drawWidth-size.width)/2),maxY=Math.max(0,(drawHeight-size.height)/2),x=(size.width-drawWidth)/2+(state.panX/100)*maxX,y=(size.height-drawHeight)/2+(state.panY/100)*maxY;
+  context.clearRect(0,0,size.width,size.height);context.drawImage(state.image,x,y,drawWidth,drawHeight);
+  canvas.className=`${cropFrameClass()}${state.drag?' is-dragging':''}`;const label=document.querySelector('#cropRatioLabel');if(label)label.textContent=state.preset.shape==='hero'?'กรอบ Hero หน้าบ้าน':state.orientation==='landscape'?'แนวนอน':state.orientation==='square'?'สี่เหลี่ยม':'แนวตั้ง';
+}
+function updateCropControl(name,value){if(!cropImageState)return;cropImageState[name]=Number(value);drawCropPreview();}
+function cropDragStart(event){if(!cropImageState)return;const canvas=event.currentTarget;canvas.setPointerCapture?.(event.pointerId);cropImageState.drag={x:event.clientX,y:event.clientY,panX:cropImageState.panX,panY:cropImageState.panY};canvas.classList.add('is-dragging');}
+function cropDragMove(event){const state=cropImageState,drag=state?.drag,canvas=event.currentTarget;if(!state||!drag)return;const size=cropCanvasSize(),base=Math.max(size.width/state.image.naturalWidth,size.height/state.image.naturalHeight),scale=base*state.zoom,overflowX=Math.max(0,(state.image.naturalWidth*scale-size.width)/2),overflowY=Math.max(0,(state.image.naturalHeight*scale-size.height)/2),factor=size.width/Math.max(canvas.getBoundingClientRect().width,1),clamp=value=>Math.max(-100,Math.min(100,value));state.panX=overflowX?clamp(drag.panX+((event.clientX-drag.x)*factor/overflowX)*100):0;state.panY=overflowY?clamp(drag.panY+((event.clientY-drag.y)*factor/overflowY)*100):0;document.querySelector('#cropPanX').value=state.panX;document.querySelector('#cropPanY').value=state.panY;drawCropPreview();}
+function cropDragEnd(event){if(!cropImageState)return;cropImageState.drag=null;event.currentTarget.classList.remove('is-dragging');event.currentTarget.releasePointerCapture?.(event.pointerId);}
+function changeCropOrientation(value){if(!cropImageState)return;cropImageState.orientation=value==='landscape'?'landscape':'portrait';cropImageState.zoom=1;cropImageState.panX=0;cropImageState.panY=0;document.querySelector('#cropZoom').value='1';document.querySelector('#cropPanX').value='0';document.querySelector('#cropPanY').value='0';drawCropPreview();}
+function closeCropImage(){const state=cropImageState;document.querySelector('#cropImageModal')?.remove();if(state?.input){state.input.value='';const submit=state.input.closest('form')?.querySelector('[type="submit"]');if(submit)submit.disabled=false;}cropImageState=null;}
+function applyCroppedImage(){
+  const state=cropImageState,previewCanvas=document.querySelector('#cropImageCanvas');if(!state||!previewCanvas)return;
+  const ratio=cropRatio(),output=document.createElement('canvas');output.width=state.orientation==='landscape'?1200:(state.orientation==='square'?1000:900);output.height=Math.round(output.width/ratio);output.getContext('2d').drawImage(previewCanvas,0,0,output.width,output.height);
+  const data=output.toDataURL('image/jpeg',.88),hidden=document.querySelector(`#modal [name="${state.field}"]`),preview=document.querySelector(`#uploadPreview_${state.field}`);if(hidden)hidden.value=data;if(preview){preview.classList.add('has-image');preview.innerHTML=`<img src="${data}" alt="preview">`;}
+  const orientationSelect=document.querySelector('#modal [name="imageOrientation"]');if(state.preset.canChoose&&orientationSelect)orientationSelect.value=state.orientation;
+  const submit=state.input.closest('form')?.querySelector('[type="submit"]');if(submit)submit.disabled=false;document.querySelector('#cropImageModal')?.remove();cropImageState=null;toast('ปรับรูปเรียบร้อยแล้ว กดบันทึกเพื่อยืนยัน');
+}
+function openCropImage(input,field,image,preset){
+  cropImageState={input,field,image,preset,orientation:preset.orientation,zoom:1,panX:0,panY:0};const submit=input.closest('form')?.querySelector('[type="submit"]');if(submit)submit.disabled=true;
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop crop-image-backdrop" id="cropImageModal"><div class="modal crop-image-modal"><div class="modal-head"><div><small>ADJUST IMAGE</small><h2>Crop Image / Adjust Image</h2><p>ลากรูปด้วยเมาส์หรือนิ้วเพื่อจัดตำแหน่งให้พอดีกับกรอบหน้าบ้าน</p></div><button class="close" onclick="closeCropImage()">×</button></div>${preset.canChoose?`<div class="crop-orientation"><b>เลือกรูปแบบรูปก่อนปรับ</b><div><button type="button" class="${preset.orientation==='portrait'?'active':''}" onclick="this.parentElement.querySelectorAll('button').forEach(button=>button.classList.remove('active'));this.classList.add('active');changeCropOrientation('portrait')">▯ แนวตั้ง</button><button type="button" class="${preset.orientation==='landscape'?'active':''}" onclick="this.parentElement.querySelectorAll('button').forEach(button=>button.classList.remove('active'));this.classList.add('active');changeCropOrientation('landscape')">▭ แนวนอน</button></div></div>`:''}<div class="crop-stage"><canvas id="cropImageCanvas" onpointerdown="cropDragStart(event)" onpointermove="cropDragMove(event)" onpointerup="cropDragEnd(event)" onpointercancel="cropDragEnd(event)"></canvas><span id="cropRatioLabel"></span></div><div class="crop-controls"><label><span>ซูมเข้า–ออก</span><input id="cropZoom" type="range" min="1" max="3" value="1" step="0.01" oninput="updateCropControl('zoom',this.value)"></label><label><span>เลื่อนซ้าย–ขวา</span><input id="cropPanX" type="range" min="-100" max="100" value="0" oninput="updateCropControl('panX',this.value)"></label><label><span>เลื่อนขึ้น–ลง</span><input id="cropPanY" type="range" min="-100" max="100" value="0" oninput="updateCropControl('panY',this.value)"></label></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeCropImage()">ยกเลิก</button><button type="button" class="btn" onclick="applyCroppedImage()">ใช้รูปที่ปรับแล้ว</button></div></div></div>`);drawCropPreview();
+}
+handleImageUpload=function(input,field){const file=input.files?.[0];if(!file)return;if(file.size>8*1024*1024){toast('กรุณาเลือกรูปขนาดไม่เกิน 8 MB');input.value='';return;}const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>openCropImage(input,field,image,imageCropPreset(field));image.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};image.src=reader.result;};reader.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};reader.readAsDataURL(file);};
+
+const openHomeSettingsWithOverlay=openHomeSettings;
+openHomeSettings=function(){openHomeSettingsWithOverlay();const grid=document.querySelector('#modal .form-grid'),settings=db.siteSettings;if(!grid)return;grid.querySelector('[name="heroFit"]')?.closest('.field')?.remove();grid.querySelector('[name="heroPosition"]')?.closest('.field')?.remove();grid.insertAdjacentHTML('beforeend',`<div class="field full hero-overlay-settings"><label>ข้อความบนรูปหน้าหลัก</label><input name="heroOverlayText" value="${escapePageText(settings.heroOverlayText??'STAY CLOSE. STAY INSPIRED.')}" placeholder="STAY CLOSE. STAY INSPIRED."><label class="hero-overlay-toggle"><input type="checkbox" name="heroOverlayVisible" ${settings.heroOverlayVisible!==false?'checked':''}><span>แสดงข้อความบนรูปหน้าบ้าน</span></label></div>`);};
+const saveHomeSettingsWithOverlay=saveHomeSettings;
+saveHomeSettings=function(event){const visible=event.currentTarget.querySelector('[name="heroOverlayVisible"]')?.checked!==false,text=event.currentTarget.querySelector('[name="heroOverlayText"]')?.value?.trim()||'';saveHomeSettingsWithOverlay(event);db.siteSettings.heroFit='cover';db.siteSettings.heroPosition='center';db.siteSettings.heroOverlayText=text;db.siteSettings.heroOverlayVisible=visible;save();};
+function applyHeroOverlaySettings(){const settings=db.siteSettings,hero=document.querySelector('.hero-art');if(hero){hero.dataset.overlayText=settings.heroOverlayText??'STAY CLOSE. STAY INSPIRED.';hero.classList.toggle('hide-overlay-text',settings.heroOverlayVisible===false);if(settings.heroImage){hero.style.backgroundSize='cover';hero.style.backgroundPosition='center';}}const preview=document.querySelector('.hero-setting-preview');if(preview){preview.dataset.overlayText=settings.heroOverlayText??'STAY CLOSE. STAY INSPIRED.';preview.classList.toggle('hide-overlay-text',settings.heroOverlayVisible===false);const image=preview.querySelector('img');if(image){image.style.objectFit='cover';image.style.objectPosition='center';}}const settingsButton=document.querySelector('[data-home-action="hero-settings"]');if(settingsButton)settingsButton.textContent='ตั้งค่ารูปและข้อความบนรูป';}
+const renderHomeWithEditableOverlay=home;
+home=function(){renderHomeWithEditableOverlay();applyHeroOverlaySettings();};
+const renderPageContentWithAccurateHeroPreview=pageContentAdmin;
+pageContentAdmin=function(){renderPageContentWithAccurateHeroPreview();applyHeroOverlaySettings();};
+
+function homeSectionDragStart(event,index){
+  event.dataTransfer.setData('text/plain',String(index));
+  event.dataTransfer.effectAllowed='move';
+}
+function homeSectionDrop(event,index){
+  event.preventDefault();
+  const from=Number(event.dataTransfer.getData('text/plain'));
+  const list=db.siteSettings.homeSections;
+  if(Number.isNaN(from)||from===index||from<0||index<0||from>=list.length||index>=list.length)return;
+  const [item]=list.splice(from,1);
+  list.splice(index,0,item);
+  save(); pageContentAdmin(); toast('บันทึกลำดับหน้าแรกแล้ว');
+}
+function homeSectionLabel(id){
+  return ({hero:'Hero / Main visual',artists:'Artist cards',schedule:'Schedule',timeline:'Timeline',presenters:'Presenters'}[id]||id);
+}
+function renderHomepageLiveEditor(){
+  ensureHomePageSettings(); ensureLocalizationSettings();
+  const sections=db.siteSettings.homeSections;
+  const hero=sections.find(section=>section.id==='hero')||{};
+  const cardIds=['couplePath','soloPath','scheduleDuo','scheduleAuau','scheduleSave'];
+  return `<section class="panel homepage-live-editor"><div class="panel-head"><div><small>HOMEPAGE PREVIEW & CONTENT</small><h2>แก้ไขหน้าแรกจากตัวอย่างหน้าบ้าน</h2><p class="master-note">รวมรูปหลัก ข้อความหัวหน้าแรก และข้อความในการ์ดไว้ในหน้าเดียว กดปุ่มแก้ไขตรงส่วนที่ต้องการได้เลย</p></div><div class="home-preview-actions"><button class="btn outline" onclick="openPageTextEditor('home','en')">แก้ไขหัวข้อหลัก</button><button class="btn" onclick="openHomeSettings()">ตั้งค่ารูปหลัก</button></div></div><div class="homepage-live-preview"><article class="live-hero-preview ${hero.visible===false?'is-hidden':''}"><div><small>${escapePageText(hero.eyebrow||'AUAUSAVE FANBASE')}</small><h3>${escapePageText(hero.title||'OUR HOUSE. OUR STORY.').replace(/\n/g,'<br>')}</h3><p>${escapePageText(hero.description||'')}</p></div><label class="timeline-visibility-switch"><input type="checkbox" ${hero.visible===false?'':'checked'} onchange="toggleHomeSection('hero')"><span>${hero.visible===false?'ซ่อนอยู่':'แสดงอยู่'}</span></label></article><div class="live-card-preview-grid">${cardIds.map(id=>{const card=db.siteSettings.homeCards?.[id]||{};return `<article class="live-card-preview"><small>${escapePageText(card.eyebrow||'')}</small><h3>${escapePageText(card.title||'')}</h3><p>${escapePageText(card.description||'')}</p><button class="btn outline" onclick="openHomeCardEditor('${id}')">แก้ไขคำ</button></article>`;}).join('')}</div></div></section>`;
+}
+function renderHomepageOrderEditor(){
+  ensureHomePageSettings();
+  const sections=db.siteSettings.homeSections;
+  return `<section class="panel homepage-order-editor"><div class="panel-head"><div><small>HOMEPAGE ORDER</small><h2>จัดลำดับหน้าแรก</h2><p class="master-note">ลากกล่องเพื่อเรียงลำดับการแสดงผลบนหน้าบ้าน หรือเปิด/ปิด section ได้จากตรงนี้</p></div></div><div class="section-builder-list draggable-home-sections">${sections.map((s,i)=>`<article draggable="true" ondragstart="homeSectionDragStart(event,${i})" ondragover="event.preventDefault()" ondrop="homeSectionDrop(event,${i})" class="builder-item ${s.visible===false?'is-hidden':''}"><div class="builder-order"><b>↕</b><span>${String(i+1).padStart(2,'0')}</span></div><div class="builder-content"><small>${escapePageText(homeSectionLabel(s.id))}</small><h3>${escapePageText(String(s.title||'').replace(/\n/g,' / '))}</h3><p>${escapePageText(s.description||'ไม่มีคำอธิบาย')}</p></div><div class="builder-actions"><button class="visibility-btn" onclick="toggleHomeSection('${s.id}')">${s.visible===false?'○ ซ่อนอยู่':'● แสดงอยู่'}</button><button class="btn outline" onclick="editHomeSection('${s.id}')">แก้ไขข้อความ</button></div></article>`).join('')}</div></section>`;
+}
+const pageContentAdminBeforeHomepageRefresh=pageContentAdmin;
+pageContentAdmin=function(){
+  const requestedHomeBuilderTab=homeBuilderTab;
+  if(requestedHomeBuilderTab==='content')homeBuilderTab='preview';
+  pageContentAdminBeforeHomepageRefresh();
+  if(!adminAuthenticated||adminTab!=='pagecontent')return;
+  homeBuilderTab=requestedHomeBuilderTab==='content'?'content':requestedHomeBuilderTab==='order'?'order':'order';
+  const oldTabs=document.querySelector('.home-builder-tabs');
+  oldTabs?.remove();
+  document.querySelector('.admin-top')?.insertAdjacentHTML('afterend',`<nav class="home-builder-tabs" aria-label="เมนูจัดหน้าแรก"><button class="${homeBuilderTab==='order'?'active':''}" onclick="homeBuilderTab='order';pageContentAdmin()">จัดลำดับ</button><button class="${homeBuilderTab==='content'?'active':''}" onclick="homeBuilderTab='content';pageContentAdmin()">แก้ไขหน้าแรก</button></nav>`);
+  document.querySelector('.home-setting-panel')?.remove();
+  document.querySelector('.home-card-settings')?.remove();
+  document.querySelector('.builder-note')?.remove();
+  document.querySelector('.section-builder-list')?.remove();
+  const main=document.querySelector('.admin-main');
+  main?.insertAdjacentHTML('beforeend',homeBuilderTab==='order'?renderHomepageOrderEditor():renderHomepageLiveEditor());
+  applyHeroOverlaySettings();
+  applyInterfaceLanguage();
+};
+function ensureHomepageArtistCards(){
+  ensureHomePageSettings();
+  db.siteSettings.homeArtistCards ||= {};
+  db.siteSettings.homeArtistOrder = Array.isArray(db.siteSettings.homeArtistOrder) ? db.siteSettings.homeArtistOrder : [];
+  const artistIds = db.artists.map(artist => artist.id);
+  db.siteSettings.homeArtistOrder = db.siteSettings.homeArtistOrder.filter(id => artistIds.includes(id));
+  db.artists.forEach(artist => {
+    if (!db.siteSettings.homeArtistOrder.includes(artist.id)) db.siteSettings.homeArtistOrder.push(artist.id);
+    db.siteSettings.homeArtistCards[artist.id] = {badge: artist.id === 'duo' ? 'COUPLE PATH' : 'SOLO PATH', visible: true, ...(db.siteSettings.homeArtistCards[artist.id] || {})};
+  });
+}
+function homepageOrderedArtists(){
+  ensureHomepageArtistCards();
+  const map = new Map(db.artists.map(artist => [artist.id, artist]));
+  return db.siteSettings.homeArtistOrder.map(id => map.get(id)).filter(Boolean);
+}
+const artistCardsBeforeHomepageOrder = artistCards;
+artistCards = function(){
+  const cards = homepageOrderedArtists().filter(artist => db.siteSettings.homeArtistCards[artist.id]?.visible !== false);
+  return `<div class="artists homepage-artist-grid">${cards.map(artist => {const settings=db.siteSettings.homeArtistCards[artist.id]||{};return `<article class="artist-card" onclick="location.hash='artist/${artist.id}'"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial)}</span>`}<small class="tag">${escapePageText(settings.badge||'')}</small></div><div class="artist-meta"><span class="arrow">↗</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role)}</p></div></article>`;}).join('')}</div>`;
+};
+function homeArtistDragStart(event,artistId){event.dataTransfer.setData('text/plain',artistId);event.dataTransfer.effectAllowed='move';}
+function homeArtistDrop(event,targetId){event.preventDefault();ensureHomepageArtistCards();const sourceId=event.dataTransfer.getData('text/plain'),list=db.siteSettings.homeArtistOrder,from=list.indexOf(sourceId),to=list.indexOf(targetId);if(from<0||to<0||from===to)return;const [item]=list.splice(from,1);list.splice(to,0,item);save();pageContentAdmin();toast('บันทึกลำดับการ์ดศิลปินแล้ว');}
+function openHomeArtistBadgeEditor(artistId){
+  ensureHomepageArtistCards();
+  const artist=db.artists.find(item=>item.id===artistId),settings=db.siteSettings.homeArtistCards[artistId]||{};
+  if(!artist)return;
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>แก้ไขการ์ด ${escapePageText(artist.name)}</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveHomeArtistBadge(event,'${artistId}')"><div class="form-grid"><div class="field full"><label>ข้อความบนหัวการ์ด</label><input name="badge" value="${escapePageText(settings.badge||'')}" placeholder="COUPLE PATH / SOLO PATH"></div><div class="field full"><label class="hero-overlay-toggle"><input type="checkbox" name="visible" ${settings.visible!==false?'checked':''}><span>แสดงการ์ดนี้บนหน้าแรก</span></label></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึกการ์ด</button></div></form></div></div>`);
+}
+function saveHomeArtistBadge(event,artistId){
+  event.preventDefault();
+  const form=new FormData(event.currentTarget);
+  db.siteSettings.homeArtistCards[artistId]={...(db.siteSettings.homeArtistCards[artistId]||{}),badge:(form.get('badge')||'').trim(),visible:form.get('visible')==='on'};
+  save();closeModal();pageContentAdmin();toast('บันทึกการ์ดหน้าแรกแล้ว');
+}
+function renderHomepageArtistOrderEditor(){
+  return `<section class="panel homepage-artist-order-editor"><div class="panel-head"><div><small>ARTIST CARD ORDER</small><h2>จัดวางการ์ดศิลปิน</h2><p class="master-note">ลากการ์ดเพื่อจัดตำแหน่งเหมือนหน้าบ้าน และเปิด/ปิดการ์ดได้</p></div></div><div class="home-artist-sort-grid">${homepageOrderedArtists().map((artist,index)=>{const settings=db.siteSettings.homeArtistCards[artist.id]||{};return `<article draggable="true" ondragstart="homeArtistDragStart(event,'${artist.id}')" ondragover="event.preventDefault()" ondrop="homeArtistDrop(event,'${artist.id}')" class="${settings.visible===false?'is-hidden':''}"><div class="home-artist-sort-order">↕ ${String(index+1).padStart(2,'0')}</div><div class="home-artist-sort-thumb" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="">`:`<span>${escapePageText(artist.initial)}</span>`}<small>${escapePageText(settings.badge||'')}</small></div><div><h3>${escapePageText(artist.name)}</h3><p>${settings.visible===false?'Hidden':'Visible'}</p></div><button class="btn outline" onclick="openHomeArtistBadgeEditor('${artist.id}')">แก้ไข</button></article>`;}).join('')}</div></section>`;
+}
+function renderHomepageArtistLiveEditor(){
+  return `<section class="panel homepage-artist-live-editor"><div class="panel-head"><div><small>ARTIST CARDS PREVIEW</small><h2>การ์ดศิลปินบนหน้าแรก</h2><p class="master-note">แก้ข้อความหัวการ์ด เช่น COUPLE PATH / SOLO PATH ได้จากแต่ละใบ</p></div></div><div class="live-card-preview-grid artist-live-card-grid">${homepageOrderedArtists().map(artist=>{const settings=db.siteSettings.homeArtistCards[artist.id]||{};return `<article class="live-card-preview ${settings.visible===false?'is-hidden':''}"><small>${escapePageText(settings.badge||'')}</small><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p><button class="btn outline" onclick="openHomeArtistBadgeEditor('${artist.id}')">แก้ไขการ์ด</button></article>`;}).join('')}</div></section>`;
+}
+const pageContentAdminBeforeArtistHomepageControls = pageContentAdmin;
+pageContentAdmin = function(){
+  pageContentAdminBeforeArtistHomepageControls();
+  if(!adminAuthenticated||adminTab!=='pagecontent')return;
+  const main=document.querySelector('.admin-main');
+  if(homeBuilderTab==='order') main?.insertAdjacentHTML('beforeend',renderHomepageArtistOrderEditor());
+  if(homeBuilderTab==='content') main?.insertAdjacentHTML('beforeend',renderHomepageArtistLiveEditor());
+};
 router();
 hydrateFromSupabase();
