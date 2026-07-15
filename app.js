@@ -1077,7 +1077,7 @@ const timelineDateLabel = item => {
 let itemMatchesArtist = (item, artistId) => {
   artistId = canonicalArtistId(artistId);
   const itemId = canonicalArtistId(item?.artistId);
-  return itemId === artistId || (itemId === 'AT01' && (artistId === 'AT02' || artistId === 'AT03'));
+  return itemId === artistId;
 };
 const fmtDate = (d) =>
   new Intl.DateTimeFormat(route === "admin" ? "th-TH" : "en-US", {
@@ -3151,6 +3151,7 @@ function bulkEventArtistIds(value){
   const compactArtistText = text => normalizeArtistText(text).replace(/\s+/g,'');
   const input = normalizeArtistText(raw);
   const inputCompact = compactArtistText(raw);
+  const isCoupleInput = inputCompact.includes('auausave') || inputCompact.includes('auausaveth') || /#?\s*auau\s*save/i.test(raw);
   const distance = (a,b) => {
     if(!a || !b) return Math.max(a.length,b.length);
     const costs = Array.from({length:b.length+1},(_,index)=>index);
@@ -3165,12 +3166,28 @@ function bulkEventArtistIds(value){
     }
     return costs[b.length];
   };
-  if(inputCompact.includes('auausave') || inputCompact.includes('auausaveth')) { add('AT01'); add('AT02'); add('AT03'); }
+  if(isCoupleInput) {
+    add('AT01');
+    return [...ids];
+  }
+  const directArtistAlias = {
+    auau: 'AT02',
+    aauu: 'AT02',
+    save: 'AT03',
+    mhiipraew: 'AT04',
+    mhipraew: 'AT04',
+    miiipraew: 'AT04',
+    mp: 'AT04',
+  }[inputCompact];
+  if (directArtistAlias) {
+    add(directArtistAlias);
+    return [...ids];
+  }
   db.artists.forEach(artist => {
     const keys = [artist.id, artist.name, artist.realName]
       .map(key=>({spaced:normalizeArtistText(key),compact:compactArtistText(key)}))
       .filter(key=>key.compact.length>=3);
-    const exactMatch = keys.some(key => inputCompact===key.compact || inputCompact.includes(key.compact) || key.compact.includes(inputCompact));
+    const exactMatch = keys.some(key => inputCompact===key.compact || inputCompact.includes(key.compact) || (inputCompact.length >= 6 && key.compact.includes(inputCompact)));
     const fuzzyMatch = keys.some(key => inputCompact.length>=5 && key.compact.length>=5 && distance(inputCompact,key.compact)<=2);
     const tokenMatch = keys.some(key => {
       const keyTokens = key.spaced.split(' ').filter(token=>token.length>=3);
@@ -3178,7 +3195,6 @@ function bulkEventArtistIds(value){
     });
     if(exactMatch || fuzzyMatch || tokenMatch) ids.add(canonicalArtistId(artist.id));
   });
-  if(!ids.size && /#?\s*auau\s*save/i.test(raw)) { add('AT01'); add('AT02'); add('AT03'); }
   return [...ids];
 }
 function bulkEventArtistId(value){return bulkEventArtistIds(value)[0]||'';}
@@ -3354,7 +3370,8 @@ function eventArtistIds(item){
     try { ids = JSON.parse(item.artistIds); } catch { ids = []; }
   }
   const base = ids.length ? ids : [item?.artistId].filter(Boolean);
-  return [...new Set(base.map(canonicalArtistId))].filter(id => db.artists.some(artist => sameArtistId(artist.id, id)));
+  const normalized = [...new Set(base.map(canonicalArtistId))].filter(id => db.artists.some(artist => sameArtistId(artist.id, id)));
+  return normalized.includes('AT01') ? ['AT01'] : normalized;
 }
 function eventArtistNames(item){
   const ids = eventArtistIds(item);
@@ -3367,7 +3384,7 @@ itemMatchesArtist = (item, artistId) => {
   artistId = canonicalArtistId(artistId);
   if (artistId === 'all') return true;
   const ids = eventArtistIds(item);
-  return ids.includes(artistId) || (ids.includes('AT01') && (artistId === 'AT02' || artistId === 'AT03'));
+  return ids.includes(artistId);
 };
 const rowCellsBeforeDynamicEventArtists = rowCells;
 rowCells = function(type,x){
