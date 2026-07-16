@@ -179,3 +179,10 @@
 .dash-type-row .type-card.other:before{background:#777}
 .dash-type-row .type-card.dexx:before{background:#2f7ed8}
 @media(max-width:760px){.dash-type-summary{grid-template-columns:1fr!important;padding:15px}.dash-type-row{grid-template-columns:repeat(var(--type-count),minmax(105px,1fr));min-width:calc(var(--type-count) * 105px)}}
+
+/* Keep each creator link visually separate in the public footer. */
+.creator-credit .creator-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.creator-credit .creator-links a{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 15px;border:1px solid #444;border-radius:12px;transition:.2s}
+.creator-credit .creator-links a b{color:var(--yellow)}
+.creator-credit .creator-links a:hover{color:var(--yellow);border-color:var(--yellow)}
+@media(max-width:700px){.creator-credit .creator-links{width:100%;grid-template-columns:1fr}}
