@@ -15,6 +15,25 @@ const ARTIST_ID_ALIASES = window.AUAUSAVE_DATA.ARTIST_ID_ALIASES;
 function canonicalArtistId(id) {
   return ARTIST_ID_ALIASES[String(id || '')] || String(id || '');
 }
+const ARTIST_PUBLIC_SLUGS = {
+  AT01: 'AUAUSAVE',
+  AT02: 'AUAU',
+  AT03: 'SAVE',
+  AT04: 'MhiiPraew',
+};
+function artistPublicSlug(id) {
+  id = canonicalArtistId(id);
+  return ARTIST_PUBLIC_SLUGS[id] || artistById(id)?.name?.replace(/[^a-z0-9_-]/gi, '') || id;
+}
+function artistIdFromPublicRoute(value) {
+  const key = decodeURIComponent(String(value || '')).replace(/^\/+|\/+$/g, '').toLowerCase();
+  const publicMatch = Object.entries(ARTIST_PUBLIC_SLUGS).find(([, slug]) => slug.toLowerCase() === key);
+  if (publicMatch) return publicMatch[0];
+  const directMatch = db.artists.find(artist =>
+    [artist.id, artist.name, canonicalArtistId(artist.id)].some(candidate => String(candidate || '').toLowerCase() === key)
+  );
+  return directMatch ? canonicalArtistId(directMatch.id) : canonicalArtistId(key);
+}
 function sameArtistId(a, b) {
   return canonicalArtistId(a) === canonicalArtistId(b);
 }
@@ -359,7 +378,7 @@ function footer() {
   return `<footer class="footer"><div class="container"><span class="eyebrow">The artist community</span><h2>KEEP THE<br>MEMORIES CLOSE.</h2><div class="creator-credit"><span>เว็บไซต์นี้สร้างโดย</span><div class="creator-links"><a href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH <b>↗</b></a><a href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC <b>↗</b></a><a href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC <b>↗</b></a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE HOUSE</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
 }
 function artistCards() {
-  return `<div class="artists">${sortedArtists().map((a) => `<article class="artist-card" onclick="location.hash='artist/${a.id}'"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<span>${a.initial}</span>`}<small class="tag">${sameArtistId(a.id,"duo") ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><span class="arrow">↗</span><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
+  return `<div class="artists">${sortedArtists().map((a) => `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(a.id)}'"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<span>${a.initial}</span>`}<small class="tag">${sameArtistId(a.id,"duo") ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><span class="arrow">↗</span><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
 }
 function scheduleRows(items = db.events) {
   return items.length
@@ -387,7 +406,7 @@ function videos(items = db.videos) {
 function home() {
   app.innerHTML =
     nav() +
-    `<main><section class="hero"><div class="container hero-grid"><div><span class="eyebrow">AuauSave fanbase · บ้านของอู่อู๋เซฟ</span><h1>OUR HOUSE.<br>OUR STORY.</h1><p>บ้านแฟนคลับของอู่อู๋เซฟ พื้นที่เก็บทุกโมเมนต์ของ <b>#AuauSave</b> พร้อมติดตามผลงานเดี่ยว ตารางงาน และความสำเร็จของอู่อู๋และเซฟ</p><a class="scroll" href="#artists"><span>↓</span> CHOOSE YOUR PATH</a></div><div class="hero-art"><div class="orbit"></div></div></div></section><section class="section path-section"><div class="container"><div class="section-head"><div><span class="eyebrow">Two paths · One house</span><h2>เลือกพาสที่อยากติดตาม</h2></div><p>ทุกเรื่องราวถูกจัดไว้อย่างชัดเจน ทั้งโมเมนต์คู่และเส้นทางเดี่ยวของทั้งสองคน</p></div><div class="path-grid"><a href="#artist/duo" class="path-card couple"><span>01 · COUPLE PATH</span><h3>อู่อู๋เซฟ</h3><p>#AuauSave · งานคู่ · รางวัลคู่ · โมเมนต์ของเรา</p><b>เข้าสู่พาสคู่ ↗</b></a><div class="path-card solo"><span>02 · SOLO PATH</span><h3>เส้นทางเดี่ยว</h3><p>แยกติดตามงานและรางวัลเดี่ยวของแต่ละคน</p><div class="solo-links"><a href="#artist/auau">AUAU ↗</a><a href="#artist/save">SAVE ↗</a></div></div></div></div></section><section class="section" id="featured"><div class="container"><div class="section-head"><div><span class="eyebrow">AuauSave house</span><h2>คู่และเดี่ยวในบ้านเดียวกัน</h2></div><a class="btn outline" href="#artists">ดูทั้งหมด ↗</a></div>${artistCards()}</div></section><section class="section"><div class="container schedule-wrap"><div class="section-head"><div><span class="eyebrow" style="color:var(--yellow)">Upcoming</span><h2>ตารางงานเร็วๆ นี้</h2></div><a class="btn light" href="#schedule">ดูตารางทั้งหมด</a></div>${scheduleRows(db.events.slice(0, 3))}</div></section><section class="section"><div class="container"><div class="section-head"><div><span class="eyebrow">Watch & remember</span><h2>AuauSave on YouTube</h2></div><a class="btn outline" href="#videos">ดูวิดีโอทั้งหมด ↗</a></div>${videos(db.videos.slice(0, 3))}</div></section></main>` +
+    `<main><section class="hero"><div class="container hero-grid"><div><span class="eyebrow">AuauSave fanbase · บ้านของอู่อู๋เซฟ</span><h1>OUR HOUSE.<br>OUR STORY.</h1><p>บ้านแฟนคลับของอู่อู๋เซฟ พื้นที่เก็บทุกโมเมนต์ของ <b>#AuauSave</b> พร้อมติดตามผลงานเดี่ยว ตารางงาน และความสำเร็จของอู่อู๋และเซฟ</p><a class="scroll" href="#artists"><span>↓</span> CHOOSE YOUR PATH</a></div><div class="hero-art"><div class="orbit"></div></div></div></section><section class="section path-section"><div class="container"><div class="section-head"><div><span class="eyebrow">Two paths · One house</span><h2>เลือกพาสที่อยากติดตาม</h2></div><p>ทุกเรื่องราวถูกจัดไว้อย่างชัดเจน ทั้งโมเมนต์คู่และเส้นทางเดี่ยวของทั้งสองคน</p></div><div class="path-grid"><a href="#/AUAUSAVE" class="path-card couple"><span>01 · COUPLE PATH</span><h3>อู่อู๋เซฟ</h3><p>#AuauSave · งานคู่ · รางวัลคู่ · โมเมนต์ของเรา</p><b>เข้าสู่พาสคู่ ↗</b></a><div class="path-card solo"><span>02 · SOLO PATH</span><h3>เส้นทางเดี่ยว</h3><p>แยกติดตามงานและรางวัลเดี่ยวของแต่ละคน</p><div class="solo-links"><a href="#/AUAU">AUAU ↗</a><a href="#/SAVE">SAVE ↗</a></div></div></div></div></section><section class="section" id="featured"><div class="container"><div class="section-head"><div><span class="eyebrow">AuauSave house</span><h2>คู่และเดี่ยวในบ้านเดียวกัน</h2></div><a class="btn outline" href="#artists">ดูทั้งหมด ↗</a></div>${artistCards()}</div></section><section class="section"><div class="container schedule-wrap"><div class="section-head"><div><span class="eyebrow" style="color:var(--yellow)">Upcoming</span><h2>ตารางงานเร็วๆ นี้</h2></div><a class="btn light" href="#schedule">ดูตารางทั้งหมด</a></div>${scheduleRows(db.events.slice(0, 3))}</div></section><section class="section"><div class="container"><div class="section-head"><div><span class="eyebrow">Watch & remember</span><h2>AuauSave on YouTube</h2></div><a class="btn outline" href="#videos">ดูวิดีโอทั้งหมด ↗</a></div>${videos(db.videos.slice(0, 3))}</div></section></main>` +
     footer();
 }
 function listing(type) {
@@ -2235,7 +2254,7 @@ function applyInterfaceLanguage() {
   });
 }
 function applyPageLocalization() {
-  const page = route.startsWith('artist/') ? null : route;
+  const page = route.startsWith('artist/') || route.startsWith('/') ? null : route;
   const content = page && pageText(page);
   if (content) {
     const hero = page === 'home' ? document.querySelector('.hero') : document.querySelector('.page-hero');
@@ -2259,7 +2278,8 @@ function router() {
     ["artists", "schedule", "presenters", "awards"].includes(route)
   )
     listing(route);
-  else if (route.startsWith("artist/")) profile(route.split("/")[1]);
+  else if (route.startsWith("artist/")) profile(artistIdFromPublicRoute(route.slice(7)));
+  else if (route.startsWith("/")) profile(artistIdFromPublicRoute(route));
   else if (route === "admin") requestAdminAccess();
   else home();
   applyPageLocalization();
@@ -2660,7 +2680,7 @@ function homepageOrderedArtists(){
 const artistCardsBeforeHomepageOrder = artistCards;
 artistCards = function(){
   const cards = homepageOrderedArtists().filter(artist => db.siteSettings.homeArtistCards[artist.id]?.visible !== false);
-  return `<div class="artists homepage-artist-grid">${cards.map(artist => {const settings=db.siteSettings.homeArtistCards[artist.id]||{};return `<article class="artist-card" onclick="location.hash='artist/${artist.id}'"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial)}</span>`}<small class="tag">${escapePageText(settings.badge||'')}</small></div><div class="artist-meta"><span class="arrow">↗</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role)}</p></div></article>`;}).join('')}</div>`;
+  return `<div class="artists homepage-artist-grid">${cards.map(artist => {const settings=db.siteSettings.homeArtistCards[artist.id]||{};return `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(artist.id)}'"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial)}</span>`}<small class="tag">${escapePageText(settings.badge||'')}</small></div><div class="artist-meta"><span class="arrow">↗</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role)}</p></div></article>`;}).join('')}</div>`;
 };
 function homeArtistDragStart(event,artistId){event.dataTransfer.setData('text/plain',artistId);event.dataTransfer.effectAllowed='move';}
 function homeArtistDrop(event,targetId){event.preventDefault();ensureHomepageArtistCards();const sourceId=event.dataTransfer.getData('text/plain'),list=db.siteSettings.homeArtistOrder,from=list.indexOf(sourceId),to=list.indexOf(targetId);if(from<0||to<0||from===to)return;const [item]=list.splice(from,1);list.splice(to,0,item);save();pageContentAdmin();toast('บันทึกลำดับการ์ดศิลปินแล้ว');}
