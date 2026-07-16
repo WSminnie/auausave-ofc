@@ -115,6 +115,7 @@ function ensureHomePageSettings() {
   db.siteSettings ||= { heroImage: "", heroFit: "cover", heroPosition: "center" };
   db.siteSettings.personalProfiles ||= {};
   db.siteSettings.presenterDates ||= {};
+  db.siteSettings.awardDates ||= {};
   ['AT02','AT03'].forEach(id => {
     db.siteSettings.personalProfiles[id] = {
       zodiac: '', chineseZodiac: '', bloodType: '', education: '', height: '', weight: '',
@@ -409,7 +410,7 @@ function listing(type) {
       .sort((a, b) => b.year - a.year)
       .map(
         (r) =>
-          `<article class="award">${r.image?`<img class="award-image" src="${r.image}" alt="${r.title}">`:''}<div class="year">${r.year}</div><span class="eyebrow">${artistName(r.artistId)}</span><h3>${r.title}</h3><p>${r.org}</p>${r.source ? `<a class="source-link" href="${r.source}" target="_blank">ดูข้อมูลต้นทาง ↗</a>` : ""}</article>`,
+          `<article class="award">${r.image?`<img class="award-image" src="${r.image}" alt="${r.title}">`:''}<div class="year">${awardDisplayDate(r)}</div><span class="eyebrow">${artistName(r.artistId)}</span><h3>${r.title}</h3><p>${r.org}</p>${r.source ? `<a class="source-link" href="${r.source}" target="_blank">ดูข้อมูลต้นทาง ↗</a>` : ""}</article>`,
       )
       .join("")}</div>`;
   }
@@ -437,7 +438,7 @@ function profile(id) {
     vid = db.videos.filter((v) => v.artistId === id);
   app.innerHTML =
     nav("artists") +
-    `<main><section class="section"><div class="container profile-head"><div class="profile-portrait portrait" style="background:${a.color}"><span>${a.initial}</span></div><div><span class="eyebrow">Artist profile</span><h1 style="font-size:clamp(55px,8vw,100px);line-height:1;margin:10px 0">${a.name}</h1><p style="font-size:18px;line-height:1.8;color:var(--muted)">${a.bio}</p><div class="facts"><div class="fact"><small>ชื่อจริง</small><strong>${a.realName}</strong></div><div class="fact"><small>วันเกิด</small><strong>${a.birth}</strong></div><div class="fact"><small>บทบาท</small><strong>${a.role}</strong></div><div class="fact"><small>ผลงานล่าสุด</small><strong>${vid[0]?.title || "—"}</strong></div></div></div></div></section><section class="section"><div class="container schedule-wrap"><div class="section-head"><div><span class="eyebrow" style="color:var(--yellow)">Upcoming</span><h2>ตารางงานของ ${a.name}</h2></div></div>${scheduleRows(ev)}</div></section><section class="section"><div class="container"><div class="section-head"><h2>รางวัล</h2></div><div class="award-grid">${aw.map((r) => `<article class="award">${r.image?`<img class="award-image" src="${r.image}" alt="${r.title}">`:''}<div class="year">${r.year}</div><h3>${r.title}</h3><p>${r.org}</p></article>`).join("") || '<div class="empty">ยังไม่มีข้อมูลรางวัล</div>'}</div></div></section>${vid.length ? `<section class="section"><div class="container"><div class="section-head"><h2>วิดีโอ</h2></div>${videos(vid)}</div></section>` : ""}</main>` +
+    `<main><section class="section"><div class="container profile-head"><div class="profile-portrait portrait" style="background:${a.color}"><span>${a.initial}</span></div><div><span class="eyebrow">Artist profile</span><h1 style="font-size:clamp(55px,8vw,100px);line-height:1;margin:10px 0">${a.name}</h1><p style="font-size:18px;line-height:1.8;color:var(--muted)">${a.bio}</p><div class="facts"><div class="fact"><small>ชื่อจริง</small><strong>${a.realName}</strong></div><div class="fact"><small>วันเกิด</small><strong>${a.birth}</strong></div><div class="fact"><small>บทบาท</small><strong>${a.role}</strong></div><div class="fact"><small>ผลงานล่าสุด</small><strong>${vid[0]?.title || "—"}</strong></div></div></div></div></section><section class="section"><div class="container schedule-wrap"><div class="section-head"><div><span class="eyebrow" style="color:var(--yellow)">Upcoming</span><h2>ตารางงานของ ${a.name}</h2></div></div>${scheduleRows(ev)}</div></section><section class="section"><div class="container"><div class="section-head"><h2>รางวัล</h2></div><div class="award-grid">${aw.map((r) => `<article class="award">${r.image?`<img class="award-image" src="${r.image}" alt="${r.title}">`:''}<div class="year">${awardDisplayDate(r)}</div><h3>${r.title}</h3><p>${r.org}</p></article>`).join("") || '<div class="empty">ยังไม่มีข้อมูลรางวัล</div>'}</div></div></section>${vid.length ? `<section class="section"><div class="container"><div class="section-head"><h2>วิดีโอ</h2></div>${videos(vid)}</div></section>` : ""}</main>` +
     footer();
 }
 let coupleArchiveEventType = 'all';
@@ -763,7 +764,7 @@ const configs = {
       ["realName", "Name TH"],
       ["nameEN", "Name EN"],
       ["role", "บทบาท"],
-      ["birth", "วันเกิด"],
+      ["birth", "วันเกิด", "date", false],
       ["initial", "อักษรย่อ"],
       ["color", "พื้นหลัง (CSS)"],
       ["bio", "ประวัติ", "textarea"],
@@ -790,9 +791,7 @@ const configs = {
       ["brand", "ชื่อแบรนด์"],
       ["artistId", "พรีเซนเตอร์", "artist"],
       ["role", "บทบาท/ตำแหน่ง"],
-      ["year", "ปี"],
-      ["day", "วัน", "number", false],
-      ["month", "เดือน", "number", false],
+      ["adminDate", "วันที่", "date"],
       ["color", "สีประจำแบรนด์", "text", false],
       ["url", "เว็บไซต์/แหล่งข้อมูล", "url", false],
     ],
@@ -800,11 +799,11 @@ const configs = {
   awards: {
     label: "รางวัล",
     icon: "◇",
-    cols: ["ชื่อรางวัล", "ศิลปิน", "ปี"],
+    cols: ["ชื่อรางวัล", "ศิลปิน", "วัน / เดือน / ปี"],
     fields: [
       ["title", "ชื่อรางวัล"],
       ["artistId", "ศิลปิน", "artist"],
-      ["year", "ปี"],
+      ["adminDate", "วันที่", "date"],
       ["org", "องค์กร/เวที"],
       ["source", "ลิงก์ข้อมูลต้นทาง", "url", false],
     ],
@@ -1304,6 +1303,12 @@ function presenterAdminDate(item) {
   const saved=db.siteSettings?.presenterDates?.[item.id]||{}, day=item.day||saved.day||'', month=item.month||saved.month||'', year=item.year||'';
   return [day,month,year].filter(Boolean).join('/') || '—';
 }
+function awardDisplayDate(item) {
+  const saved=db.siteSettings?.awardDates?.[item.id]||{}, day=item.day||saved.day||'', month=item.month||saved.month||'', year=item.year||'';
+  if (!day && !month) return year || '—';
+  const monthName=month ? ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][Number(month)-1] : '';
+  return [day,monthName,year].filter(Boolean).join(' ');
+}
 function rowCells(type, x) {
   if (type === "artists")
     return `<td><b>${x.name}</b></td><td>${x.realName || ''}</td><td>${x.nameEN || ''}</td><td>${x.role}</td>`;
@@ -1312,8 +1317,24 @@ function rowCells(type, x) {
   if (type === "presenters")
     return `<td><b>${x.brand}</b></td><td>${artistName(x.artistId)}</td><td>${presenterAdminDate(x)}</td>`;
   if (type === "awards")
-    return `<td><b>${x.title}</b></td><td>${artistName(x.artistId)}</td><td>${x.year}</td>`;
+    return `<td><b>${x.title}</b></td><td>${artistName(x.artistId)}</td><td>${awardDisplayDate(x)}</td>`;
   return `<td><b>${x.title}</b></td><td>${artistName(x.artistId)}</td><td>${x.views}</td>`;
+}
+function legacyBirthToDateInput(value) {
+  if (!value || /^\d{4}-\d{2}-\d{2}$/.test(value)) return value || '';
+  const months=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const match=String(value).trim().match(/^(\d{1,2})\s+([^\s]+)\s+(\d{4})$/);
+  if (!match) return '';
+  const month=months.indexOf(match[2])+1;
+  let year=Number(match[3]);
+  if (!month) return '';
+  if (year > 2400) year-=543;
+  return datePartsToInput(match[1],month,year);
+}
+function formatArtistBirth(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value||'')) return value || '—';
+  const [year,month,day]=value.split('-').map(Number);
+  return new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'long',year:'numeric'}).format(new Date(year,month-1,day));
 }
 function openForm(type, id) {
   const c = configs[type],
@@ -1322,12 +1343,21 @@ function openForm(type, id) {
     "beforeend",
     `<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>${id ? "แก้ไข" : "เพิ่ม"}${c.label}</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="submitForm(event,'${type}','${id || ""}')"><div class="form-grid">${c.fields
       .map(([key, label, kind, isRequired = true]) => {
-        const val = item[key] || "";
+        let val = item[key] || "";
+        if (type === 'artists' && key === 'birth') val=legacyBirthToDateInput(val);
         const required = isRequired === false ? "" : " required";
         if (kind === "artist")
           return `<div class="field"><label>${label}</label><select name="${key}"${required}><option value="">เลือกศิลปิน</option>${sortedArtists().map((a) => `<option value="${a.id}" ${sameArtistId(val,a.id) ? "selected" : ""}>${a.name}</option>`).join("")}</select></div>`;
         if (kind === "textarea")
           return `<div class="field full"><label>${label}</label><textarea name="${key}"${required}>${val}</textarea></div>`;
+        if (kind === "awardDay")
+          return `<div class="field"><label>${label}</label><select name="${key}"${required}><option value="">เลือกวัน</option>${Array.from({length:31},(_,i)=>i+1).map(day=>`<option value="${day}" ${String(val)===String(day)?"selected":""}>${day}</option>`).join("")}</select></div>`;
+        if (kind === "awardMonth")
+          return `<div class="field"><label>${label}</label><select name="${key}"${required}><option value="">เลือกเดือน</option>${["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"].map((month,index)=>`<option value="${index+1}" ${String(val)===String(index+1)?"selected":""}>${month}</option>`).join("")}</select></div>`;
+        if (kind === "awardYear") {
+          const currentYear = new Date().getFullYear();
+          return `<div class="field"><label>${label}</label><select name="${key}"${required}><option value="">เลือกปี</option>${Array.from({length:80},(_,i)=>currentYear+2-i).map(year=>`<option value="${year}" ${String(val)===String(year)?"selected":""}>${year}</option>`).join("")}</select></div>`;
+        }
         return `<div class="field"><label>${label}</label><input type="${kind || "text"}" name="${key}" value="${val}"${required}></div>`;
       })
       .join(
@@ -2318,9 +2348,8 @@ openForm = function (type,id) {
   if (type !== 'presenters') return;
   ensureHomePageSettings();
   const saved = db.siteSettings.presenterDates[id] || {};
-  const dayInput=document.querySelector('#modal [name="day"]'), monthInput=document.querySelector('#modal [name="month"]');
-  if (dayInput) { dayInput.value=dayInput.value||saved.day||''; dayInput.min='1'; dayInput.max='31'; dayInput.placeholder='1–31'; }
-  if (monthInput) { monthInput.value=monthInput.value||saved.month||''; monthInput.min='1'; monthInput.max='12'; monthInput.placeholder='1–12'; }
+  const item=id ? db.presenters.find(entry=>entry.id===id) : {}, input=document.querySelector('#modal [name="adminDate"]');
+  if (input) input.value=datePartsToInput(item.day||saved.day,item.month||saved.month,item.year);
 };
 
 const submitFormWithPresenterDate = submitForm;
@@ -2333,6 +2362,47 @@ submitForm = function (event,type,id) {
   if (!item) return;
   db.siteSettings.presenterDates[item.id] = {day:item.day||'',month:item.month||''};
   save();
+};
+
+const renderFormWithAwardDate = openForm;
+openForm = function (type,id) {
+  renderFormWithAwardDate(type,id);
+  if (type !== 'awards') return;
+  ensureHomePageSettings();
+  const saved=db.siteSettings.awardDates[id]||{}, item=id ? db.awards.find(entry=>entry.id===id) : {}, input=document.querySelector('#modal [name="adminDate"]');
+  if (input) input.value=datePartsToInput(item.day||saved.day,item.month||saved.month,item.year);
+};
+
+const submitFormWithAwardDate = submitForm;
+submitForm = function (event,type,id) {
+  const beforeIds=type==='awards' ? new Set(db.awards.map(item=>item.id)) : null;
+  submitFormWithAwardDate(event,type,id);
+  if (type !== 'awards') return;
+  ensureHomePageSettings();
+  const item=id ? db.awards.find(entry=>entry.id===id) : db.awards.find(entry=>!beforeIds.has(entry.id));
+  if (!item) return;
+  db.siteSettings.awardDates[item.id]={day:item.day||'',month:item.month||''};
+  save();
+};
+
+function datePartsToInput(day,month,year) {
+  if (!day || !month || !year) return '';
+  return `${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+
+const submitFormWithUnifiedDatePicker = submitForm;
+submitForm = function (event,type,id) {
+  if (type === 'presenters' || type === 'awards') {
+    const dateInput=event.target.querySelector('[name="adminDate"]');
+    if (dateInput?.value) {
+      const [year,month,day]=dateInput.value.split('-');
+      dateInput.removeAttribute('name');
+      [['year',year],['month',String(Number(month))],['day',String(Number(day))]].forEach(([name,value])=>{
+        const hidden=document.createElement('input'); hidden.type='hidden'; hidden.name=name; hidden.value=value; event.target.appendChild(hidden);
+      });
+    }
+  }
+  submitFormWithUnifiedDatePicker(event,type,id);
 };
 
 const renderNavWithoutYoutube = nav;
