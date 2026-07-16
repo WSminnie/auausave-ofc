@@ -116,6 +116,8 @@ function ensureHomePageSettings() {
   db.siteSettings.personalProfiles ||= {};
   db.siteSettings.presenterDates ||= {};
   db.siteSettings.awardDates ||= {};
+  db.siteSettings.awardImages ||= {};
+  (db.awards||[]).forEach(item=>{ if (!item.image && db.siteSettings.awardImages[item.id]) item.image=db.siteSettings.awardImages[item.id]; });
   ['AT02','AT03'].forEach(id => {
     db.siteSettings.personalProfiles[id] = {
       zodiac: '', chineseZodiac: '', bloodType: '', education: '', height: '', weight: '',
@@ -410,7 +412,7 @@ function listing(type) {
       .sort((a, b) => b.year - a.year)
       .map(
         (r) =>
-          `<article class="award">${r.image?`<img class="award-image" src="${r.image}" alt="${r.title}">`:''}<div class="year">${awardDisplayDate(r)}</div><span class="eyebrow">${artistName(r.artistId)}</span><h3>${r.title}</h3><p>${r.org}</p>${r.source ? `<a class="source-link" href="${r.source}" target="_blank">ดูข้อมูลต้นทาง ↗</a>` : ""}</article>`,
+          `<article class="award">${awardImage(r)?`<img class="award-image" src="${awardImage(r)}" alt="${r.title}">`:''}<span class="eyebrow">${artistName(r.artistId)}</span><h3>${r.title}</h3><p>${r.org}</p><time class="award-date">${awardDisplayDate(r)}</time>${r.source ? `<a class="source-link" href="${r.source}" target="_blank">ดูข้อมูลต้นทาง ↗</a>` : ""}</article>`,
       )
       .join("")}</div>`;
   }
@@ -441,6 +443,18 @@ function profile(id) {
     `<main><section class="section"><div class="container profile-head"><div class="profile-portrait portrait" style="background:${a.color}"><span>${a.initial}</span></div><div><span class="eyebrow">Artist profile</span><h1 style="font-size:clamp(55px,8vw,100px);line-height:1;margin:10px 0">${a.name}</h1><p style="font-size:18px;line-height:1.8;color:var(--muted)">${a.bio}</p><div class="facts"><div class="fact"><small>ชื่อจริง</small><strong>${a.realName}</strong></div><div class="fact"><small>วันเกิด</small><strong>${a.birth}</strong></div><div class="fact"><small>บทบาท</small><strong>${a.role}</strong></div><div class="fact"><small>ผลงานล่าสุด</small><strong>${vid[0]?.title || "—"}</strong></div></div></div></div></section><section class="section"><div class="container schedule-wrap"><div class="section-head"><div><span class="eyebrow" style="color:var(--yellow)">Upcoming</span><h2>ตารางงานของ ${a.name}</h2></div></div>${scheduleRows(ev)}</div></section><section class="section"><div class="container"><div class="section-head"><h2>รางวัล</h2></div><div class="award-grid">${aw.map((r) => `<article class="award">${r.image?`<img class="award-image" src="${r.image}" alt="${r.title}">`:''}<div class="year">${awardDisplayDate(r)}</div><h3>${r.title}</h3><p>${r.org}</p></article>`).join("") || '<div class="empty">ยังไม่มีข้อมูลรางวัล</div>'}</div></div></section>${vid.length ? `<section class="section"><div class="container"><div class="section-head"><h2>วิดีโอ</h2></div>${videos(vid)}</div></section>` : ""}</main>` +
     footer();
 }
+const renderProfileWithAwardDetails = profile;
+profile = function(id) {
+  renderProfileWithAwardDetails(id);
+  const awards=db.awards.filter(item=>itemMatchesArtist(item,id));
+  document.querySelectorAll('.award-grid .award').forEach((card,index)=>{
+    const item=awards[index], date=card.querySelector('.year');
+    if (!item || !date) return;
+    date.className='award-date';
+    date.textContent=awardDisplayDate(item);
+    card.querySelector('p')?.insertAdjacentElement('afterend',date);
+  });
+};
 let coupleArchiveEventType = 'all';
 let coupleArchiveArtist = 'all';
 function filterCoupleArchiveEvents(type = coupleArchiveEventType) {
@@ -491,7 +505,7 @@ function coupleArchivePage() {
   app.innerHTML = nav('artists') + `<main class="couple-archive"><section class="couple-profile"><div class="container couple-profile-grid"><div class="couple-profile-image" style="background:${artist.color}">${artist.image?`<img src="${artist.image}" alt="AUAUSAVE">`:`<span>AS</span>`}</div><div><span class="eyebrow">COUPLE ARCHIVE</span><h1>AUAUSAVE</h1><p>${artist.bio || 'The shared journey of Auau and Save, collected in one place.'}</p><a class="couple-hashtag" href="https://x.com/hashtag/AuauSave" target="_blank">#AuauSave ↗</a></div></div></section>
   <section class="section archive-projects"><div class="container"><div class="archive-section-head"><span>02</span><div><small>TOGETHER ON SCREEN</small><h2>Series & Projects</h2></div><p>Series, shared projects, promotions and fan projects.</p></div><div class="archive-project-grid">${projects.map(item=>`<article><small>${item.seriesId ? (db.masterData.series.find(series=>series.id===item.seriesId)?.label || 'SERIES') : 'SERIES'}</small><h3>${item.title}</h3><p>${item.place||'AUAUSAVE project'}</p>${item.source?`<a href="${item.source}" target="_blank">View source ↗</a>`:''}</article>`).join('') || '<div class="empty">No series or project information yet.</div>'}</div></div></section>
   <section class="section"><div class="container"><div class="archive-section-head"><span>02</span><div><small>MEET AUAUSAVE</small><h2>Events</h2></div><p>Search couple schedules by date range and event type.</p></div><div class="couple-event-search"><label>From<input id="coupleEventFrom" type="date" value="${monthStart}" onchange="filterCoupleArchiveEvents()"></label><label>To<input id="coupleEventTo" type="date" value="${monthEnd}" onchange="filterCoupleArchiveEvents()"></label><span class="couple-event-result"></span></div><div class="couple-event-filters"><button class="active" data-type="all" onclick="filterCoupleArchiveEvents('all')">All</button>${filterTypes.map(type=>`<button data-type="${type.id}" onclick="filterCoupleArchiveEvents('${type.id}')">${type.label}</button>`).join('')}</div><div class="couple-event-list">${events.map(item=>`<article class="couple-event-card" data-date="${item.date}" data-types="${eventTypeValues(item.type).map(type=>type.toLowerCase()).join('|')}"><time><b>${day(item.date)}</b><span>${month(item.date)} ${item.date.slice(0,4)}</span></time><div><small>${eventTypeValues(item.type).join(' · ')}</small><h3>${item.title}</h3><p>${item.place||'TBA'}</p></div>${item.source?`<a href="${item.source}" target="_blank">↗</a>`:''}</article>`).join('') || '<div class="empty">No couple events yet.</div>'}</div></div></section>
-  <section class="section archive-awards"><div class="container"><div class="archive-section-head"><span>04</span><div><small>SHARED ACHIEVEMENTS</small><h2>Awards</h2></div><p>Awards and recognitions received together.</p></div><div class="archive-award-table"><div class="archive-award-row head"><span>Year</span><span>Award</span><span>Organization / Category</span><span>Result</span></div>${awards.map(item=>`<div class="archive-award-row"><strong>${item.year}</strong><span>${item.title}</span><span>${item.org}</span><span>Recipient</span></div>`).join('') || '<div class="empty">No couple awards yet.</div>'}</div></div></section>
+  <section class="section archive-awards"><div class="container"><div class="archive-section-head"><span>04</span><div><small>SHARED ACHIEVEMENTS</small><h2>Awards</h2></div><p>Awards and recognitions received together.</p></div><div class="archive-award-table"><div class="archive-award-row head"><span>Year</span><span>Award</span><span>Organization / Category</span><span>Result</span></div>${awards.map(item=>`<div class="archive-award-row"><strong>${item.year}</strong><span>${awardImage(item)?`<img class="award-image" src="${awardImage(item)}" alt="${item.title}">`:''}${item.title}</span><span>${item.org}<time class="award-date">${awardDisplayDate(item)}</time></span><span>Recipient</span></div>`).join('') || '<div class="empty">No couple awards yet.</div>'}</div></div></section>
   <section class="section"><div class="container"><div class="archive-section-head"><span>04</span><div><small>PHOTO · VIDEO · SOURCE</small><h2>Media Gallery</h2></div><p>Event photos, short clips and original post links.</p></div><div class="couple-media-grid">${media.map(item=>`<article>${item.kind==='video'?`<video src="${item.src}" controls playsinline></video>`:item.kind==='image'?`<img src="${item.src}" alt="${item.title}">`:'<div class="media-link-art">↗</div>'}<div><h3>${item.title}</h3>${item.url?`<a href="${item.url}" target="_blank">View original post ↗</a>`:''}</div></article>`).join('') || '<div class="empty">No media has been added yet.</div>'}</div></div></section></main>` + footer();
   document.querySelectorAll('.couple-event-card').forEach((card,index) => card.dataset.artist = canonicalArtistId(events[index]?.artistId || 'AT01'));
   document.querySelector('.couple-event-filters:not(.couple-artist-filters)')?.remove();
@@ -1306,9 +1320,11 @@ function presenterAdminDate(item) {
 function awardDisplayDate(item) {
   const saved=db.siteSettings?.awardDates?.[item.id]||{}, day=item.day||saved.day||'', month=item.month||saved.month||'', year=item.year||'';
   if (!day && !month) return year || '—';
-  const monthName=month ? ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][Number(month)-1] : '';
+  if (day && month && year) return new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'long',year:'numeric'}).format(new Date(Number(year),Number(month)-1,Number(day)));
+  const monthName=month ? new Intl.DateTimeFormat('en-US',{month:'long'}).format(new Date(2000,Number(month)-1,1)) : '';
   return [day,monthName,year].filter(Boolean).join(' ');
 }
+function awardImage(item) { return item.image || db.siteSettings?.awardImages?.[item.id] || ''; }
 function rowCells(type, x) {
   if (type === "artists")
     return `<td><b>${x.name}</b></td><td>${x.realName || ''}</td><td>${x.nameEN || ''}</td><td>${x.role}</td>`;
@@ -2382,6 +2398,8 @@ submitForm = function (event,type,id) {
   const item=id ? db.awards.find(entry=>entry.id===id) : db.awards.find(entry=>!beforeIds.has(entry.id));
   if (!item) return;
   db.siteSettings.awardDates[item.id]={day:item.day||'',month:item.month||''};
+  if (item.image) db.siteSettings.awardImages[item.id]=item.image;
+  else delete db.siteSettings.awardImages[item.id];
   save();
 };
 

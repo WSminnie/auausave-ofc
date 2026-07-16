@@ -186,3 +186,4 @@
 .creator-credit .creator-links a b{color:var(--yellow)}
 .creator-credit .creator-links a:hover{color:var(--yellow);border-color:var(--yellow)}
 @media(max-width:700px){.creator-credit .creator-links{width:100%;grid-template-columns:1fr}}
+.award-date{display:block;margin-top:7px;color:var(--muted);font-size:11px;line-height:1.4;letter-spacing:.02em}.award .source-link{display:inline-block;margin-top:13px}
