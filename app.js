@@ -2851,6 +2851,340 @@ const pageContentAdminBeforeFrontDisplaySettings=pageContentAdmin;
 pageContentAdmin=function(){pageContentAdminBeforeFrontDisplaySettings();if(!adminAuthenticated||adminTab!=='pagecontent')return;const main=document.querySelector('.admin-main');if(homeBuilderTab==='order')main?.insertAdjacentHTML('beforeend',renderHomepageScheduleOrderEditor());if(homeBuilderTab==='content')main?.insertAdjacentHTML('beforeend',renderHomepageFrontScopeEditor());};
 const homeBeforeFrontDisplaySettings=home;
 home=function(){homeBeforeFrontDisplaySettings();ensureHomepageFrontDisplaySettings();const main=document.querySelector('main'),footerEl=document.querySelector('footer');document.querySelector('.presenter-home')?.remove();document.querySelector('.home-timeline')?.remove();const timelineVisible=db.siteSettings.homeSections?.find(section=>section.id==='timeline')?.visible!==false,presenterVisible=db.siteSettings.homeSections?.find(section=>section.id==='presenters')?.visible!==false;if(timelineVisible)(footerEl||main)?.insertAdjacentHTML(footerEl?'beforebegin':'beforeend',homeTimelineSection());if(presenterVisible)(footerEl||main)?.insertAdjacentHTML(footerEl?'beforebegin':'beforeend',homePresenterSection());};
+
+// Homepage media banner: supports any number of images and locally hosted videos.
+let homeBannerTimer = 0;
+function ensureHomeBanners(){
+  db.siteSettings ||= {};
+  if(!Array.isArray(db.siteSettings.homeBanners)) db.siteSettings.homeBanners=[];
+  return db.siteSettings.homeBanners;
+}
+function renderHomeBanner(){
+  clearTimeout(homeBannerTimer);
+  const main=document.querySelector('#app main'),heroSection=main?.querySelector('.hero'),items=ensureHomeBanners().filter(item=>item.src);
+  if(!main||!heroSection||!items.length)return;
+  heroSection.insertAdjacentHTML('beforebegin',`<section class="home-media-banner" aria-label="Homepage banner"><div class="home-banner-track">${items.map((item,index)=>item.type==='video'
+    ?`<video class="home-banner-slide ${index?'':'active'}" src="${escapePageText(item.src)}" muted playsinline preload="metadata"></video>`
+    :`<img class="home-banner-slide ${index?'':'active'}" src="${escapePageText(item.src)}" alt="Banner ${index+1}">`).join('')}</div>${items.length>1?`<button class="home-banner-arrow prev" aria-label="Previous banner">‹</button><button class="home-banner-arrow next" aria-label="Next banner">›</button><div class="home-banner-dots">${items.map((_,index)=>`<button class="${index?'':'active'}" aria-label="Banner ${index+1}"></button>`).join('')}</div>`:''}</section>`);
+  const banner=main.querySelector('.home-media-banner');
+  let current=0;
+  const slides=[...banner.querySelectorAll('.home-banner-slide')],dots=[...banner.querySelectorAll('.home-banner-dots button')];
+  const show=index=>{
+    clearTimeout(homeBannerTimer);
+    slides[current]?.pause?.();
+    current=(index+slides.length)%slides.length;
+    slides.forEach((slide,i)=>slide.classList.toggle('active',i===current));
+    dots.forEach((dot,i)=>dot.classList.toggle('active',i===current));
+    const item=items[current],slide=slides[current];
+    if(item.type==='video'){
+      slide.currentTime=0;
+      slide.play().catch(()=>{});
+      slide.onended=()=>show(current+1);
+    }else homeBannerTimer=setTimeout(()=>show(current+1),Math.max(2,Number(item.duration)||5)*1000);
+  };
+  banner.querySelector('.home-banner-arrow.prev')?.addEventListener('click',()=>show(current-1));
+  banner.querySelector('.home-banner-arrow.next')?.addEventListener('click',()=>show(current+1));
+  dots.forEach((dot,index)=>dot.addEventListener('click',()=>show(index)));
+  show(0);
+}
+function homeBannerAdminPanel(){
+  const items=ensureHomeBanners();
+  return `<section class="panel home-banner-admin"><div class="panel-head"><div><small>MEDIA BANNER · 1920 × 1080 PX</small><h2>แบนเนอร์รูปและวิดีโอ</h2><p class="master-note">ส่วนนี้แยกจาก Hero เดิม แนะนำไฟล์อัตราส่วน 16:9 ขนาด 1920 × 1080 พิกเซล</p></div><label class="btn">+ เพิ่มรูปหรือคลิป<input type="file" accept="image/*,video/mp4,video/webm" multiple hidden onchange="addHomeBannerFiles(this)"></label></div><div class="home-banner-admin-list">${items.length?items.map((item,index)=>`<article><div class="home-banner-admin-thumb">${item.type==='video'?`<video src="${escapePageText(item.src)}" muted></video>`:`<img src="${escapePageText(item.src)}" alt="">`}<span>${item.type==='video'?'VIDEO':'IMAGE'}</span></div><div><b>Banner ${String(index+1).padStart(2,'0')}</b>${item.type==='image'?`<label>แสดง <input type="number" min="2" max="60" value="${Number(item.duration)||5}" onchange="setHomeBannerDuration('${item.id}',this.value)"> วินาที</label>`:'<small>เปลี่ยนอัตโนมัติเมื่อคลิปจบ</small>'}</div><div class="actions"><button class="btn outline" onclick="moveHomeBanner('${item.id}',-1)" ${index===0?'disabled':''}>↑</button><button class="btn outline" onclick="moveHomeBanner('${item.id}',1)" ${index===items.length-1?'disabled':''}>↓</button><button class="btn danger" onclick="removeHomeBanner('${item.id}')">ลบ</button></div></article>`).join(''):'<div class="empty">ยังไม่มี Banner — เพิ่มรูปหรือคลิปขนาด 1920 × 1080 ได้จากปุ่มด้านบน</div>'}</div></section>`;
+}
+function addHomeBannerFiles(input){
+  const files=[...input.files];
+  if(files.some(file=>file.size>50*1024*1024)){toast('ไฟล์แต่ละรายการต้องมีขนาดไม่เกิน 50 MB');input.value='';return;}
+  Promise.all(files.map(file=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({id:`banner_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,type:file.type.startsWith('video/')?'video':'image',src:reader.result,duration:5});reader.onerror=reject;reader.readAsDataURL(file);}))).then(items=>{ensureHomeBanners().push(...items);save();pageContentAdmin();toast(`เพิ่ม Banner ${items.length} รายการแล้ว`);}).catch(()=>toast('ไม่สามารถอ่านไฟล์ที่เลือกได้'));
+}
+function setHomeBannerDuration(id,value){const item=ensureHomeBanners().find(entry=>entry.id===id);if(!item)return;item.duration=Math.min(60,Math.max(2,Number(value)||5));save();}
+function moveHomeBanner(id,direction){const items=ensureHomeBanners(),index=items.findIndex(item=>item.id===id),target=index+direction;if(index<0||target<0||target>=items.length)return;[items[index],items[target]]=[items[target],items[index]];save();pageContentAdmin();}
+function removeHomeBanner(id){if(!confirm('ลบ Banner รายการนี้?'))return;db.siteSettings.homeBanners=ensureHomeBanners().filter(item=>item.id!==id);save();pageContentAdmin();toast('ลบ Banner แล้ว');}
+const homeBeforeMediaBanner=home;
+home=function(){homeBeforeMediaBanner();renderHomeBanner();};
+const pageContentAdminBeforeMediaBanner=pageContentAdmin;
+pageContentAdmin=function(){pageContentAdminBeforeMediaBanner();if(!adminAuthenticated||adminTab!=='pagecontent'||homeBuilderTab!=='content')return;document.querySelector('.homepage-live-editor')?.insertAdjacentHTML('afterend',homeBannerAdminPanel());};
+const pageContentAdminBeforeWideBannerLabel=pageContentAdmin;
+pageContentAdmin=function(){pageContentAdminBeforeWideBannerLabel();const panel=document.querySelector('.home-banner-admin');if(!panel)return;const label=panel.querySelector('.panel-head small'),note=panel.querySelector('.master-note'),empty=panel.querySelector('.empty');if(label)label.textContent='MEDIA BANNER · 1920 × 800 PX';if(note)note.textContent='ส่วนนี้แยกจาก Hero เดิม แนะนำไฟล์อัตราส่วน 12:5 ขนาด 1920 × 800 พิกเซล';if(empty)empty.textContent='ยังไม่มี Banner — เพิ่มรูปหรือคลิปขนาด 1920 × 800 ได้จากปุ่มด้านบน';};
+
+/* Artist directory and per-artist page builder. */
+let artistManagerArtistId = '';
+let artistManagerTab = 'layout';
+let artistDirectoryQuery = '';
+let artistBuilderDevice = 'desktop';
+
+const ARTIST_BUILDER_CORE = [
+  {id:'hero',label:'Artist Hero',layout:'full',visible:true,locked:true},
+  {id:'personal',label:'Profile',layout:'full',visible:true,locked:true},
+  {id:'events',label:"This month's schedule",layout:'full',visible:true,locked:true},
+  {id:'timeline',label:'Timeline',layout:'full',visible:true,locked:true},
+  {id:'awards',label:'Awards',layout:'full',visible:true,locked:true},
+];
+
+function artistBuilderDefaults(artistId){
+  return ARTIST_BUILDER_CORE.map(section=>({...section,visible:section.id==='personal'?!sameArtistId(artistId,'duo'):section.visible}));
+}
+
+function ensureArtistPageBuilders(){
+  ensureHomePageSettings();
+  db.siteSettings.artistPageBuilders ||= {};
+  db.siteSettings.personalProfiles ||= {};
+  db.artists.forEach(artist=>{
+    db.siteSettings.personalProfiles[artist.id] ||= {};
+    const stored=Array.isArray(db.siteSettings.artistPageBuilders[artist.id])?db.siteSettings.artistPageBuilders[artist.id]:[];
+    const coreMap=new Map(artistBuilderDefaults(artist.id).map(item=>[item.id,item]));
+    const normalized=stored.map(item=>coreMap.has(item.id)?{...coreMap.get(item.id),...item}:{...item,custom:true});
+    const present=new Set(normalized.map(item=>item.id));
+    artistBuilderDefaults(artist.id).forEach(item=>{if(!present.has(item.id))normalized.push(item)});
+    db.siteSettings.artistPageBuilders[artist.id]=normalized;
+  });
+}
+
+function artistBuilderSections(artistId){
+  ensureArtistPageBuilders();
+  return db.siteSettings.artistPageBuilders[canonicalArtistId(artistId)]||[];
+}
+
+function artistAdminSidebar(){
+  const items=[['dashboard','⌂','Dashboard'],['pagecontent','▤','จัดการหน้าแรก'],['artists','◉','ข้อมูลส่วนตัว'],['events','▦','ตารางงาน'],['timeline','◷','Timeline'],['presenters','✦','Presenters'],['awards','◇','Awards'],['master','⚙','Master Data']];
+  return `<aside class="sidebar"><div class="brand"><i></i>AUAUSAVE HOUSE</div><div class="side-nav">${items.map(([id,icon,label])=>`<button data-icon="${icon}" class="${id==='artists'?'active':''}" onclick="adminTab='${id}';artistManagerArtistId='';admin()">${icon} &nbsp; ${label}</button>`).join('')}</div><a class="back" href="#artists">← ดูหน้าบ้าน</a></aside>`;
+}
+
+function artistManagerShell(content){
+  app.innerHTML=`<div class="admin artist-manager"><div class="admin-shell">${artistAdminSidebar()}<main class="admin-main">${content}</main></div></div>`;
+}
+
+function artistDirectoryFiltered(){
+  const query=artistDirectoryQuery.trim().toLowerCase();
+  return sortedArtists().filter(artist=>!query||[artist.name,artist.realName,artist.nameEN,artist.id].some(value=>String(value||'').toLowerCase().includes(query)));
+}
+
+function artistDirectoryCard(artist){
+  const count=artistBuilderSections(artist.id).filter(section=>section.visible!==false).length;
+  const published=artistBuilderSections(artist.id).some(section=>section.custom)||artist.image;
+  return `<article class="artist-directory-card"><div class="artist-directory-portrait" style="background:${escapePageText(artist.color||'#ddd')}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial||artist.name.slice(0,2))}</span>`}</div><div class="artist-directory-copy"><div><small>${escapePageText(artist.id)}</small><span class="artist-publish-state ${published?'is-live':''}">${published?'เผยแพร่แล้ว':'แบบร่าง'}</span></div><h2>${escapePageText(artist.name)}</h2><p>${escapePageText(artist.realName||artist.role||'')}</p><b>Sections ${count}</b></div><div class="artist-directory-actions"><button class="btn" onclick="openArtistManager('${artist.id}','layout')">จัดการโปรไฟล์</button><a class="btn outline" href="#/${artistPublicSlug(artist.id)}">ดูหน้าบ้าน ↗</a><button class="icon-btn" aria-label="แก้ไขข้อมูล" onclick="openForm('artists','${artist.id}')">✎</button></div></article>`;
+}
+
+function renderArtistDirectoryGrid(){
+  const grid=document.querySelector('[data-artist-directory-grid]');
+  if(!grid)return;
+  const artists=artistDirectoryFiltered();
+  grid.innerHTML=artists.map(artistDirectoryCard).join('')+`<button class="artist-directory-add" onclick="openForm('artists')"><span>＋</span><b>เพิ่มศิลปินใหม่</b><small>ระบบจะสร้างหน้าโปรไฟล์มาตรฐานให้โดยอัตโนมัติ</small></button>`;
+}
+
+function filterArtistDirectory(value){artistDirectoryQuery=value;renderArtistDirectoryGrid()}
+
+function artistDirectoryAdmin(){
+  ensureArtistPageBuilders();
+  artistManagerShell(`<div class="admin-top artist-directory-head"><div><small>ARTIST MANAGEMENT</small><h1>จัดการศิลปิน</h1><p>ศิลปินทั้งหมด ${db.artists.length} คน</p></div><button class="btn" onclick="openForm('artists')">+ เพิ่มศิลปิน</button></div><section class="artist-directory-tools"><label><span>⌕</span><input value="${escapePageText(artistDirectoryQuery)}" oninput="filterArtistDirectory(this.value)" placeholder="ค้นหาศิลปิน…"></label><select onchange="this.value==='name'&&db.artists.sort((a,b)=>a.name.localeCompare(b.name));renderArtistDirectoryGrid()"><option value="recent">เรียงตาม: ล่าสุด</option><option value="name">เรียงตาม: ชื่อ</option></select></section><section class="artist-directory-grid" data-artist-directory-grid></section>`);
+  renderArtistDirectoryGrid();
+}
+
+function openArtistManager(artistId,tab='layout'){
+  artistManagerArtistId=canonicalArtistId(artistId);
+  artistManagerTab=tab;
+  artistDetailAdmin();
+}
+
+function artistManagerTabs(artist){
+  return `<nav class="artist-manager-tabs"><button class="${artistManagerTab==='data'?'active':''}" onclick="openArtistManager('${artist.id}','data')">ข้อมูลศิลปิน</button><button class="${artistManagerTab==='personal'?'active':''}" onclick="openArtistManager('${artist.id}','personal')">โปรไฟล์ส่วนตัว</button><button class="${artistManagerTab==='layout'?'active':''}" onclick="openArtistManager('${artist.id}','layout')">จัดหน้าโปรไฟล์</button></nav>`;
+}
+
+function artistDetailAdmin(){
+  ensureArtistPageBuilders();
+  const artist=artistById(artistManagerArtistId);
+  if(!artist){artistManagerArtistId='';artistDirectoryAdmin();return}
+  let panel='';
+  if(artistManagerTab==='data') panel=renderArtistDataPanel(artist);
+  else if(artistManagerTab==='personal') panel=renderArtistPersonalPanel(artist);
+  else panel=renderArtistLayoutPanel(artist);
+  artistManagerShell(`<div class="admin-top artist-detail-head"><div><button class="artist-back-button" onclick="artistManagerArtistId='';artistDirectoryAdmin()">← ศิลปินทั้งหมด</button><small>จัดการศิลปิน / ${escapePageText(artist.name)}</small><h1>${escapePageText(artist.name)}</h1></div><a class="btn outline" href="#/${artistPublicSlug(artist.id)}">ดูหน้าบ้าน ↗</a></div>${artistManagerTabs(artist)}${panel}`);
+}
+
+function renderArtistDataPanel(artist){
+  return `<section class="panel artist-summary-panel"><div class="artist-summary-image" style="background:${escapePageText(artist.color||'#ddd')}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="">`:`<span>${escapePageText(artist.initial||'AR')}</span>`}</div><div><small>${escapePageText(artist.id)}</small><h2>${escapePageText(artist.name)}</h2><p>${escapePageText(artist.bio||'ยังไม่มีประวัติศิลปิน')}</p><dl><div><dt>Name TH</dt><dd>${escapePageText(artist.realName||'—')}</dd></div><div><dt>Name EN</dt><dd>${escapePageText(artist.nameEN||'—')}</dd></div><div><dt>Role</dt><dd>${escapePageText(artist.role||'—')}</dd></div><div><dt>Birth date</dt><dd>${escapePageText(formatArtistBirth(artist.birth)||'—')}</dd></div></dl><button class="btn" onclick="openForm('artists','${artist.id}')">แก้ไขข้อมูลศิลปิน</button></div></section>`;
+}
+
+function renderArtistPersonalPanel(artist){
+  const info=db.siteSettings.personalProfiles[artist.id]||{};
+  const filled=Object.values(info).filter(Boolean).length;
+  return `<section class="panel artist-personal-landing"><div><small>PERSONAL PROFILE</small><h2>ข้อมูลส่วนตัวของ ${escapePageText(artist.name)}</h2><p>ข้อมูลสัดส่วน สิ่งที่ชอบ การศึกษา และ Motto จะแสดงใน Section “${escapePageText(artist.name)} Profile”</p><span>${filled} ช่องที่มีข้อมูล</span></div><button class="btn" onclick="openPersonalProfileForm('${artist.id}')">แก้ไขโปรไฟล์ส่วนตัว</button></section>`;
+}
+
+function artistSectionLayoutLabel(section){
+  if(section.custom){
+    const inner=({stack:'แนวตั้ง',imageLeft:'รูปซ้าย',imageRight:'รูปขวา',overlay:'ซ้อนทับ'}[section.layout]||'แนวตั้ง');
+    const block=({'33':'1/3','50':'1/2','67':'2/3','100':'เต็มแถว'})[String(section.width||'100')]||'เต็มแถว';
+    return `${block} · ${inner}`;
+  }
+  return section.layout==='half'?'2 คอลัมน์':'เต็มความกว้าง';
+}
+
+function artistBuilderRow(artist,section,index,sections){
+  return `<article class="artist-builder-row ${section.visible===false?'is-hidden':''}" draggable="true" ondragstart="artistSectionDragStart(event,'${section.id}')" ondragover="event.preventDefault()" ondrop="artistSectionDrop(event,'${artist.id}','${section.id}')"><span class="artist-builder-handle" title="ลากเพื่อจัดตำแหน่ง">⠿</span><div><small>${String(index+1).padStart(2,'0')} ${section.custom?'CUSTOM':'SYSTEM'}</small><h3>${escapePageText(section.label||'Untitled section')}</h3>${section.custom?`<p>${[section.image?'รูปภาพ':'',section.body?'ข้อความ':'',section.url?'ปุ่มลิงก์':''].filter(Boolean).join(' · ')||'ยังไม่มีคอนเทนต์'}</p>`:''}</div><span class="artist-layout-badge">${artistSectionLayoutLabel(section)}</span><label class="artist-builder-switch"><input type="checkbox" ${section.visible!==false?'checked':''} onchange="toggleArtistBuilderSection('${artist.id}','${section.id}',this.checked)"><span>${section.visible!==false?'แสดง':'ซ่อน'}</span></label>${section.custom?`<button class="btn outline" onclick="openArtistCustomSectionForm('${artist.id}','${section.id}')">แก้ไข</button><button class="icon-btn" onclick="removeArtistCustomSection('${artist.id}','${section.id}')">⌫</button>`:'<span></span><span></span>'}</article>`;
+}
+
+function renderArtistLayoutPanel(artist){
+  const sections=artistBuilderSections(artist.id);
+  return `<div class="artist-layout-workspace"><section><div class="artist-layout-toolbar"><div><small>ARTIST PAGE LAYOUT</small><h2>จัดหน้าโปรไฟล์</h2><p>ลาก Section เพื่อเรียงลำดับ และเปิดหรือปิดการแสดงผลแยกสำหรับศิลปินคนนี้</p></div><button class="btn" onclick="openArtistCustomSectionForm('${artist.id}')">+ เพิ่ม Section</button></div><div class="artist-builder-list">${sections.map((section,index)=>artistBuilderRow(artist,section,index,sections)).join('')}</div><div class="artist-builder-save"><span>การแก้ไขจะบันทึกเป็นแบบร่างในเครื่องและซิงก์กับฐานข้อมูล</span><button class="btn" onclick="save();toast('บันทึกและเผยแพร่แล้ว')">บันทึกและเผยแพร่</button></div></section><aside class="artist-live-preview"><div class="artist-preview-head"><b>ตัวอย่างหน้าบ้าน</b><div><button class="${artistBuilderDevice==='desktop'?'active':''}" onclick="artistBuilderDevice='desktop';artistDetailAdmin()">▰</button><button class="${artistBuilderDevice==='tablet'?'active':''}" onclick="artistBuilderDevice='tablet';artistDetailAdmin()">▯</button><button class="${artistBuilderDevice==='mobile'?'active':''}" onclick="artistBuilderDevice='mobile';artistDetailAdmin()">▯</button></div></div><div class="artist-preview-frame ${artistBuilderDevice}">${renderArtistBuilderPreview(artist,sections)}</div></aside></div>`;
+}
+
+function artistCustomGridSpan(section){
+  return ({'33':4,'50':6,'67':8,'75':12,'100':12})[String(section.width||'100')]||12;
+}
+
+function renderArtistSystemPreview(artist,section){
+  if(section.id==='hero')return `<div class="preview-hero"><div style="background:${escapePageText(artist.color||'#ddd')}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="">`:''}</div><span><small>ARTIST PROFILE</small><b>${escapePageText(artist.name)}</b><i>${escapePageText(artist.role||'ARTIST')}</i></span></div>`;
+  if(section.id==='personal')return `<div class="preview-system"><b>${escapePageText(artist.name)} Profile</b><span><i></i><i></i></span></div>`;
+  if(section.id==='events')return `<div class="preview-schedule"><small>THIS MONTH</small><b>This month's schedule · ${escapePageText(artist.name)}</b><i></i><i></i></div>`;
+  if(section.id==='timeline')return `<div class="preview-dark"><small>OUR TIMELINE</small><b>Timeline</b><span><i></i><i></i><i></i></span></div>`;
+  if(section.id==='awards')return `<div class="preview-system"><b>Awards</b><i></i></div>`;
+  return '';
+}
+
+function renderArtistBuilderPreview(artist,sections){
+  let html='',customRow=[],used=0;
+  const flushCustomRow=()=>{
+    if(!customRow.length)return;
+    html+=`<div class="preview-custom-row">${customRow.map(section=>renderArtistCustomSection(section,true)).join('')}</div>`;
+    customRow=[];used=0;
+  };
+  sections.filter(section=>section.visible!==false).forEach(section=>{
+    if(!section.custom){flushCustomRow();html+=renderArtistSystemPreview(artist,section);return;}
+    const span=artistCustomGridSpan(section);
+    if(customRow.length&&used+span>12)flushCustomRow();
+    customRow.push(section);used+=span;
+  });
+  flushCustomRow();
+  return html;
+}
+
+function artistSectionDragStart(event,sectionId){event.dataTransfer.setData('text/plain',sectionId);event.dataTransfer.effectAllowed='move'}
+function artistSectionDrop(event,artistId,targetId){
+  event.preventDefault();
+  const sourceId=event.dataTransfer.getData('text/plain'),sections=artistBuilderSections(artistId),from=sections.findIndex(item=>item.id===sourceId),to=sections.findIndex(item=>item.id===targetId);
+  if(from<0||to<0||from===to)return;
+  const [section]=sections.splice(from,1);sections.splice(to,0,section);save();artistDetailAdmin();toast('บันทึกลำดับแล้ว');
+}
+
+function toggleArtistBuilderSection(artistId,sectionId,visible){
+  const section=artistBuilderSections(artistId).find(item=>item.id===sectionId);if(!section)return;section.visible=visible;save();artistDetailAdmin();
+}
+
+function openArtistCustomSectionForm(artistId,sectionId=''){
+  const section=artistBuilderSections(artistId).find(item=>item.id===sectionId)||{label:'Custom section',eyebrow:'',body:'',image:'',imageOrientation:'landscape',imageFit:'cover',imagePosition:'center',url:'',linkLabel:'เปิดลิงก์',layout:'imageLeft',width:'100'};
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal artist-custom-modal"><div class="modal-head"><div><small>CUSTOM SECTION</small><h2>${sectionId?'แก้ไข':'เพิ่ม'} Section</h2></div><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveArtistCustomSection(event,'${artistId}','${sectionId}')"><div class="form-grid"><div class="field"><label>ชื่อ Section</label><input name="label" value="${escapePageText(section.label||'')}" required></div><div class="field"><label>Eyebrow</label><input name="eyebrow" value="${escapePageText(section.eyebrow||'')}" placeholder="SUPPORT PROJECT"></div><div class="field full"><label>ข้อความ</label><textarea name="body" rows="4">${escapePageText(section.body||'')}</textarea></div><div class="field full"><label>รูปแบบรูป Section</label><div class="artist-layout-options section-image-orientation"><label><input type="radio" name="sectionImageOrientation" value="landscape" ${(section.imageOrientation||'landscape')==='landscape'?'checked':''} onchange="setSectionImageOrientation(this.value)"><span>▰ แนวนอน 16:9</span></label><label><input type="radio" name="sectionImageOrientation" value="portrait" ${section.imageOrientation==='portrait'?'checked':''} onchange="setSectionImageOrientation(this.value)"><span>▯ แนวตั้ง 3:4</span></label></div><small>เลือกแนวนอนก่อนอัปโหลด เพื่อให้หน้าครอปรูปใช้กรอบ 16:9</small></div><select name="imageOrientation" class="section-image-orientation-select" aria-hidden="true" tabindex="-1"><option value="landscape" ${(section.imageOrientation||'landscape')==='landscape'?'selected':''}>แนวนอน</option><option value="portrait" ${section.imageOrientation==='portrait'?'selected':''}>แนวตั้ง</option></select>${imageUploadTemplate('pageImage','รูปภาพ Section',section.image||'')}<div class="field"><label>การแสดงรูป</label><select name="imageFit"><option value="cover" ${(section.imageFit||'cover')==='cover'?'selected':''}>เต็มกรอบ — อาจมีการครอป</option><option value="contain" ${section.imageFit==='contain'?'selected':''}>เต็มภาพ — ไม่ครอป</option></select></div><div class="field"><label>ตำแหน่งรูป</label><select name="imagePosition"><option value="top" ${section.imagePosition==='top'?'selected':''}>ด้านบน</option><option value="center" ${(section.imagePosition||'center')==='center'?'selected':''}>กึ่งกลาง</option><option value="bottom" ${section.imagePosition==='bottom'?'selected':''}>ด้านล่าง</option></select></div><div class="field"><label>ข้อความบนปุ่ม</label><input name="linkLabel" value="${escapePageText(section.linkLabel||'')}" placeholder="เปิดลิงก์"></div><div class="field"><label>ลิงก์</label><input type="url" name="url" value="${escapePageText(section.url||'')}" placeholder="https://..."></div><div class="field full"><label>การจัดวางภายในกลุ่ม</label><div class="artist-layout-options">${[['imageLeft','รูปซ้าย'],['imageRight','รูปขวา'],['stack','แนวตั้ง'],['overlay','ซ้อนทับ']].map(([value,label])=>`<label><input type="radio" name="layout" value="${value}" ${section.layout===value?'checked':''}><span>${label}</span></label>`).join('')}</div><small>รูปภาพ ข้อความ และปุ่มลิงก์จะถูกจัดเป็นก้อนเดียวกัน</small></div><div class="field full"><label>ความกว้าง Section</label><div class="artist-layout-options width-options">${['50','75','100'].map(value=>`<label><input type="radio" name="width" value="${value}" ${String(section.width||'100')===value?'checked':''}><span>${value}%</span></label>`).join('')}</div></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึก Section</button></div></form></div></div>`);
+  setSectionImageOrientation(section.imageOrientation||'landscape');
+  const orientationLabels=document.querySelectorAll('#modal .section-image-orientation span');
+  if(orientationLabels[0])orientationLabels[0].textContent='แนวนอน 16:9';
+  if(orientationLabels[1])orientationLabels[1].textContent='แนวตั้ง 3:4';
+  const legacyLinkLabel=document.querySelector('#modal [name="linkLabel"]')?.closest('.field');
+  const legacyLinkUrl=document.querySelector('#modal [name="url"]')?.closest('.field');
+  if(legacyLinkLabel){legacyLinkLabel.insertAdjacentHTML('beforebegin',renderArtistSectionLinksEditor(section));legacyLinkLabel.remove();legacyLinkUrl?.remove();}
+  const widthOptions=document.querySelector('#modal .width-options'),selectedWidth=['33','50','67'].includes(String(section.width))?String(section.width):'100';
+  if(widthOptions){
+    widthOptions.previousElementSibling.textContent='การวางก้อนในแถว';
+    widthOptions.innerHTML=[['33','1/3'],['50','1/2 · จับคู่ 1:1'],['67','2/3'],['100','เต็มแถว']].map(([value,label])=>`<label><input type="radio" name="width" value="${value}" ${selectedWidth===value?'checked':''}><span>${label}</span></label>`).join('');
+    widthOptions.insertAdjacentHTML('afterend','<small>ลากเรียง Section เพื่อกำหนดซ้าย–ขวา: 1/2 + 1/2 = 1:1 และ 1/3 + 2/3 = 1:2</small>');
+  }
+}
+
+function setSectionImageOrientation(value){
+  const select=document.querySelector('#modal select[name="imageOrientation"]');
+  if(select)select.value=value==='portrait'?'portrait':'landscape';
+  const preview=document.querySelector('#uploadPreview_pageImage');
+  if(preview){preview.classList.toggle('is-landscape',value!=='portrait');preview.classList.toggle('is-portrait',value==='portrait');}
+}
+
+function artistSectionLinks(section){
+  if(Array.isArray(section?.links)&&section.links.length)return section.links.filter(link=>link?.url).map(link=>({label:String(link.label||'เปิดลิงก์'),url:String(link.url)}));
+  return section?.url?[{label:String(section.linkLabel||'เปิดลิงก์'),url:String(section.url)}]:[];
+}
+
+function artistSectionLinkRow(link={}){
+  return `<div class="artist-section-link-row"><input name="sectionLinkLabel" value="${escapePageText(link.label||'')}" placeholder="ข้อความบนปุ่ม"><input type="url" name="sectionLinkUrl" value="${escapePageText(link.url||'')}" placeholder="https://..."><button type="button" class="icon-btn" onclick="removeArtistSectionLinkRow(this)" aria-label="ลบลิงก์">⌫</button></div>`;
+}
+
+function renderArtistSectionLinksEditor(section){
+  const links=artistSectionLinks(section);
+  return `<div class="field full artist-section-links-field"><label>ปุ่มลิงก์</label><div class="artist-section-links">${(links.length?links:[{}]).map(artistSectionLinkRow).join('')}</div><button type="button" class="btn outline artist-add-link" onclick="addArtistSectionLinkRow(this)">+ เพิ่มลิงก์</button><small>เพิ่มได้หลายปุ่ม แต่ละปุ่มกำหนดข้อความและ URL แยกกัน</small></div>`;
+}
+
+function addArtistSectionLinkRow(button){
+  button.closest('.artist-section-links-field')?.querySelector('.artist-section-links')?.insertAdjacentHTML('beforeend',artistSectionLinkRow());
+}
+
+function removeArtistSectionLinkRow(button){
+  const list=button.closest('.artist-section-links'),rows=list?.querySelectorAll('.artist-section-link-row');
+  if(!list||!rows?.length)return;
+  if(rows.length===1){rows[0].querySelectorAll('input').forEach(input=>input.value='');return;}
+  button.closest('.artist-section-link-row')?.remove();
+}
+
+function saveArtistCustomSection(event,artistId,sectionId){
+  event.preventDefault();const form=new FormData(event.currentTarget),sections=artistBuilderSections(artistId),existing=sections.find(item=>item.id===sectionId),requestedWidth=String(form.get('width')||'100'),linkLabels=form.getAll('sectionLinkLabel'),linkUrls=form.getAll('sectionLinkUrl'),links=linkUrls.map((url,index)=>({label:String(linkLabels[index]||'เปิดลิงก์').trim()||'เปิดลิงก์',url:String(url||'').trim()})).filter(link=>link.url),section={...(existing||{}),id:sectionId||`custom_${Date.now()}`,custom:true,visible:existing?.visible!==false,label:String(form.get('label')||'Custom section').trim(),eyebrow:String(form.get('eyebrow')||'').trim(),body:String(form.get('body')||'').trim(),image:String(form.get('pageImage')||''),imageOrientation:String(form.get('imageOrientation')||'landscape')==='portrait'?'portrait':'landscape',imageFit:String(form.get('imageFit')||'cover')==='contain'?'contain':'cover',imagePosition:['top','bottom'].includes(String(form.get('imagePosition')))?String(form.get('imagePosition')):'center',links,linkLabel:links[0]?.label||'',url:links[0]?.url||'',layout:String(form.get('layout')||'imageLeft'),width:['33','50','67','100'].includes(requestedWidth)?requestedWidth:'100'};
+  if(existing)Object.assign(existing,section);else{const awardIndex=sections.findIndex(item=>item.id==='awards');sections.splice(awardIndex<0?sections.length:awardIndex,0,section)}
+  save();closeModal();artistDetailAdmin();toast('บันทึก Section แล้ว');
+}
+
+function removeArtistCustomSection(artistId,sectionId){
+  const sections=artistBuilderSections(artistId),index=sections.findIndex(item=>item.id===sectionId);if(index<0)return;
+  if(!confirm('ลบ Section นี้ใช่หรือไม่?'))return;sections.splice(index,1);save();artistDetailAdmin();toast('ลบ Section แล้ว');
+}
+
+function renderArtistCustomSection(section,preview=false){
+  const orientation=section.imageOrientation==='portrait'?'portrait':'landscape',fit=section.imageFit==='contain'?'contain':'cover',position=['top','bottom'].includes(section.imagePosition)?section.imagePosition:'center';
+  const span=artistCustomGridSpan(section);
+  const image=section.image?`<div class="artist-custom-image image-${orientation}"><img src="${escapePageText(section.image)}" alt="${escapePageText(section.label||'')}" style="object-fit:${fit};object-position:center ${position}"></div>`:(preview?`<div class="artist-custom-image image-${orientation} is-empty"><span>รูปภาพ</span></div>`:'');
+  const links=artistSectionLinks(section),copy=`<div class="artist-custom-copy">${section.eyebrow?`<small>${escapePageText(section.eyebrow)}</small>`:''}<h2>${escapePageText(section.label||'')}</h2>${section.body?`<p>${escapePageText(section.body).replace(/\n/g,'<br>')}</p>`:''}${links.length?`<div class="artist-custom-links">${links.map(link=>`<a class="btn outline" href="${escapePageText(link.url)}" target="_blank" rel="noopener noreferrer">${escapePageText(link.label)} ↗</a>`).join('')}</div>`:''}</div>`;
+  return `<article class="${preview?'preview-custom':'artist-custom-section'} span-${span} layout-${section.layout||'imageLeft'} ${section.image?'':'has-no-image'}" style="--custom-span:${span}"><div class="artist-custom-group">${section.layout==='imageRight'?copy+image:image+copy}</div></article>`;
+}
+
+function layoutArtistCustomRows(main,sections,nodes){
+  let row=null,container=null,used=0;
+  sections.filter(section=>section.visible!==false).forEach(section=>{
+    const node=nodes[section.id];if(!node)return;
+    if(!section.custom){row=null;container=null;used=0;return;}
+    const span=artistCustomGridSpan(section);
+    if(!row||used+span>12){
+      row=document.createElement('section');row.className='section artist-custom-row';
+      container=document.createElement('div');container.className='container';row.appendChild(container);
+      node.parentNode.insertBefore(row,node);used=0;
+    }
+    node.style.setProperty('--custom-span',span);
+    container.appendChild(node);used+=span;
+  });
+}
+
+const profileBeforeArtistPageBuilder=profile;
+profile=function(id){
+  id=canonicalArtistId(id);ensureArtistPageBuilders();profileBeforeArtistPageBuilder(id);
+  const main=document.querySelector('main'),artist=artistById(id),sections=artistBuilderSections(id);if(!main||!artist)return;
+  let hero=main.querySelector('.profile-head')?.closest('.section')||main.querySelector('.couple-profile');
+  let personal=main.querySelector('.personal-profile-section');
+  if(!personal&&!sameArtistId(id,'duo')){hero?.insertAdjacentHTML('afterend',renderPersonalProfile(artist));personal=main.querySelector('.personal-profile-section')}
+  const headings=[...main.querySelectorAll('h2')];
+  const events=(headings.find(node=>node.textContent.toLowerCase().includes('schedule')))?.closest('.section');
+  const timeline=main.querySelector('.artist-filmography')||main.querySelector('.couple-timeline')?.closest('.section');
+  const awards=main.querySelector('.archive-awards')||main.querySelector('.award-grid')?.closest('.section');
+  const nodes={hero,personal,events,timeline,awards};
+  main.querySelectorAll('.artist-custom-section').forEach(node=>node.remove());
+  sections.filter(section=>section.custom).forEach(section=>main.insertAdjacentHTML('beforeend',renderArtistCustomSection(section)));
+  main.querySelectorAll('.artist-custom-section').forEach((node,index)=>{const section=sections.filter(item=>item.custom)[index];if(section)nodes[section.id]=node});
+  Object.entries(nodes).forEach(([sectionId,node])=>{const setting=sections.find(item=>item.id===sectionId);if(node)node.style.display=setting?.visible===false?'none':''});
+  const ordered=sections.map(section=>nodes[section.id]).filter(Boolean),anchor=ordered[0];if(!anchor)return;
+  const marker=document.createComment('artist-builder-order');anchor.parentNode.insertBefore(marker,anchor);
+  sections.forEach(section=>{const node=nodes[section.id];if(node&&section.visible!==false)marker.parentNode.insertBefore(node,marker)});marker.remove();
+  layoutArtistCustomRows(main,sections,nodes);
+};
+
+const adminBeforeArtistDirectory=admin;
+admin=function(){
+  if(adminAuthenticated&&adminTab==='artists'){
+    if(artistManagerArtistId)artistDetailAdmin();else artistDirectoryAdmin();
+    return;
+  }
+  adminBeforeArtistDirectory();
+};
 function normalizedArtistKey(idOrArtist){
   const artist=typeof idOrArtist==='string'?artistById(idOrArtist):idOrArtist;
   const source=[artist?.id,artist?.name,artist?.realName,artist?.initial].filter(Boolean).join(' ');
@@ -2923,5 +3257,36 @@ function dashboardCurrentRangeItems(){
 dashboardAdmin=function(){dashboardAdminBeforeDynamicArtistSummary();const items=dashboardCurrentRangeItems();updateDashboardArtistSummary(items);updateDashboardTypeSummary(items);};
 const applyDashboardRangeBeforeDynamicArtistSummary=applyDashboardRange;
 applyDashboardRange=function(){applyDashboardRangeBeforeDynamicArtistSummary();const items=dashboardCurrentRangeItems();updateDashboardArtistSummary(items);updateDashboardTypeSummary(items);};
+
+/* Keep the artist manager on the correct record after create/edit/delete. */
+const submitFormBeforeArtistManagerLifecycle=submitForm;
+submitForm=function(event,type,id){
+  if(type!=='artists')return submitFormBeforeArtistManagerLifecycle(event,type,id);
+  const beforeIds=new Set(db.artists.map(artist=>artist.id));
+  submitFormBeforeArtistManagerLifecycle(event,type,id);
+  const artist=id ? artistById(id) : db.artists.find(item=>!beforeIds.has(item.id));
+  if(!artist)return;
+  ensureArtistPageBuilders();
+  artistManagerArtistId=artist.id;
+  artistManagerTab='layout';
+  save();
+  artistDetailAdmin();
+};
+
+const removeItemBeforeArtistManagerLifecycle=removeItem;
+removeItem=function(type,id){
+  if(type!=='artists')return removeItemBeforeArtistManagerLifecycle(type,id);
+  const existed=db.artists.some(artist=>artist.id===id);
+  removeItemBeforeArtistManagerLifecycle(type,id);
+  if(!existed||db.artists.some(artist=>artist.id===id))return;
+  ensureHomePageSettings();
+  delete db.siteSettings.artistPageBuilders?.[id];
+  delete db.siteSettings.personalProfiles?.[id];
+  delete db.siteSettings.artistArchive?.[id];
+  artistManagerArtistId='';
+  artistManagerTab='layout';
+  save();
+  artistDirectoryAdmin();
+};
 router();
 hydrateFromSupabase();
