@@ -7,8 +7,12 @@ set role postgres;
 create table if not exists public.artists (
   id text primary key, nickname text not null, "name_TH" text, "name_EN" text, role text,
   birth text, initial text, color text, bio text, image_url text,
+  social_links jsonb not null default '[]'::jsonb,
   created_at timestamptz default now(), updated_at timestamptz default now()
 );
+
+-- Safe migration for databases created before Artist Official Socials existed.
+alter table public.artists add column if not exists social_links jsonb not null default '[]'::jsonb;
 
 create table if not exists public.event_types (
   id text primary key, name text not null unique, sort_order integer default 0

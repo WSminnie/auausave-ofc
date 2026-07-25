@@ -3450,5 +3450,72 @@ function restoreCoupleAwardsCards(){
 }
 const profileBeforeCoupleAwardsRestore=profile;
 profile=function(id){profileBeforeCoupleAwardsRestore(id);if(sameArtistId(id,'duo'))restoreCoupleAwardsCards();};
+function formatArtistBirthEnglish(value){value=legacyBirthToDateInput(value);if(!/^\d{4}-\d{2}-\d{2}$/.test(String(value||'')))return'';const [year,month,day]=value.split('-').map(Number);return new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'long',year:'numeric'}).format(new Date(year,month-1,day))}
+function validArtistSocials(artist){return(Array.isArray(artist.socialLinks)?artist.socialLinks:[]).filter(item=>item&&item.active!==false&&/^https?:\/\//i.test(String(item.url||'').trim())).sort((a,b)=>(Number(a.order)||999)-(Number(b.order)||999))}
+function artistSocialPlatformName(value){return String(value||'Other').toLowerCase()==='xiaohongshu'?'RedNote':String(value||'Other')}
+function renderUnifiedArtistProfile(artist){
+  const profileBirth=db.siteSettings?.personalProfiles?.[artist.id]?.birthday;
+  const fullName=String(artist.nameEN||artist.fullNameEn||'').trim(),birth=formatArtistBirthEnglish(artist.birthDate||artist.birth||profileBirth),role=String(artist.role||'').trim(),socials=validArtistSocials(artist);
+  const facts=[fullName?`<div class="fact"><small>FULL NAME</small><strong>${escapePageText(fullName)}</strong></div>`:'',birth?`<div class="fact"><small>DATE OF BIRTH</small><strong>${escapePageText(birth)}</strong></div>`:'',role?`<div class="fact artist-role-fact"><small>ROLE</small><strong>${escapePageText(role)}</strong></div>`:''].join('');
+  const socialSection=socials.length?`<section class="artist-official-socials"><h2>OFFICIAL SOCIALS</h2><div class="artist-social-grid">${socials.map(item=>`<a class="artist-social-button" href="${escapePageText(item.url)}" target="_blank" rel="noopener noreferrer"><span class="artist-social-platform-label">${escapePageText(artistSocialPlatformName(item.platform))}</span><span class="artist-social-copy">${item.username?`<small>${escapePageText(item.username)}</small>`:''}</span><span class="artist-social-arrow" aria-hidden="true">↗</span></a>`).join('')}</div></section>`:'';
+  const portrait=artist.image?`<img src="${escapePageText(versionedMediaUrl(artist.image,artist.imageVersion||artist.id))}" alt="${escapePageText(artist.name||'Artist')}">`:`<span>${escapePageText(artist.initial||String(artist.name||'AR').slice(0,2))}</span>`;
+  return `<div class="profile-portrait portrait" style="background:${escapePageText(artist.color||'#ddd')}">${portrait}</div><div class="artist-profile-copy"><span class="eyebrow">ARTIST PROFILE</span><h1>${escapePageText(artist.stageNameEn||artist.name||'')}</h1>${artist.bio?`<p class="artist-profile-description">${escapePageText(artist.bio)}</p>`:''}${facts?`<div class="facts artist-profile-facts">${facts}</div>`:''}${socialSection}</div>`
+}
+const profileBeforeUnifiedArtistProfile=profile;
+profile=function(id){id=canonicalArtistId(id);profileBeforeUnifiedArtistProfile(id);if(sameArtistId(id,'duo'))return;const artist=artistById(id),head=document.querySelector('.profile-head');if(artist&&head)head.innerHTML=renderUnifiedArtistProfile(artist)};
+const ARTIST_SOCIAL_PLATFORMS=['X','Instagram','TikTok','Weibo','Douyin','RedNote','YouTube','Facebook','Other'];
+function artistSocialEditorCard(item={},index=0){
+  const platform=artistSocialPlatformName(item.platform||'X');
+  return `<article class="artist-social-editor-card" draggable="true" ondragstart="artistSocialDragStart(event)" ondragover="artistSocialDragOver(event)" ondrop="artistSocialDrop(event)" ondragend="artistSocialDragEnd(event)">
+    <div class="artist-social-card-head"><span class="artist-social-platform-badge">${escapePageText(platform)}</span><span class="artist-social-drag">ลากเพื่อจัดลำดับ</span><button type="button" onclick="removeArtistSocialCard(this)">ลบรายการ</button></div>
+    <div class="artist-social-card-fields">
+      <label><span>ชื่อแพลตฟอร์ม</span><select data-social-platform onchange="updateArtistSocialCard(this)">${ARTIST_SOCIAL_PLATFORMS.map(name=>`<option ${name===platform?'selected':''}>${name}</option>`).join('')}</select></label>
+      <label><span>Username</span><input data-social-username value="${escapePageText(item.username||'')}" placeholder="@username"></label>
+      <label class="artist-social-url-field"><span>URL ของบัญชี</span><input data-social-url type="url" value="${escapePageText(item.url||'')}" placeholder="https://..."></label>
+      <label><span>สถานะ</span><select data-social-active><option value="true" ${item.active!==false?'selected':''}>Active</option><option value="false" ${item.active===false?'selected':''}>Inactive</option></select></label>
+      <label><span>ลำดับการแสดงผล</span><input data-social-order type="number" min="1" value="${Number(item.order)||index+1}" readonly></label>
+    </div>
+  </article>`;
+}
+function reindexArtistSocialCards(){
+  document.querySelectorAll('#artistSocialEditorList .artist-social-editor-card').forEach((card,index)=>{
+    const order=card.querySelector('[data-social-order]');if(order)order.value=index+1;
+  });
+}
+function addArtistSocialCard(item={}){
+  const list=document.querySelector('#artistSocialEditorList');if(!list)return;
+  list.insertAdjacentHTML('beforeend',artistSocialEditorCard(item,list.children.length));reindexArtistSocialCards();
+}
+function removeArtistSocialCard(button){button.closest('.artist-social-editor-card')?.remove();reindexArtistSocialCards()}
+function updateArtistSocialCard(select){const badge=select.closest('.artist-social-editor-card')?.querySelector('.artist-social-platform-badge');if(badge)badge.textContent=select.value}
+let draggedArtistSocialCard=null;
+function artistSocialDragStart(event){draggedArtistSocialCard=event.currentTarget;event.currentTarget.classList.add('is-dragging');event.dataTransfer.effectAllowed='move'}
+function artistSocialDragOver(event){event.preventDefault();const target=event.currentTarget;if(!draggedArtistSocialCard||target===draggedArtistSocialCard)return;const box=target.getBoundingClientRect(),after=event.clientY>box.top+box.height/2;target.parentNode.insertBefore(draggedArtistSocialCard,after?target.nextSibling:target);reindexArtistSocialCards()}
+function artistSocialDrop(event){event.preventDefault();reindexArtistSocialCards()}
+function artistSocialDragEnd(event){event.currentTarget.classList.remove('is-dragging');draggedArtistSocialCard=null;reindexArtistSocialCards()}
+function collectArtistSocialCards(form){
+  return [...form.querySelectorAll('.artist-social-editor-card')].map((card,index)=>({
+    platform:card.querySelector('[data-social-platform]')?.value||'Other',
+    username:card.querySelector('[data-social-username]')?.value.trim()||'',
+    url:card.querySelector('[data-social-url]')?.value.trim()||'',
+    active:card.querySelector('[data-social-active]')?.value==='true',
+    order:index+1
+  })).filter(item=>item.url);
+}
+const openFormBeforeArtistSocials=openForm;
+openForm=function(type,id){
+  openFormBeforeArtistSocials(type,id);if(type!=='artists')return;
+  const artist=id?db.artists.find(item=>item.id===id):{},grid=document.querySelector('#modal .form-grid'),items=Array.isArray(artist?.socialLinks)?[...artist.socialLinks].sort((a,b)=>(Number(a.order)||999)-(Number(b.order)||999)):[];
+  grid?.insertAdjacentHTML('beforeend',`<section class="field full artist-social-editor"><div class="artist-social-editor-title"><div><label>OFFICIAL SOCIALS</label><small>ลากและวางการ์ดเพื่อจัดลำดับ หมายเลขจะอัปเดตให้อัตโนมัติ</small></div></div><div id="artistSocialEditorList">${items.map(artistSocialEditorCard).join('')}</div><button class="btn outline artist-social-add" type="button" onclick="addArtistSocialCard()">+ เพิ่มบัญชีโซเชียลมีเดีย</button></section>`);
+};
+const submitFormBeforeArtistSocials=submitForm;
+submitForm=function(event,type,id){
+  if(type!=='artists')return submitFormBeforeArtistSocials(event,type,id);
+  const socials=collectArtistSocialCards(event.target),existing=id?db.artists.find(item=>item.id===id):null;
+  if(existing)existing.socialLinks=socials;
+  submitFormBeforeArtistSocials(event,type,id);
+  const artist=existing||db.artists[db.artists.length-1];
+  if(artist&&!existing){artist.socialLinks=socials;save()}
+};
 router();
 hydrateFromSupabase();
