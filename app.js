@@ -37,6 +37,12 @@ function artistIdFromPublicRoute(value) {
 function sameArtistId(a, b) {
   return canonicalArtistId(a) === canonicalArtistId(b);
 }
+function awardMatchesArtist(award, artistId) {
+  const targetId = canonicalArtistId(artistId);
+  const awardArtistId = canonicalArtistId(award?.artistId);
+  if (awardArtistId === targetId) return true;
+  return awardArtistId === 'AT01' && ['AT02', 'AT03'].includes(targetId);
+}
 function artistById(id) {
   const target = canonicalArtistId(id);
   return db.artists.find(artist => canonicalArtistId(artist.id) === target);
@@ -455,7 +461,7 @@ function profile(id) {
   const now = new Date(),
     currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
     ev = db.events.filter((e) => itemMatchesArtist(e, id) && e.date.startsWith(currentMonth)),
-    aw = db.awards.filter((r) => itemMatchesArtist(r, id)),
+    aw = db.awards.filter((r) => awardMatchesArtist(r, id)),
     vid = db.videos.filter((v) => v.artistId === id);
   app.innerHTML =
     nav("artists") +
@@ -465,7 +471,7 @@ function profile(id) {
 const renderProfileWithAwardDetails = profile;
 profile = function(id) {
   renderProfileWithAwardDetails(id);
-  const awards=db.awards.filter(item=>itemMatchesArtist(item,id));
+  const awards=db.awards.filter(item=>awardMatchesArtist(item,id));
   document.querySelectorAll('.award-grid .award').forEach((card,index)=>{
     const item=awards[index], date=card.querySelector('.year');
     if (!item || !date) return;
@@ -2864,8 +2870,8 @@ function renderHomeBanner(){
   const main=document.querySelector('#app main'),heroSection=main?.querySelector('.hero'),items=ensureHomeBanners().filter(item=>item.src);
   if(!main||!heroSection||!items.length)return;
   heroSection.insertAdjacentHTML('beforebegin',`<section class="home-media-banner" aria-label="Homepage banner"><div class="home-banner-track">${items.map((item,index)=>item.type==='video'
-    ?`<video class="home-banner-slide ${index?'':'active'}" src="${escapePageText(item.src)}" muted playsinline preload="metadata"></video>`
-    :`<img class="home-banner-slide ${index?'':'active'}" src="${escapePageText(item.src)}" alt="Banner ${index+1}">`).join('')}</div>${items.some(item=>item.type==='video')?'<button class="home-banner-sound" type="button" aria-label="เปิดเสียงวิดีโอ" title="เปิดเสียง">🔇</button>':''}${items.length>1?`<button class="home-banner-arrow prev" aria-label="Previous banner">‹</button><button class="home-banner-arrow next" aria-label="Next banner">›</button><div class="home-banner-dots">${items.map((_,index)=>`<button class="${index?'':'active'}" aria-label="Banner ${index+1}"></button>`).join('')}</div>`:''}</section>`);
+    ?`<video class="home-banner-slide ${index?'':'active'} ${item.link?'is-linked':''}" src="${escapePageText(item.src)}" data-link="${escapePageText(item.link||'')}" muted playsinline preload="metadata"></video>`
+    :`<img class="home-banner-slide ${index?'':'active'} ${item.link?'is-linked':''}" src="${escapePageText(item.src)}" data-link="${escapePageText(item.link||'')}" alt="Banner ${index+1}">`).join('')}</div>${items.some(item=>item.type==='video')?'<button class="home-banner-sound" type="button" aria-label="เปิดเสียงวิดีโอ" title="เปิดเสียง">🔇</button>':''}${items.length>1?`<button class="home-banner-arrow prev" aria-label="Previous banner">‹</button><button class="home-banner-arrow next" aria-label="Next banner">›</button><div class="home-banner-dots">${items.map((_,index)=>`<button class="${index?'':'active'}" aria-label="Banner ${index+1}"></button>`).join('')}</div>`:''}</section>`);
   const banner=main.querySelector('.home-media-banner');
   let current=0,soundOn=false;
   const slides=[...banner.querySelectorAll('.home-banner-slide')],dots=[...banner.querySelectorAll('.home-banner-dots button')];
@@ -2885,6 +2891,7 @@ function renderHomeBanner(){
   };
   banner.querySelector('.home-banner-arrow.prev')?.addEventListener('click',()=>show(current-1));
   banner.querySelector('.home-banner-arrow.next')?.addEventListener('click',()=>show(current+1));
+  slides.forEach(slide=>slide.addEventListener('click',()=>{const link=slide.dataset.link?.trim();if(!link)return;if(/^https?:\/\//i.test(link))window.open(link,'_blank','noopener,noreferrer');else location.href=link;}));
   const soundButton=banner.querySelector('.home-banner-sound');
   soundButton?.addEventListener('click',()=>{soundOn=!soundOn;banner.querySelectorAll('video').forEach(video=>video.muted=!soundOn);soundButton.textContent=soundOn?'🔊':'🔇';soundButton.setAttribute('aria-label',soundOn?'ปิดเสียงวิดีโอ':'เปิดเสียงวิดีโอ');soundButton.title=soundOn?'ปิดเสียง':'เปิดเสียง';if(items[current]?.type==='video')slides[current].play().catch(()=>{});});
   dots.forEach((dot,index)=>dot.addEventListener('click',()=>show(index)));
@@ -2892,7 +2899,7 @@ function renderHomeBanner(){
 }
 function homeBannerAdminPanel(){
   const items=ensureHomeBanners();
-  return `<section class="panel home-banner-admin"><div class="panel-head"><div><small>MEDIA BANNER · 1920 × 1080 PX</small><h2>แบนเนอร์รูปและวิดีโอ</h2><p class="master-note">ส่วนนี้แยกจาก Hero เดิม แนะนำไฟล์อัตราส่วน 16:9 ขนาด 1920 × 1080 พิกเซล</p></div><label class="btn">+ เพิ่มรูปหรือคลิป<input type="file" accept="image/*,video/mp4,video/webm" multiple hidden onchange="addHomeBannerFiles(this)"></label></div><div class="home-banner-admin-list">${items.length?items.map((item,index)=>`<article><div class="home-banner-admin-thumb">${item.type==='video'?`<video src="${escapePageText(item.src)}" muted></video>`:`<img src="${escapePageText(item.src)}" alt="">`}<span>${item.type==='video'?'VIDEO':'IMAGE'}</span></div><div><b>Banner ${String(index+1).padStart(2,'0')}</b>${item.type==='image'?`<label>แสดง <input type="number" min="2" max="60" value="${Number(item.duration)||5}" onchange="setHomeBannerDuration('${item.id}',this.value)"> วินาที</label>`:'<small>เปลี่ยนอัตโนมัติเมื่อคลิปจบ</small>'}</div><div class="actions"><button class="btn outline" onclick="moveHomeBanner('${item.id}',-1)" ${index===0?'disabled':''}>↑</button><button class="btn outline" onclick="moveHomeBanner('${item.id}',1)" ${index===items.length-1?'disabled':''}>↓</button><button class="btn danger" onclick="removeHomeBanner('${item.id}')">ลบ</button></div></article>`).join(''):'<div class="empty">ยังไม่มี Banner — เพิ่มรูปหรือคลิปขนาด 1920 × 1080 ได้จากปุ่มด้านบน</div>'}</div></section>`;
+  return `<section class="panel home-banner-admin"><div class="panel-head"><div><small>MEDIA BANNER · 1920 × 1080 PX</small><h2>แบนเนอร์รูปและวิดีโอ</h2><p class="master-note">ส่วนนี้แยกจาก Hero เดิม แนะนำไฟล์อัตราส่วน 16:9 ขนาด 1920 × 1080 พิกเซล</p></div><label class="btn">+ เพิ่มรูปหรือคลิป<input type="file" accept="image/*,video/mp4,video/webm" multiple hidden onchange="addHomeBannerFiles(this)"></label></div><div class="home-banner-admin-list">${items.length?items.map((item,index)=>`<article><div class="home-banner-admin-thumb">${item.type==='video'?`<video src="${escapePageText(item.src)}" muted></video>`:`<img src="${escapePageText(item.src)}" alt="">`}<span>${item.type==='video'?'VIDEO':'IMAGE'}</span></div><div><b>Banner ${String(index+1).padStart(2,'0')}</b>${item.type==='image'?`<label>แสดง <input type="number" min="2" max="60" value="${Number(item.duration)||5}" onchange="setHomeBannerDuration('${item.id}',this.value)"> วินาที</label>`:'<small>เปลี่ยนอัตโนมัติเมื่อคลิปจบ</small>'}<label class="home-banner-link-field">ลิงก์เมื่อคลิก<input class="home-banner-link-input" type="text" value="${escapePageText(item.link||'')}" placeholder="https://... หรือ #/AUAU" onchange="setHomeBannerLink('${item.id}',this.value)"></label></div><div class="actions"><button class="btn outline" onclick="moveHomeBanner('${item.id}',-1)" ${index===0?'disabled':''}>↑</button><button class="btn outline" onclick="moveHomeBanner('${item.id}',1)" ${index===items.length-1?'disabled':''}>↓</button><button class="btn danger" onclick="removeHomeBanner('${item.id}')">ลบ</button></div></article>`).join(''):'<div class="empty">ยังไม่มี Banner — เพิ่มรูปหรือคลิปขนาด 1920 × 1080 ได้จากปุ่มด้านบน</div>'}</div></section>`;
 }
 function addHomeBannerFiles(input){
   const files=[...input.files];
@@ -2900,6 +2907,7 @@ function addHomeBannerFiles(input){
   Promise.all(files.map(file=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({id:`banner_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,type:file.type.startsWith('video/')?'video':'image',src:reader.result,duration:5});reader.onerror=reject;reader.readAsDataURL(file);}))).then(items=>{ensureHomeBanners().push(...items);save();pageContentAdmin();toast(`เพิ่ม Banner ${items.length} รายการแล้ว`);}).catch(()=>toast('ไม่สามารถอ่านไฟล์ที่เลือกได้'));
 }
 function setHomeBannerDuration(id,value){const item=ensureHomeBanners().find(entry=>entry.id===id);if(!item)return;item.duration=Math.min(60,Math.max(2,Number(value)||5));save();}
+function setHomeBannerLink(id,value){const item=ensureHomeBanners().find(entry=>entry.id===id);if(!item)return;item.link=String(value||'').trim();save();toast('บันทึกลิงก์ Banner แล้ว');}
 function moveHomeBanner(id,direction){const items=ensureHomeBanners(),index=items.findIndex(item=>item.id===id),target=index+direction;if(index<0||target<0||target>=items.length)return;[items[index],items[target]]=[items[target],items[index]];save();pageContentAdmin();}
 function removeHomeBanner(id){if(!confirm('ลบ Banner รายการนี้?'))return;db.siteSettings.homeBanners=ensureHomeBanners().filter(item=>item.id!==id);save();pageContentAdmin();toast('ลบ Banner แล้ว');}
 const homeBeforeMediaBanner=home;
