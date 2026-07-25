@@ -3376,7 +3376,9 @@ calendarPage=function(){
 };
 showEvent=function(id){
   const e=db.events.find(x=>x.id===id);if(!e)return;
-  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal event-modal"><div class="modal-head"><span class="eyebrow">${escapePageText(eventBadge(e))} · ${escapePageText(e.type||'')}</span><button class="close" onclick="closeModal()">×</button></div>${e.poster?`<img class="event-poster" src="${escapePageText(e.poster)}" alt="${escapePageText(e.title)}">`:''}<h2>${escapePageText(e.title)}</h2><p class="event-date">${fmtDate(e.date)}</p><p>${escapePageText(e.place||'')}</p>${e.source?`<a class="btn" target="_blank" href="${escapePageText(e.source)}">View source ↗</a>`:''}</div></div>`);
+  const dateLabel=new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric'}).format(new Date(`${e.date}T00:00:00`));
+  const rawTime=String(e.time||e.place||'').trim(),timeLabel=rawTime.replace(/^(\d{1,2})[.:](\d{2})/,(_,hour,minute)=>`${String(hour).padStart(2,'0')}:${minute}`);
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal event-modal event-modal-detail"><div class="modal-head"><span class="eyebrow">${escapePageText(eventBadge(e))} · ${escapePageText(e.type||'')}</span><button class="close" onclick="closeModal()">×</button></div><h2>${escapePageText(e.title)}</h2><p class="event-date-time"><span>${escapePageText(dateLabel)}</span>${timeLabel?`<b>·</b><time>${escapePageText(timeLabel)}</time>`:''}</p>${e.poster?`<img class="event-poster" src="${escapePageText(e.poster)}" alt="${escapePageText(e.title)}">`:''}${e.source?`<a class="btn" target="_blank" href="${escapePageText(e.source)}">View source ↗</a>`:''}</div></div>`);
 };
 function updateDashboardArtistSummary(items=db.events){
   const panel=document.querySelector('.path-panel');if(!panel)return;
