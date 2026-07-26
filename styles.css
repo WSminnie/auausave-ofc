@@ -103,6 +103,7 @@
 
 /* Responsive card positioning across desktop, tablet, and mobile. */
 .presenter-grid{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+.presenter-year-group{margin-bottom:34px}.presenter-year-group:last-child{margin-bottom:0}.presenter-year-heading{margin:0 0 16px;padding-bottom:10px;border-bottom:1px solid var(--line);font-size:clamp(22px,2.5vw,30px);line-height:1}
 .presenter-solo{grid-template-columns:repeat(2,minmax(0,1fr))}
 .presenter-solo>div{min-width:0}
 .presenter-poster{height:auto}
@@ -518,6 +519,155 @@
     width:min(100%,360px,28vh)!important;
     max-height:none!important;
   }
+}
+
+/* Presenter listing: three-column couple grid and a fixed AUAU 2 | SAVE 2 split. */
+.presenter-grid,
+.presenter-group .presenter-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:clamp(10px,1.5vw,20px);
+  align-items:stretch;
+}
+.presenter-solo{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:start;
+  gap:clamp(16px,2.5vw,36px);
+}
+.presenter-solo .presenter-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:clamp(8px,1vw,14px);
+  align-items:stretch;
+}
+.presenter-card{
+  display:flex;
+  min-width:0;
+  height:100%;
+  flex-direction:column;
+}
+.presenter-card.has-poster .presenter-detail{
+  display:flex;
+  min-width:0;
+  flex:1;
+  flex-direction:column;
+}
+.presenter-detail h3,
+.presenter-detail p,
+.presenter-detail>span{
+  max-width:100%;
+  overflow-wrap:anywhere;
+}
+.presenter-detail a{
+  align-self:flex-start;
+  margin-top:auto;
+  padding-top:10px;
+}
+@media(max-width:1024px){
+  .presenter-grid{gap:clamp(8px,1.35vw,14px)}
+  .presenter-solo{grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(10px,2vw,20px)}
+  .presenter-solo .presenter-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(5px,1vw,10px)}
+  .presenter-card.has-poster .presenter-detail{padding:11px 13px 13px}
+  .presenter-card.has-poster .brand-mark{width:42px;height:42px;margin-top:-29px;margin-bottom:6px;border-width:2px;border-radius:11px}
+  .presenter-detail>span{font-size:8px;letter-spacing:.8px}
+  .presenter-detail h3{font-size:clamp(14px,2vw,20px);margin:4px 0 2px}
+  .presenter-detail p{font-size:clamp(9px,1.25vw,12px)}
+  .presenter-detail a{padding-top:8px;font-size:clamp(8px,1.15vw,11px)}
+}
+@media(max-width:600px){
+  .presenter-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(4px,1.5vw,7px)}
+  .presenter-solo{grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(5px,1.8vw,8px)}
+  .presenter-solo .presenter-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:3px}
+  .presenter-solo>div{min-width:0}
+  .presenter-year-group{margin-bottom:25px}
+  .presenter-solo .presenter-year-group{margin-bottom:18px}
+  .presenter-year-heading{margin-bottom:9px;padding-bottom:7px;font-size:17px}
+  .presenter-solo .presenter-year-heading{margin-bottom:6px;padding-bottom:5px;font-size:13px}
+  .presenter-group{margin-bottom:34px}
+  .presenter-group>h2{font-size:clamp(22px,7vw,28px)}
+  .presenter-solo h2{margin-bottom:12px;font-size:clamp(18px,5vw,23px)}
+  .presenter-card{border-radius:clamp(9px,2.8vw,14px);border-top-width:3px}
+  .presenter-card.has-poster .presenter-detail{padding:8px 6px 9px}
+  .presenter-solo .presenter-card.has-poster .presenter-detail{padding:6px 4px 7px}
+  .presenter-card.has-poster .brand-mark{width:clamp(25px,8vw,34px);height:clamp(25px,8vw,34px);margin-top:clamp(-24px,-5.8vw,-18px);margin-bottom:4px;border-width:2px;border-radius:8px}
+  .presenter-solo .presenter-card.has-poster .brand-mark{width:clamp(20px,6vw,27px);height:clamp(20px,6vw,27px);margin-top:clamp(-19px,-4.8vw,-14px);border-radius:6px}
+  .presenter-detail>span{font-size:clamp(6px,1.75vw,8px);letter-spacing:.3px}
+  .presenter-detail h3{font-size:clamp(9px,2.7vw,13px);line-height:1.15;margin:3px 0 2px}
+  .presenter-detail p{font-size:clamp(7px,2vw,9px);line-height:1.25}
+  .presenter-detail a{padding-top:6px;font-size:clamp(7px,1.9vw,9px);line-height:1.2}
+  .presenter-solo .presenter-detail>span{font-size:clamp(5px,1.35vw,7px)}
+  .presenter-solo .presenter-detail h3{font-size:clamp(7px,2vw,10px)}
+  .presenter-solo .presenter-detail p,.presenter-solo .presenter-detail a{font-size:clamp(6px,1.6vw,8px)}
+}
+@media(max-width:380px){
+  .presenter-grid{gap:4px}
+  .presenter-solo{gap:4px}
+  .presenter-solo .presenter-grid{gap:2px}
+  .presenter-card.has-poster .presenter-detail{padding:7px 4px 8px}
+  .presenter-solo .presenter-card.has-poster .presenter-detail{padding:5px 3px 6px}
+  .presenter-detail h3{font-size:9px}
+  .presenter-detail p,.presenter-detail a{font-size:7px}
+  .presenter-solo .presenter-detail h3{font-size:7px}
+  .presenter-solo .presenter-detail p,.presenter-solo .presenter-detail a{font-size:6px}
+}
+
+/* Presenter heading hierarchy: artist first, year as a secondary section badge. */
+.presenter-group>h2,
+.presenter-solo>div>h2{
+  margin:0 0 clamp(24px,2.2vw,28px);
+  color:var(--ink);
+  font-size:clamp(34px,3vw,38px);
+  font-weight:700;
+  line-height:1.05;
+  letter-spacing:-1px;
+}
+.presenter-year-heading,
+.presenter-solo .presenter-year-heading{
+  display:inline-flex;
+  width:max-content;
+  max-width:100%;
+  align-items:center;
+  margin:0 0 12px;
+  padding:6px 12px;
+  border:0;
+  border-radius:8px;
+  background:#ebe7df;
+  color:#6f6961;
+  font-size:clamp(18px,1.6vw,20px);
+  font-weight:600;
+  line-height:1.2;
+  letter-spacing:0;
+}
+.presenter-year-group>.presenter-grid{
+  padding-top:16px;
+  border-top:1px solid var(--line);
+}
+@media(min-width:601px) and (max-width:1024px){
+  .presenter-group>h2,
+  .presenter-solo>div>h2{
+    margin-bottom:26px;
+    font-size:clamp(26px,3.5vw,30px);
+  }
+  .presenter-year-heading,
+  .presenter-solo .presenter-year-heading{
+    padding:5px 10px;
+    font-size:clamp(16px,2vw,18px);
+  }
+}
+@media(max-width:600px){
+  .container{width:calc(100% - 20px)}
+  .presenter-group>h2,
+  .presenter-solo>div>h2{
+    margin-bottom:24px;
+    font-size:clamp(20px,6vw,24px);
+    letter-spacing:-.5px;
+  }
+  .presenter-year-heading,
+  .presenter-solo .presenter-year-heading{
+    margin-bottom:12px;
+    padding:5px 9px;
+    border-radius:6px;
+    font-size:clamp(13px,3.8vw,15px);
+  }
+  .presenter-year-group>.presenter-grid{padding-top:16px}
 }
 .project-account-card dt span,.project-account-card dt small{display:block}.project-account-card dt span{color:#817a71;font-size:10px}.project-account-card dt small{margin-top:3px;color:#aaa;font-size:8px;letter-spacing:.04em}
 .donation-live-head h2{display:none}
