@@ -124,7 +124,7 @@
 
   async function save(database) {
     for (const table of tables) {
-      const mediaFields = {artists:['image'],events:['poster'],presenters:['logo','announcementImage','announcementVideo'],videos:['thumbnail']}[table] || [];
+      const mediaFields = {artists:['image'],events:['poster'],presenters:['logo','announcementImage'],videos:['thumbnail']}[table] || [];
       const { data:existing, error:readError } = await client.from(table).select('*');
       if (readError) throw readError;
       const knownBeforeSave = knownIds[table] || new Set();

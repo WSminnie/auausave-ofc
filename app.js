@@ -272,7 +272,7 @@ const save = (sync = true) => {
 };
 function applySyncedMediaUrls(synced, snapshot) {
   if (!synced) return;
-  const mediaFields = {artists:['image'],events:['poster'],awards:['image'],presenters:['logo','announcementImage','announcementVideo'],videos:['thumbnail']};
+  const mediaFields = {artists:['image'],events:['poster'],awards:['image'],presenters:['logo','announcementImage'],videos:['thumbnail']};
   Object.entries(mediaFields).forEach(([table,fields]) => {
     (synced[table] || []).forEach(remoteItem => {
       const localItem = (db[table] || []).find(item => item.id === remoteItem.id);
@@ -363,7 +363,7 @@ function toast(msg) {
 }
 function nav(active = "") {
 return `<nav class="nav"><div class="container nav-inner">
-  <a href="#home" class="brand"><i></i>AUAUSAVE HOUSE</a>
+  <a href="#home" class="brand"><i></i>AUAUSAVE THAILAND</a>
   <div class="links">
     <a class="${active === "artists" ? "active" : ""}" href="#artists">AuauSave</a>
     <a class="${active === "schedule" ? "active" : ""}" href="#schedule">Schedule</a>
@@ -380,10 +380,10 @@ nav = function (active = '') {
   return renderNavBeforeLanguages(active);
 };
 function footer() {
-  return `<footer class="footer"><div class="container"><span class="eyebrow">The artist community</span><h2>KEEP THE<br>MEMORIES CLOSE.</h2><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH <b>↗</b></a><a href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC <b>↗</b></a><a href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC <b>↗</b></a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE HOUSE</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
+  return `<footer class="footer"><div class="container"><span class="eyebrow">The artist community</span><h2>KEEP THE<br>MEMORIES CLOSE.</h2><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a class="creator-link creator-auausave" href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH</a><a class="creator-link creator-auau" href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC</a><a class="creator-link creator-save" href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC</a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE TH</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
 }
 footer=function(){
-  return `<footer class="footer footer-compact"><div class="container"><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH <b>↗</b></a><a href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC <b>↗</b></a><a href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC <b>↗</b></a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE HOUSE</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
+  return `<footer class="footer footer-compact"><div class="container"><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a class="creator-link creator-auausave" href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH</a><a class="creator-link creator-auau" href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC</a><a class="creator-link creator-save" href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC</a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE TH</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
 };
 function artistCards() {
   return `<div class="artists">${sortedArtists().map((a) => `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(a.id)}'"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<span>${a.initial}</span>`}<small class="tag">${sameArtistId(a.id,"duo") ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><span class="arrow">↗</span><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
@@ -530,7 +530,7 @@ function coupleArchivePage() {
   const filterTypes = db.masterData.types.filter(type => events.some(event => eventHasType(event,type.id)));
   const media = [
     ...events.filter(item => item.poster || item.source).map(item => ({kind:item.poster?'image':'link',src:item.poster||'',url:item.source||'',title:item.title})),
-    ...db.presenters.filter(item => itemMatchesArtist(item, 'AT01') && (item.announcementImage || item.announcementVideo)).map(item => ({kind:item.announcementVideo?'video':'image',src:item.announcementVideo||item.announcementImage,url:item.url||'',title:item.brand})),
+    ...db.presenters.filter(item => itemMatchesArtist(item, 'AT01') && item.announcementImage).map(item => ({kind:'image',src:item.announcementImage,url:item.url||'',title:item.brand})),
   ];
   app.innerHTML = nav('artists') + `<main class="couple-archive"><section class="couple-profile"><div class="container couple-profile-grid"><div class="couple-profile-image" style="background:${artist.color}">${artist.image?`<img src="${artist.image}" alt="AUAUSAVE">`:`<span>AS</span>`}</div><div><span class="eyebrow">COUPLE ARCHIVE</span><h1>AUAUSAVE</h1><p>${artist.bio || 'The shared journey of Auau and Save, collected in one place.'}</p><a class="couple-hashtag" href="https://x.com/hashtag/AuauSave" target="_blank">#AuauSave ↗</a></div></div></section>
   <section class="section archive-projects"><div class="container"><div class="archive-section-head"><span>02</span><div><small>TOGETHER ON SCREEN</small><h2>Series & Projects</h2></div><p>Series, shared projects, promotions and fan projects.</p></div><div class="archive-project-grid">${projects.map(item=>`<article><small>${item.seriesId ? (db.masterData.series.find(series=>series.id===item.seriesId)?.label || 'SERIES') : 'SERIES'}</small><h3>${item.title}</h3><p>${item.place||'AUAUSAVE project'}</p>${item.source?`<a href="${item.source}" target="_blank">View source ↗</a>`:''}</article>`).join('') || '<div class="empty">No series or project information yet.</div>'}</div></div></section>
@@ -712,9 +712,7 @@ function presenterCards(items = db.presenters) {
   return `<div class="presenter-grid">${
     items
       .map((p) => {
-        const fit = p.mediaFit || "contain",
-          position = p.mediaPosition || "center";
-        return `<article class="presenter-card ${p.announcementImage || p.announcementVideo ? "has-poster" : ""}" style="--brand:${p.color || "#777"}">${p.announcementVideo ? `<div class="presenter-poster video-poster"><video src="${p.announcementVideo}" controls playsinline preload="metadata" style="object-fit:${fit};object-position:${position}"></video></div>` : p.announcementImage ? `<div class="presenter-poster"><img src="${p.announcementImage}" alt="โปสเตอร์ ${p.brand}" style="object-fit:${fit};object-position:${position}"></div>` : ""}<div class="presenter-detail"><div class="brand-mark">${p.logo ? `<img src="${p.logo}" alt="${p.brand}">` : p.brand.slice(0, 2).toUpperCase()}</div><span>${sameArtistId(p.artistId,"duo") ? "#AUAUSAVE" : artistName(p.artistId)}</span><h3>${p.brand}</h3><p>${p.role} · ${p.year}</p>${p.url ? `<a href="${p.url}" target="_blank">View Details ↗</a>` : ""}</div></article>`;
+        return `<article class="presenter-card ${p.announcementImage ? "has-poster" : ""}" style="--brand:${p.color || "#777"}">${p.announcementImage ? `<div class="presenter-poster presenter-card-media"><img src="${p.announcementImage}" alt="โปสเตอร์ ${p.brand}"></div>` : ""}<div class="presenter-detail"><div class="brand-mark">${p.logo ? `<img src="${p.logo}" alt="${p.brand}">` : p.brand.slice(0, 2).toUpperCase()}</div><span>${sameArtistId(p.artistId,"duo") ? "#AUAUSAVE" : artistName(p.artistId)}</span><h3>${p.brand}</h3><p>${p.role} · ${p.year}</p>${p.url ? `<a href="${p.url}" target="_blank">View Details ↗</a>` : ""}</div></article>`;
       })
       .join("") || '<div class="empty">ยังไม่มีข้อมูลพรีเซนเตอร์</div>'
   }</div>`;
@@ -1490,23 +1488,7 @@ openForm = function (type, id) {
 const renderPresenterImageForm = openForm;
 openForm = function (type, id) {
   renderPresenterImageForm(type, id);
-  if (type !== "presenters") return;
-  const item = id ? db.presenters.find((x) => x.id === id) : {},
-    grid = document.querySelector("#modal .form-grid");
-  if (grid) {
-    grid.insertAdjacentHTML(
-      "beforeend",
-      videoUploadTemplate(item.announcementVideo || ""),
-    );
-    grid.insertAdjacentHTML(
-      "beforeend",
-      `<div class="field media-display-setting"><label>การแสดงรูป/วิดีโอหน้าบ้าน</label><select name="mediaFit"><option value="contain" ${(item.mediaFit || "contain") === "contain" ? "selected" : ""}>แสดงเต็มภาพ — ไม่ครอป</option><option value="cover" ${item.mediaFit === "cover" ? "selected" : ""}>เต็มกรอบ — อาจมีการครอป</option></select></div><div class="field media-display-setting"><label>ตำแหน่งรูป/วิดีโอ</label><select name="mediaPosition"><option value="top" ${item.mediaPosition === "top" ? "selected" : ""}>ด้านบน</option><option value="center" ${(item.mediaPosition || "center") === "center" ? "selected" : ""}>กึ่งกลาง</option><option value="bottom" ${item.mediaPosition === "bottom" ? "selected" : ""}>ด้านล่าง</option></select></div><div class="display-hint full">ค่า “แสดงเต็มภาพ” เหมาะกับโปสเตอร์แนวตั้งและวิดีโอ เพราะจะแสดงภาพครบโดยไม่ตัดขอบ</div>`,
-    );
-  }
 };
-function videoUploadTemplate(value = "") {
-  return `<div class="field full video-upload-field"><label>วิดีโอประกาศพรีเซนเตอร์จากแบรนด์</label><div class="image-uploader"><div class="upload-preview video-preview ${value ? "has-image" : ""}" id="uploadPreview_announcementVideo">${value ? `<video src="${value}" controls></video>` : "<span>▶<small>เลือกวิดีโอ</small></span>"}</div><div><input type="file" accept="video/mp4,video/webm" onchange="handleVideoUpload(this)"><input type="hidden" name="announcementVideo" value="${value}"><p>รองรับ MP4, WebM · สูงสุด 3 MB สำหรับเว็บต้นแบบ</p>${value ? '<button type="button" class="remove-image" onclick="removeUploadedVideo()">ลบวิดีโอนี้</button>' : ""}</div></div></div>`;
-}
 const renderFormBeforeYoutubeSettings = openForm;
 openForm = function (type, id) {
   renderFormBeforeYoutubeSettings(type, id);
@@ -1519,31 +1501,6 @@ openForm = function (type, id) {
       `<div class="field"><label>หมวดวิดีโอ</label><select name="category" required><option value="auau" ${(item.category || "auau") === "auau" ? "selected" : ""}>AUAU</option><option value="dexx" ${item.category === "dexx" ? "selected" : ""}>AUAU · DEXX</option><option value="variety" ${item.category === "variety" ? "selected" : ""}>AUAUSAVE & VARIETY</option></select></div><div class="field"><label>ตั้งเป็นวิดีโอหลัก</label><select name="featured"><option value="no" ${item.featured !== "yes" ? "selected" : ""}>ไม่ใช่</option><option value="yes" ${item.featured === "yes" ? "selected" : ""}>ใช่ — แสดงเป็นวิดีโอหลัก</option></select></div><div class="field full"><label>YouTube Embed URL</label><input name="embedUrl" value="${item.embedUrl || ""}" placeholder="https://www.youtube.com/embed/VIDEO_ID"><small class="form-help">ใช้ลิงก์ /embed/ เพื่อให้เปิดดูได้ทันทีบนเว็บไซต์</small></div>`,
     );
 };
-function handleVideoUpload(input) {
-  const file = input.files[0];
-  if (!file) return;
-  if (file.size > 3 * 1024 * 1024) {
-    toast("วิดีโอต้องมีขนาดไม่เกิน 3 MB");
-    input.value = "";
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const hidden = document.querySelector('#modal [name="announcementVideo"]'),
-      preview = document.querySelector("#uploadPreview_announcementVideo");
-    hidden.value = reader.result;
-    preview.classList.add("has-image");
-    preview.innerHTML = `<video src="${reader.result}" controls></video>`;
-    toast("เตรียมวิดีโอเรียบร้อย กดบันทึกเพื่อยืนยัน");
-  };
-  reader.readAsDataURL(file);
-}
-function removeUploadedVideo() {
-  document.querySelector('#modal [name="announcementVideo"]').value = "";
-  const preview = document.querySelector("#uploadPreview_announcementVideo");
-  preview.classList.remove("has-image");
-  preview.innerHTML = "<span>▶<small>เลือกวิดีโอ</small></span>";
-}
 function handleImageUpload(input, field) {
   const file = input.files[0];
   if (!file) return;
@@ -2202,7 +2159,6 @@ async function hydrateFromSupabase() {
 
 function router() {
   route = location.hash.slice(1) || "home";
-  window.scrollTo(0, 0);
   if (route === "home") home();
   else if (
     ["artists", "schedule", "presenters", "awards"].includes(route)
@@ -2215,6 +2171,12 @@ function router() {
   else if (route === "admin") requestAdminAccess();
   else home();
   document.documentElement.lang = 'th';
+  scrollPageToTop();
+}
+function scrollPageToTop() {
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  });
 }
 window.addEventListener("hashchange", router);
 window.addEventListener("storage", event => {
@@ -2506,7 +2468,7 @@ function imageCropPreset(field){
   if(field==='banner')return{canChoose:false,orientation:'landscape',ratio:2160/900,shape:'project-banner'};
   if(field==='qrCode')return{canChoose:false,orientation:'square',ratio:1,shape:'project-qr'};
   if(field==='logo')return{canChoose:false,orientation:'square',ratio:1,shape:'logo'};
-  if(field==='announcementImage')return{canChoose:false,orientation:'landscape',ratio:16/10,shape:'presenter'};
+  if(field==='announcementImage')return{canChoose:false,orientation:'portrait',ratio:presenterMediaAspectRatio(),shape:'presenter'};
   if(field==='image'&&adminTab==='awards')return{canChoose:false,orientation:'portrait',ratio:2/3,shape:'award'};
   if(field==='image'&&adminTab==='artists')return{canChoose:false,orientation:'portrait',ratio:3/4,shape:'artist'};
   if(field==='poster'&&adminTab==='events')return{canChoose:false,orientation:'portrait',ratio:3/4,shape:'event'};
@@ -2515,11 +2477,22 @@ function imageCropPreset(field){
 function cropRatio(state=cropImageState){return state.preset.ratio||(state.orientation==='landscape'?16/9:3/4);}
 function cropCanvasSize(){const ratio=cropRatio(),width=1200;return{width,height:Math.round(width/ratio)};}
 function cropFrameClass(){if(!cropImageState)return'';if(cropImageState.preset.canChoose)return cropImageState.orientation==='landscape'?'crop-frame-timeline-landscape':'crop-frame-timeline-portrait';return`crop-frame-${cropImageState.preset.shape||'default'}`;}
+function drawCropState(context,width,height,state=cropImageState){
+  if(!context||!state?.image)return;
+  const imageWidth=state.image.naturalWidth,imageHeight=state.image.naturalHeight;
+  const scaleX=width/imageWidth,scaleY=height/imageHeight;
+  const coverScale=Math.max(scaleX,scaleY)*state.zoom;
+  const drawWidth=imageWidth*coverScale,drawHeight=imageHeight*coverScale;
+  const overflowX=Math.max(0,(drawWidth-width)/2),overflowY=Math.max(0,(drawHeight-height)/2);
+  const x=(width-drawWidth)/2+(state.panX/100)*overflowX;
+  const y=(height-drawHeight)/2+(state.panY/100)*overflowY;
+  context.clearRect(0,0,width,height);
+  context.drawImage(state.image,x,y,drawWidth,drawHeight);
+}
 function drawCropPreview(){
   const state=cropImageState,canvas=document.querySelector('#cropImageCanvas');if(!state||!canvas)return;
   const size=cropCanvasSize();canvas.width=size.width;canvas.height=size.height;
-  const context=canvas.getContext('2d'),base=Math.max(size.width/state.image.naturalWidth,size.height/state.image.naturalHeight),scale=base*state.zoom,drawWidth=state.image.naturalWidth*scale,drawHeight=state.image.naturalHeight*scale,maxX=Math.max(0,(drawWidth-size.width)/2),maxY=Math.max(0,(drawHeight-size.height)/2),x=(size.width-drawWidth)/2+(state.panX/100)*maxX,y=(size.height-drawHeight)/2+(state.panY/100)*maxY;
-  context.clearRect(0,0,size.width,size.height);context.drawImage(state.image,x,y,drawWidth,drawHeight);
+  drawCropState(canvas.getContext('2d'),size.width,size.height,state);
   canvas.className=`${cropFrameClass()}${state.drag?' is-dragging':''}`;const label=document.querySelector('#cropRatioLabel');if(label)label.textContent=state.preset.shape==='hero'?'กรอบ Hero หน้าบ้าน':state.preset.shape==='project-banner'?'แบนเนอร์หน้าบ้าน 2160 × 900':state.orientation==='landscape'?'แนวนอน':state.orientation==='square'?'สี่เหลี่ยม':'แนวตั้ง';
 }
 function updateCropControl(name,value){if(!cropImageState)return;cropImageState[name]=Number(value);drawCropPreview();}
@@ -2530,7 +2503,8 @@ function changeCropOrientation(value){if(!cropImageState)return;cropImageState.o
 function closeCropImage(){const state=cropImageState;document.querySelector('#cropImageModal')?.remove();if(state?.input){state.input.value='';const submit=state.input.closest('form')?.querySelector('[type="submit"]');if(submit)submit.disabled=false;}cropImageState=null;}
 function applyCroppedImage(){
   const state=cropImageState,previewCanvas=document.querySelector('#cropImageCanvas');if(!state||!previewCanvas)return;
-  const ratio=cropRatio(),output=document.createElement('canvas');output.width=state.preset.shape==='project-banner'?2160:(state.orientation==='landscape'?1200:(state.orientation==='square'?1000:900));output.height=state.preset.shape==='project-banner'?900:Math.round(output.width/ratio);output.getContext('2d').drawImage(previewCanvas,0,0,output.width,output.height);
+  const ratio=cropRatio(),output=document.createElement('canvas');output.width=state.preset.shape==='project-banner'?2160:(state.orientation==='landscape'?1200:(state.orientation==='square'?1000:900));output.height=state.preset.shape==='project-banner'?900:Math.round(output.width/ratio);
+  drawCropState(output.getContext('2d'),output.width,output.height,state);
   const data=output.toDataURL('image/jpeg',.88),hidden=document.querySelector(`#modal [name="${state.field}"]`),preview=document.querySelector(`#uploadPreview_${state.field}`);if(hidden)hidden.value=data;if(preview){preview.classList.add('has-image');preview.innerHTML=`<img src="${data}" alt="preview">`;}
   const orientationSelect=document.querySelector('#modal [name="imageOrientation"]');if(state.preset.canChoose&&orientationSelect)orientationSelect.value=state.orientation;
   const submit=state.input.closest('form')?.querySelector('[type="submit"]');if(submit)submit.disabled=false;document.querySelector('#cropImageModal')?.remove();cropImageState=null;toast('ปรับรูปเรียบร้อยแล้ว กดบันทึกเพื่อยืนยัน');
@@ -2539,7 +2513,7 @@ function openCropImage(input,field,image,preset){
   cropImageState={input,field,image,preset,orientation:preset.orientation,zoom:1,panX:0,panY:0};const submit=input.closest('form')?.querySelector('[type="submit"]');if(submit)submit.disabled=true;
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop crop-image-backdrop" id="cropImageModal"><div class="modal crop-image-modal"><div class="modal-head"><div><small>ADJUST IMAGE</small><h2>Crop Image / Adjust Image</h2><p>ลากรูปด้วยเมาส์หรือนิ้วเพื่อจัดตำแหน่งให้พอดีกับกรอบหน้าบ้าน</p></div><button class="close" onclick="closeCropImage()">×</button></div>${preset.canChoose?`<div class="crop-orientation"><b>เลือกรูปแบบรูปก่อนปรับ</b><div><button type="button" class="${preset.orientation==='portrait'?'active':''}" onclick="this.parentElement.querySelectorAll('button').forEach(button=>button.classList.remove('active'));this.classList.add('active');changeCropOrientation('portrait')">▯ แนวตั้ง</button><button type="button" class="${preset.orientation==='landscape'?'active':''}" onclick="this.parentElement.querySelectorAll('button').forEach(button=>button.classList.remove('active'));this.classList.add('active');changeCropOrientation('landscape')">▭ แนวนอน</button></div></div>`:''}<div class="crop-stage"><canvas id="cropImageCanvas" onpointerdown="cropDragStart(event)" onpointermove="cropDragMove(event)" onpointerup="cropDragEnd(event)" onpointercancel="cropDragEnd(event)"></canvas><span id="cropRatioLabel"></span></div><div class="crop-controls"><label><span>ซูมเข้า–ออก</span><input id="cropZoom" type="range" min="1" max="3" value="1" step="0.01" oninput="updateCropControl('zoom',this.value)"></label><label><span>เลื่อนซ้าย–ขวา</span><input id="cropPanX" type="range" min="-100" max="100" value="0" oninput="updateCropControl('panX',this.value)"></label><label><span>เลื่อนขึ้น–ลง</span><input id="cropPanY" type="range" min="-100" max="100" value="0" oninput="updateCropControl('panY',this.value)"></label></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeCropImage()">ยกเลิก</button><button type="button" class="btn" onclick="applyCroppedImage()">ใช้รูปที่ปรับแล้ว</button></div></div></div>`);drawCropPreview();
 }
-handleImageUpload=function(input,field){const file=input.files?.[0];if(!file)return;if(file.size>8*1024*1024){toast('กรุณาเลือกรูปขนาดไม่เกิน 8 MB');input.value='';return;}const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>openCropImage(input,field,image,imageCropPreset(field));image.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};image.src=reader.result;};reader.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};reader.readAsDataURL(file);};
+handleImageUpload=function(input,field){const file=input.files?.[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type)){toast('รองรับเฉพาะไฟล์ JPG, JPEG, PNG และ WebP');input.value='';return;}if(file.size>8*1024*1024){toast('กรุณาเลือกรูปขนาดไม่เกิน 8 MB');input.value='';return;}const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>openCropImage(input,field,image,imageCropPreset(field));image.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};image.src=reader.result;};reader.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};reader.readAsDataURL(file);};
 
 const openHomeSettingsWithOverlay=openHomeSettings;
 openHomeSettings=function(){openHomeSettingsWithOverlay();const grid=document.querySelector('#modal .form-grid'),settings=db.siteSettings;if(!grid)return;grid.querySelector('[name="heroFit"]')?.closest('.field')?.remove();grid.querySelector('[name="heroPosition"]')?.closest('.field')?.remove();grid.insertAdjacentHTML('beforeend',`<div class="field full hero-overlay-settings"><label>ข้อความบนรูปหน้าหลัก</label><input name="heroOverlayText" value="${escapePageText(settings.heroOverlayText??'STAY CLOSE. STAY INSPIRED.')}" placeholder="STAY CLOSE. STAY INSPIRED."><label class="hero-overlay-toggle"><input type="checkbox" name="heroOverlayVisible" ${settings.heroOverlayVisible!==false?'checked':''}><span>แสดงข้อความบนรูปหน้าบ้าน</span></label></div>`);};
@@ -3376,6 +3350,70 @@ calendarPage=function(){
   app.innerHTML=nav('schedule')+`<main><section class="page-hero calendar-hero"><div class="container"><span class="eyebrow">Past · Present · Future</span><h1>Event Calendar</h1><p>Review past events and plan for every upcoming schedule.</p></div></section><section class="section calendar-section"><div class="container"><div class="calendar-toolbar"><button onclick="moveCalendar(-1)">←</button><h2>${label}</h2><button onclick="moveCalendar(1)">→</button></div><div class="calendar-legend dynamic-calendar-legend">${legend}<button onclick="calendarDate=new Date();calendarPage()">Current month</button><select class="public-type-filter" onchange="filterPublicCalendar(this.value)"><option value="all">All types</option>${db.masterData.types.map(t=>`<option value="${t.id}" ${publicTypeFilter===t.id?'selected':''}>${escapePageText(t.label)}</option>`).join('')}</select></div><div class="calendar"><div class="weekday">Monday</div><div class="weekday">Tuesday</div><div class="weekday">Wednesday</div><div class="weekday">Thursday</div><div class="weekday">Friday</div><div class="weekday">Saturday</div><div class="weekday">Sunday</div>${cells.join('')}</div></div></section></main>`+footer();
   filterPublicCalendar(publicTypeFilter);
 };
+let mobileCalendarSelectedDate = "";
+function localDateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+}
+function presenterMediaAspectRatio(){
+  const value=getComputedStyle(document.documentElement).getPropertyValue('--presenter-media-ratio').trim();
+  const parts=value.split('/').map(Number);
+  return parts.length===2&&parts[0]>0&&parts[1]>0?parts[0]/parts[1]:4/3;
+}
+function adjustExistingPresenterImage(button){
+  const field=button.closest('.image-upload-field'),hidden=field?.querySelector('[name="announcementImage"]'),input=field?.querySelector('input[type="file"]');
+  if(!hidden?.value||!input)return;
+  const image=new Image();
+  image.onload=()=>openCropImage(input,'announcementImage',image,imageCropPreset('announcementImage'));
+  image.onerror=()=>toast('ไม่สามารถเปิดรูปเดิมเพื่อปรับตำแหน่งได้');
+  image.src=hidden.value;
+}
+function calendarTypeLabel(event) {
+  const type = db.masterData.types.find(item => eventHasType(event,item.id));
+  return type?.label || event.type || "Schedule";
+}
+function calendarEventColor(event,artistIndex) {
+  const id = calendarEventArtistIds(event)[0] || "";
+  return calendarArtistColor(id,artistIndex.get(id) || 0);
+}
+function selectMobileCalendarDate(date) {
+  mobileCalendarSelectedDate = date;
+  calendarPage();
+}
+function mobileCalendarToday() {
+  const today = new Date();
+  calendarDate = new Date(today.getFullYear(),today.getMonth(),1);
+  mobileCalendarSelectedDate = localDateKey(today);
+  calendarPage();
+}
+function filterMobileCalendar(value) {
+  publicTypeFilter = value;
+  calendarPage();
+}
+const desktopCalendarPage = calendarPage;
+calendarPage = function(){
+  desktopCalendarPage();
+  const calendarArtists=[...db.artists].sort((a,b)=>artistSchedulePriority(a)-artistSchedulePriority(b));
+  const artistIndex=new Map(calendarArtists.map((artist,index)=>[artist.id,index]));
+  const year=calendarDate.getFullYear(),mon=calendarDate.getMonth(),first=new Date(year,mon,1);
+  const todayKey=localDateKey(new Date()),monthKey=`${year}-${String(mon+1).padStart(2,"0")}`;
+  if(!mobileCalendarSelectedDate || !mobileCalendarSelectedDate.startsWith(monthKey)) mobileCalendarSelectedDate=todayKey.startsWith(monthKey)?todayKey:`${monthKey}-01`;
+  const filteredEvents=db.events.filter(event=>publicTypeFilter==="all" || eventHasType(event,publicTypeFilter));
+  const cells=[],gridStart=new Date(year,mon,1-first.getDay());
+  for(let index=0;index<42;index++){
+    const cellDate=new Date(gridStart.getFullYear(),gridStart.getMonth(),gridStart.getDate()+index);
+    const key=localDateKey(cellDate),items=filteredEvents.filter(event=>event.date===key);
+    const dots=items.slice(0,3).map(event=>`<i style="background:${calendarEventColor(event,artistIndex)}"></i>`).join("");
+    cells.push(`<button class="mobile-calendar-day ${cellDate.getMonth()!==mon?"outside":""} ${key===todayKey?"today":""} ${key===mobileCalendarSelectedDate?"selected":""}" onclick="selectMobileCalendarDate('${key}')" aria-label="${key}"><span>${cellDate.getDate()}</span><b>${dots}${items.length>3?'<i class="more"></i>':""}</b></button>`);
+  }
+  const selectedEvents=filteredEvents.filter(event=>event.date===mobileCalendarSelectedDate);
+  const selectedLabel=new Intl.DateTimeFormat("en-US",{weekday:"short",month:"short",day:"numeric"}).format(new Date(`${mobileCalendarSelectedDate}T00:00:00`));
+  const detail=selectedEvents.length?selectedEvents.map(event=>`<button class="mobile-event-row" style="--event-color:${calendarEventColor(event,artistIndex)}" onclick="showEvent('${event.id}')"><time>${escapePageText(event.time||"All day")}</time><span><small>${escapePageText(calendarTypeLabel(event))}</small><strong>${escapePageText(event.title)}</strong></span><b>›</b></button>`).join(""):`<div class="mobile-calendar-empty"><b>○</b><p>No schedule to display.<br>Please select another date.</p></div>`;
+  const nextEvent=filteredEvents.filter(event=>event.date>mobileCalendarSelectedDate).sort((a,b)=>a.date.localeCompare(b.date)||(a.time||"").localeCompare(b.time||""))[0];
+  const nextCard=nextEvent?`<section class="mobile-calendar-detail next"><header><strong>${new Intl.DateTimeFormat("en-US",{weekday:"short",month:"short",day:"numeric"}).format(new Date(`${nextEvent.date}T00:00:00`))}</strong><span>Next schedule</span></header><button class="mobile-next-event" style="--event-color:${calendarEventColor(nextEvent,artistIndex)}" onclick="showEvent('${nextEvent.id}')"><small>${escapePageText(calendarTypeLabel(nextEvent))}</small><strong>${escapePageText(nextEvent.title)}</strong><span>${escapePageText(nextEvent.time||"All day")}</span></button></section>`:"";
+  const typeOptions=db.masterData.types.map(type=>`<option value="${type.id}" ${publicTypeFilter===type.id?"selected":""}>${escapePageText(type.label)}</option>`).join("");
+  const mobile=`<section class="mobile-calendar-view"><header class="mobile-calendar-title"><a href="#home" aria-label="Back">‹</a><h1>Calendar</h1><span></span></header><div class="mobile-calendar-card"><div class="mobile-month-head"><div><h2>${new Intl.DateTimeFormat("en-US",{month:"short"}).format(first)}, <span>${year}</span></h2><button title="Calendar information" aria-label="Calendar information">i</button></div><nav><button onclick="moveCalendar(-1)" aria-label="Previous month">‹</button><button onclick="moveCalendar(1)" aria-label="Next month">›</button></nav></div><div class="mobile-calendar-controls"><select aria-label="Filter schedules by type" onchange="filterMobileCalendar(this.value)"><option value="all">All</option>${typeOptions}</select><button onclick="mobileCalendarToday()">Today</button></div><div class="mobile-calendar-grid">${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day=>`<span class="mobile-weekday">${day}</span>`).join("")}${cells.join("")}</div></div><section class="mobile-calendar-detail"><header><strong>${selectedLabel}</strong>${mobileCalendarSelectedDate===todayKey?"<span>Today</span>":""}</header>${detail}</section>${nextCard}</section>`;
+  document.querySelector(".calendar-section")?.insertAdjacentHTML("afterend",mobile);
+};
 showEvent=function(id){
   const e=db.events.find(x=>x.id===id);if(!e)return;
   const dateLabel=new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric'}).format(new Date(`${e.date}T00:00:00`));
@@ -3518,6 +3556,18 @@ submitForm=function(event,type,id){
   submitFormBeforeArtistSocials(event,type,id);
   const artist=existing||db.artists[db.artists.length-1];
   if(artist&&!existing){artist.socialLinks=socials;save()}
+};
+const openFormBeforeImageOnlyPresenters=openForm;
+openForm=function(type,id){
+  openFormBeforeImageOnlyPresenters(type,id);
+  if(type!=='presenters')return;
+  const modal=document.querySelector('#modal');
+  modal?.classList.add('presenter-image-only-modal');
+  const preview=modal?.querySelector('#uploadPreview_announcementImage');
+  preview?.classList.add('presenter-image-preview');
+  if(preview?.classList.contains('has-image')&&!modal.querySelector('[data-adjust-presenter-image]')){
+    preview.closest('.image-uploader')?.querySelector(':scope>div:last-child')?.insertAdjacentHTML('beforeend','<button type="button" class="remove-image adjust-presenter-image" data-adjust-presenter-image onclick="adjustExistingPresenterImage(this)">ปรับตำแหน่งรูปอีกครั้ง</button>');
+  }
 };
 router();
 hydrateFromSupabase();

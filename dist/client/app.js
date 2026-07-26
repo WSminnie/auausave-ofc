@@ -363,7 +363,7 @@ function toast(msg) {
 }
 function nav(active = "") {
 return `<nav class="nav"><div class="container nav-inner">
-  <a href="#home" class="brand"><i></i>AUAUSAVE HOUSE</a>
+  <a href="#home" class="brand"><i></i>AUAUSAVE THAILAND</a>
   <div class="links">
     <a class="${active === "artists" ? "active" : ""}" href="#artists">AuauSave</a>
     <a class="${active === "schedule" ? "active" : ""}" href="#schedule">Schedule</a>
@@ -380,10 +380,10 @@ nav = function (active = '') {
   return renderNavBeforeLanguages(active);
 };
 function footer() {
-  return `<footer class="footer"><div class="container"><span class="eyebrow">The artist community</span><h2>KEEP THE<br>MEMORIES CLOSE.</h2><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH <b>↗</b></a><a href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC <b>↗</b></a><a href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC <b>↗</b></a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE HOUSE</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
+  return `<footer class="footer"><div class="container"><span class="eyebrow">The artist community</span><h2>KEEP THE<br>MEMORIES CLOSE.</h2><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH <b>↗</b></a><a href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC <b>↗</b></a><a href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC <b>↗</b></a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE TH</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
 }
 footer=function(){
-  return `<footer class="footer footer-compact"><div class="container"><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH <b>↗</b></a><a href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC <b>↗</b></a><a href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC <b>↗</b></a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE HOUSE</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
+  return `<footer class="footer footer-compact"><div class="container"><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH <b>↗</b></a><a href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC <b>↗</b></a><a href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC <b>↗</b></a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE TH</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
 };
 function artistCards() {
   return `<div class="artists">${sortedArtists().map((a) => `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(a.id)}'"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<span>${a.initial}</span>`}<small class="tag">${sameArtistId(a.id,"duo") ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><span class="arrow">↗</span><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
