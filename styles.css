@@ -951,6 +951,7 @@ html{
 .food-queue-row em.value-unavailable{background:#f3ece2;color:#765a35}
 .food-queue-row em>span,.food-queue-row em>small{display:block}
 .food-queue-row em>small{margin-top:2px;font-size:7px;font-weight:700;line-height:1.15;opacity:.72}
+.project-banner-placeholder{border-radius:0}
 @media(max-width:900px){
   .project-payment-grid{grid-template-columns:1fr}
   .project-payment-grid>*{min-width:0}
