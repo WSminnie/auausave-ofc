@@ -902,10 +902,15 @@ html{
 
 /* Food Support Queue — site palette and desktop column order */
 .food-donation-head,.food-donation-list>div:not(.food-empty){display:grid;grid-template-columns:1.15fr .75fr .8fr;gap:12px;align-items:center}
-.food-donation-head{margin-top:20px;padding:10px 2px;border-radius:10px;background:#eee9e2;color:#817a71;font-size:9px;font-weight:800;letter-spacing:1px}
+.food-donation-head{margin-top:30px;padding:12px 14px;border-radius:10px;background:#eee9e2;color:#817a71;font-size:9px;font-weight:800;letter-spacing:1px}
 .food-donation-head span:last-child,.food-donation-list strong{text-align:right}
 .food-donation-list span,.food-donation-list time{font-size:12px}
 .food-donation-list time{color:#817a71}
+.donation-live-panel header{align-items:start;margin-bottom:0}
+.donation-live-panel header small{color:#d86666}
+.donation-live-panel header h2{font-size:28px;letter-spacing:0}
+.food-auto-update{display:inline-flex;align-items:center;gap:8px;color:#171717;font-size:11px;font-weight:900;white-space:nowrap}
+.food-auto-update i{width:7px;height:7px;border-radius:50%;background:#438e5d}
 .food-summary-grid{grid-template-columns:minmax(0,1.12fr) minmax(320px,.88fr)}
 .food-queue-row em.value-unavailable{background:#eee9e2;color:#655d55}
 .food-support-content{background:#eee9e1;color:#171717}
