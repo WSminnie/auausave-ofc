@@ -943,6 +943,11 @@ html{
 .project-admin-section>header h2{margin:5px 0 0;font-size:24px}
 .project-admin-section>header>span{color:var(--muted);font-size:10px}
 .project-admin-section-list{display:grid;gap:14px}
+.project-admin-section.is-unassigned{padding:18px;border:1px dashed #d8cbdc;border-radius:18px;background:#faf8fb}
+.project-section-actions{display:flex;align-items:center;gap:7px}
+.project-section-actions .btn{padding:8px 11px}
+.project-section-actions .icon-btn{color:#a23c45}
+@media(max-width:600px){.project-admin-section>header{align-items:flex-start;flex-direction:column}.project-section-actions{width:100%;flex-wrap:wrap}.project-section-actions .btn{flex:1}}
 @media(max-width:900px){
   .food-summary-grid{grid-template-columns:1fr}
   .food-live-grid .queue-live{grid-column:auto;grid-row:auto;order:1}
