@@ -3930,7 +3930,6 @@ function applyResponsiveContentStructure(){
     responsiveIconObserver.observe(document.body,{childList:true,subtree:true,characterData:true});
     window.addEventListener('resize',()=>syncTimelineTrackRules(),{passive:true});
   }
-  document.querySelectorAll('.archive-section-head>p').forEach(copy=>{if(copy.textContent.trim()==='Search couple schedules by date range and event type.')copy.remove()});
   document.querySelectorAll('.schedule-wrap').forEach(wrap=>{
     const rows=[...wrap.children].filter(child=>child.classList.contains('schedule-row'));
     if(rows.length&&!wrap.querySelector(':scope > .responsive-schedule-grid')){
