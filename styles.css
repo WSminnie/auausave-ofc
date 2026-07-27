@@ -949,8 +949,8 @@ html{
 .project-section-actions .icon-btn{color:#a23c45}
 .project-admin-modal .field[hidden]{display:none!important}
 .food-queue-row em.value-unavailable{background:#f3ece2;color:#765a35}
-.food-admin-status{display:grid;gap:4px}
-.food-admin-status small{padding-left:4px;color:#85788d;font-size:9px;letter-spacing:.3px}
+.food-queue-row em>span,.food-queue-row em>small{display:block}
+.food-queue-row em>small{margin-top:2px;font-size:7px;font-weight:700;line-height:1.15;opacity:.72}
 @media(max-width:600px){.project-admin-section>header{align-items:flex-start;flex-direction:column}.project-section-actions{width:100%;flex-wrap:wrap}.project-section-actions .btn{flex:1}}
 @media(max-width:900px){
   .food-summary-grid{grid-template-columns:1fr}
