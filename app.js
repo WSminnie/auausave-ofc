@@ -186,11 +186,44 @@ const DEFAULT_PAGE_CONTENT = window.AUAUSAVE_DATA.DEFAULT_PAGE_CONTENT;
 const DEFAULT_HOME_CARDS = window.AUAUSAVE_DATA.DEFAULT_HOME_CARDS;
 const DEFAULT_YOUTUBE_CATEGORIES = window.AUAUSAVE_DATA.DEFAULT_YOUTUBE_CATEGORIES;
 const currentLanguage = 'th';
+const UNIFIED_PAGE_CONTENT_DEFAULTS = {
+  artists:{title:'THE AUAUSAVE UNIVERSE',description:'Explore AuauSave through their shared story, individual journeys, and everything in between.'},
+  schedule:{title:'Event Calendar',description:'Review past events and plan for every upcoming schedule.'},
+  presenters:{title:'BRAND AMBASSADORS',description:'A collection of brands that have partnered with Auau and Save, together and individually.'},
+  awards:{title:'AWARDS',description:'Celebrating every milestone together.'}
+};
+const UNIFIED_PAGE_CONTENT_KEYS = new Set(Object.keys(UNIFIED_PAGE_CONTENT_DEFAULTS));
+function ensureUnifiedPageContent(){
+  db.siteSettings ||= {};
+  db.siteSettings.pageCopy ||= {};
+  Object.entries(UNIFIED_PAGE_CONTENT_DEFAULTS).forEach(([page,defaults])=>{
+    const saved=db.siteSettings.pageCopy[page];
+    db.siteSettings.pageCopy[page]={
+      title:String(saved?.title||defaults.title).trim()||defaults.title,
+      description:String(saved?.description??defaults.description).trim(),
+      updatedAt:Number(saved?.updatedAt)||0
+    };
+  });
+  db.siteSettings.pageContent ||= {};
+  UNIFIED_PAGE_CONTENT_KEYS.forEach(page=>{db.siteSettings.pageContent[page]=null});
+  if(db.siteSettings.pageTitles)UNIFIED_PAGE_CONTENT_KEYS.forEach(page=>{db.siteSettings.pageTitles[page]=null});
+}
+function restoreNewerLocalPageCopy(localPageCopy={}){
+  ensureUnifiedPageContent();
+  UNIFIED_PAGE_CONTENT_KEYS.forEach(page=>{
+    const local=localPageCopy?.[page];
+    const remote=db.siteSettings.pageCopy[page];
+    if(Number(local?.updatedAt)>Number(remote?.updatedAt)){
+      db.siteSettings.pageCopy[page]=structuredClone(local);
+    }
+  });
+}
 localStorage.removeItem('auausave-language');
 function ensureLocalizationSettings() {
   db.siteSettings ||= {};
   db.siteSettings.pageContent ||= {};
   Object.entries(DEFAULT_PAGE_CONTENT).forEach(([page, languages]) => {
+    if (UNIFIED_PAGE_CONTENT_KEYS.has(page)) return;
     db.siteSettings.pageContent[page] ||= {};
     ['th','en'].forEach(language => {
       db.siteSettings.pageContent[page][language] = {...languages[language], ...(db.siteSettings.pageContent[page][language] || {})};
@@ -224,10 +257,12 @@ function ensureLocalizationSettings() {
     db.siteSettings.timeline = [...merged.values()];
   }
   db.siteSettings.timelineVisibility = {series:true,variety:true,'music-video':true,...(db.siteSettings.timelineVisibility||{})};
+  ensureUnifiedPageContent();
 }
 ensureLocalizationSettings();
 function pageText(page) {
   ensureLocalizationSettings();
+  if (UNIFIED_PAGE_CONTENT_KEYS.has(page)) return db.siteSettings.pageCopy[page];
   return db.siteSettings.pageContent[page]?.[currentLanguage] || DEFAULT_PAGE_CONTENT[page]?.[currentLanguage];
 }
 db.events.forEach((e) => {
@@ -365,16 +400,30 @@ function toast(msg) {
 function nav(active = "") {
 return `<nav class="nav"><div class="container nav-inner">
   <a href="#home" class="brand"><i></i>AUAUSAVE THAILAND</a>
-  <div class="links">
-    <a class="${active === "artists" ? "active" : ""}" href="#artists">AuauSave</a>
-    <a class="${active === "schedule" ? "active" : ""}" href="#schedule">Schedule</a>
-    <a class="${active === "presenters" ? "active" : ""}" href="#presenters">Presenters</a>
-    <a class="${active === "awards" ? "active" : ""}" href="#awards">Awards</a>
-    <a class="${active === "projects" ? "active" : ""}" href="#projects">Projects</a>
-    <a class="${active === "videos" ? "active" : ""}" href="#videos">YouTube</a>
+  <div class="links" id="public-navigation">
+    <a onclick="closePublicMenu()" class="${active === "artists" ? "active" : ""}" href="#artists">AuauSave</a>
+    <a onclick="closePublicMenu()" class="${active === "schedule" ? "active" : ""}" href="#schedule">Schedule</a>
+    <a onclick="closePublicMenu()" class="${active === "presenters" ? "active" : ""}" href="#presenters">Presenters</a>
+    <a onclick="closePublicMenu()" class="${active === "awards" ? "active" : ""}" href="#awards">Awards</a>
+    <a onclick="closePublicMenu()" class="${active === "projects" ? "active" : ""}" href="#projects">Projects</a>
+    <a onclick="closePublicMenu()" class="${active === "videos" ? "active" : ""}" href="#videos">YouTube</a>
   </div>
-  <button class="menu-btn" onclick="document.querySelector('.links').style.display=document.querySelector('.links').style.display==='flex'?'none':'flex'">☰</button>
+  <button class="menu-btn" type="button" aria-controls="public-navigation" aria-expanded="false" aria-label="เปิดเมนู" onclick="togglePublicMenu(this)">☰</button>
 </div></nav>`;
+}
+function closePublicMenu(){
+  const links=document.querySelector('.nav .links'),button=document.querySelector('.nav .menu-btn');
+  if(links)links.style.display='';
+  if(button)button.setAttribute('aria-expanded','false');
+  document.body.classList.remove('public-menu-open');
+}
+function togglePublicMenu(button){
+  const links=document.querySelector('.nav .links');
+  if(!links)return;
+  const opening=getComputedStyle(links).display==='none';
+  links.style.display=opening?'flex':'none';
+  button.setAttribute('aria-expanded',String(opening));
+  document.body.classList.toggle('public-menu-open',opening);
 }
 const renderNavBeforeLanguages = nav;
 nav = function (active = '') {
@@ -746,9 +795,10 @@ function presenterCards(items = db.presenters) {
   }</div></section>`).join('');
 }
 function presenterPage() {
+  const content=pageText('presenters');
   app.innerHTML =
     nav("presenters") +
-    `<main><section class="page-hero"><div class="container"><span class="eyebrow">Brand & Partnership</span><h1>BRAND AMBASSADORS</h1><p>A COLLECTION OF BRANDS THAT HAVE PARTNERED WITH AUAU AND SAVE, TOGETHER AND INDIVIDUALLY.</p></div></section><section class="section" style="padding-top:25px"><div class="container"><div class="presenter-group"><h2>#AUAUSAVE</h2>${presenterCards(db.presenters.filter((p) => itemMatchesArtist(p, "AT01")))}</div><div class="presenter-solo"><div><h2>AUAU</h2>${presenterCards(db.presenters.filter((p) => itemMatchesArtist(p, "AT02") && !itemMatchesArtist(p, "AT01")))}</div><div><h2>SAVE</h2>${presenterCards(db.presenters.filter((p) => itemMatchesArtist(p, "AT03") && !itemMatchesArtist(p, "AT01")))}</div></div></div></section></main>` +
+    `<main><section class="page-hero"><div class="container"><h1>${escapePageText(content.title)}</h1><p>${escapePageText(content.description)}</p></div></section><section class="section" style="padding-top:25px"><div class="container"><div class="presenter-group"><h2>#AUAUSAVE</h2>${presenterCards(db.presenters.filter((p) => itemMatchesArtist(p, "AT01")))}</div><div class="presenter-solo"><div><h2>AUAU</h2>${presenterCards(db.presenters.filter((p) => itemMatchesArtist(p, "AT02") && !itemMatchesArtist(p, "AT01")))}</div><div><h2>SAVE</h2>${presenterCards(db.presenters.filter((p) => itemMatchesArtist(p, "AT03") && !itemMatchesArtist(p, "AT01")))}</div></div></div></section></main>` +
     footer();
 }
 const renderListingBeforePresenters = listing;
@@ -1810,11 +1860,24 @@ function editHomeSection(id) {
   const s=db.siteSettings.homeSections.find(x=>x.id===id);
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>แก้ไข ${s.label}</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveHomeSection(event,'${id}')"><div class="form-grid"><div class="field full"><label>คำโปรยด้านบน</label><input name="eyebrow" value="${s.eyebrow||''}"></div><div class="field full"><label>หัวข้อหลัก</label><textarea name="title" required>${s.title||''}</textarea><small class="form-help">กดขึ้นบรรทัดใหม่เพื่อแบ่งหัวข้อเป็นหลายบรรทัด</small></div><div class="field full"><label>คำอธิบาย</label><textarea name="description">${s.description||''}</textarea></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึกข้อความ</button></div></form></div></div>`);
 }
-function saveHomeSection(event,id) {
-  event.preventDefault(); const data=Object.fromEntries(new FormData(event.target));
-  Object.assign(db.siteSettings.homeSections.find(s=>s.id===id),data);
+async function saveHomeSection(event,id) {
+  event.preventDefault();
+  const formElement=event.currentTarget,button=formElement.querySelector('[type="submit"]'),section=db.siteSettings.homeSections.find(s=>s.id===id),previous=structuredClone(section),data=Object.fromEntries(new FormData(formElement));
+  Object.assign(section,data,{updatedAt:Date.now()});
   if (id === 'hero') db.siteSettings.pageContent.home.en = {...db.siteSettings.pageContent.home.en, ...data};
-  save(); closeModal(); pageContentAdmin(); toast('บันทึกข้อความแล้ว');
+  button.disabled=true;
+  button.textContent='กำลังบันทึก...';
+  save(false);
+  const synced=await syncDatabaseInBackground();
+  if(!synced){
+    Object.assign(section,previous);
+    save(false);
+    button.disabled=false;
+    button.textContent='บันทึกข้อความ';
+    toast('บันทึกไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง');
+    return;
+  }
+  closeModal(); pageContentAdmin(); toast('บันทึกข้อความแล้ว');
 }
 function addPageBuilderNav() {
   const nav=document.querySelector('.side-nav');
@@ -2109,11 +2172,13 @@ admin=function(){if(adminTab==='timeline')timelineAdmin();else{renderAdminWithTi
 async function connectAdminDatabase() {
   adminDatabaseStatus = 'กำลังเชื่อมต่อ Supabase...';
   try {
+    const localPageCopy=structuredClone(db.siteSettings?.pageCopy||{});
     const remote = await window.auausaveDB.load();
     db = remote;
     ensureDexxEventType();
     ensureHomePageSettings();
     ensureLocalizationSettings();
+    restoreNewerLocalPageCopy(localPageCopy);
     const hasLegacyTimelineMedia=(db.siteSettings.timeline||[]).some(item=>typeof item.poster==='string'&&/\/settings\/homepage\/timeline\/\d+\/poster\./.test(item.poster));
     if(hasLegacyTimelineMedia){adminDatabaseStatus='กำลังจัดระเบียบรูป Timeline...';db=await window.auausaveDB.save(structuredClone(db));}
     localStorage.setItem('auausave-house-db-v9', JSON.stringify(db));
@@ -2188,11 +2253,13 @@ async function adminSignOut() {
 async function hydrateFromSupabase() {
   if (!window.auausaveDB) return;
   try {
+    const localPageCopy=structuredClone(db.siteSettings?.pageCopy||{});
     const remote = await window.auausaveDB.load();
     db = remote;
     ensureDexxEventType();
     ensureHomePageSettings();
     ensureLocalizationSettings();
+    restoreNewerLocalPageCopy(localPageCopy);
     localStorage.setItem('auausave-house-db-v9', JSON.stringify(db));
     router();
   } catch (error) {
@@ -2815,7 +2882,12 @@ homeTimelineSection=function(){
   return template.innerHTML;
 };
 function homePresenterMatchesScope(item){ensureHomepageFrontDisplaySettings();const ids=homeScopedArtistIds(item);return db.siteSettings.homePresenterArtistIds.map(canonicalArtistId).some(id=>ids.includes(id));}
-function homePresenterSection(){ensureHomepageFrontDisplaySettings();const items=orderedPresenters(db.presenters.filter(homePresenterMatchesScope)).slice(0,6);return `<section class="section presenter-home"><div class="container"><div class="section-head"><div><span class="eyebrow">Brand & Partnership</span><h2>Our Presenters</h2></div><a class="btn outline" href="#presenters">View all ➚</a></div>${presenterCards(items)}</div></section>`;}
+function homePresenterSection(){
+  ensureHomepageFrontDisplaySettings();
+  const items=orderedPresenters(db.presenters.filter(homePresenterMatchesScope)).slice(0,6);
+  const settings=db.siteSettings.homeSections?.find(section=>section.id==='presenters')||{};
+  return `<section class="section presenter-home"><div class="container"><div class="section-head"><div><span class="eyebrow">${escapePageText(settings.eyebrow||'')}</span><h2>${escapePageText(settings.title||'Our Presenters').replace(/\n/g,'<br>')}</h2>${settings.description?`<p>${escapePageText(settings.description)}</p>`:''}</div><a class="btn outline" href="#presenters">View all ➚</a></div>${presenterCards(items)}</div></section>`;
+}
 const pageContentAdminBeforeFrontDisplaySettings=pageContentAdmin;
 pageContentAdmin=function(){pageContentAdminBeforeFrontDisplaySettings();if(!adminAuthenticated||adminTab!=='pagecontent')return;const main=document.querySelector('.admin-main');if(homeBuilderTab==='order')main?.insertAdjacentHTML('beforeend',renderHomepageScheduleOrderEditor());if(homeBuilderTab==='content')main?.insertAdjacentHTML('beforeend',renderHomepageFrontScopeEditor());};
 const homeBeforeFrontDisplaySettings=home;
@@ -3425,6 +3497,120 @@ calendarPage=function(){
   app.innerHTML=nav('schedule')+`<main><section class="page-hero calendar-hero"><div class="container"><span class="eyebrow">Past · Present · Future</span><h1>Event Calendar</h1><p>Review past events and plan for every upcoming schedule.</p></div></section><section class="section calendar-section"><div class="container"><div class="calendar-toolbar"><button onclick="moveCalendar(-1)">←</button><h2>${label}</h2><button onclick="moveCalendar(1)">→</button></div><div class="calendar-legend dynamic-calendar-legend">${legend}<button onclick="calendarDate=new Date();calendarPage()">Current month</button><select class="public-type-filter" onchange="filterPublicCalendar(this.value)"><option value="all">All types</option>${db.masterData.types.map(t=>`<option value="${t.id}" ${publicTypeFilter===t.id?'selected':''}>${escapePageText(t.label)}</option>`).join('')}</select></div><div class="calendar"><div class="weekday">Monday</div><div class="weekday">Tuesday</div><div class="weekday">Wednesday</div><div class="weekday">Thursday</div><div class="weekday">Friday</div><div class="weekday">Saturday</div><div class="weekday">Sunday</div>${cells.join('')}</div></div></section></main>`+footer();
   filterPublicCalendar(publicTypeFilter);
 };
+
+/* Food Support Queue projects */
+const donationProjectDetailPage=projectDetailPage;
+const donationOpenProjectForm=openProjectForm;
+function foodSupportFormButton(url,label,missing){
+  return url?`<a class="food-support-cta" href="${escapePageText(url)}" target="_blank" rel="noopener noreferrer">${escapePageText(label)} <span>↗</span></a>`:`<button class="food-support-cta" type="button" onclick="toast('${escapePageText(missing)}')">${escapePageText(label)} <span>↗</span></button>`;
+}
+function foodSupportQueuePage(project){
+  const goal=Number(project.donationGoal??project.goal)||0,maxQueue=Math.max(0,Number(project.maximumQueue)||0),money=value=>new Intl.NumberFormat('th-TH',{maximumFractionDigits:2}).format(value);
+  app.innerHTML=nav('projects')+`<main class="food-support-page">
+    <section class="project-detail-hero"><div class="container"><a href="#projects">← Our Projects</a><span class="eyebrow">${project.status==='active'?'ACTIVE PROJECT':'FAN PROJECT'} · FOOD SUPPORT QUEUE</span><h1>${escapePageText(project.title)}</h1><div><div class="project-detail-description">${sanitizeProjectRichText(project.descriptionHtml||`<p>${escapePageText(project.description||'')}</p>`)}</div></div></div></section>
+    <section class="section food-support-content"><div class="container">
+      <div class="food-summary-grid">
+        <article class="food-summary-card donation-summary"><div><small>DONATION WITH THE HOUSE</small><h2>ร่วมโดเนทกับบ้าน</h2></div><div class="food-summary-numbers"><strong data-food-total>฿0</strong><span><b data-food-donation-count>0</b> รายการ</span></div><div class="food-progress-meta"><span>เป้าหมาย ฿${money(goal)}</span><b data-food-percent>0%</b></div><div class="food-progress" role="progressbar" aria-label="Donation progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i data-food-progress></i></div>${foodSupportFormButton(project.donationFormUrl||project.formUrl,'ร่วมโดเนท','ยังไม่ได้ตั้งค่า Donation Pre-filled Form URL')}</article>
+        <article class="food-summary-card queue-summary"><div><small>PERSONAL SUPPORT</small><h2>ลงคิวจัดส่งเอง</h2></div><div class="food-queue-numbers"><p><strong data-food-queue-count>0</strong><span>คิวที่ลงทะเบียน</span></p><p><strong data-food-queue-left>${maxQueue}</strong><span>คิวคงเหลือ</span></p></div>${foodSupportFormButton(project.personalSupportFormUrl,'ลงทะเบียนคิว','ยังไม่ได้ตั้งค่า Personal Support Pre-filled Form URL')}</article>
+      </div>
+      <div class="food-live-grid">
+        <section class="food-live-card queue-live"><header><div><small>PERSONAL SUPPORT QUEUE</small><h2>รายชื่อผู้จัดส่งด้วยตัวเอง</h2></div><span class="food-live-time" data-food-queue-time>กำลังโหลด...</span></header><div class="food-table-head"><span>QUEUE</span><span>X ACCOUNT</span><span>STATUS</span></div><div class="food-queue-list" data-food-queue-list><div class="food-empty">กำลังโหลดข้อมูลคิว...</div></div><button class="food-view-all" type="button" data-food-view-all hidden onclick="toggleFoodQueueAll(this)">ดูทั้งหมด</button></section>
+        <section class="food-live-card donation-live-panel"><header><div><small>DONATION LIVE UPDATE</small><h2>Donation Live Update</h2></div><span class="food-live-time" data-food-donation-time>กำลังโหลด...</span></header><div class="food-donation-kpis"><strong data-food-panel-total>฿0</strong><span><b data-food-panel-count>0</b> รายการ</span></div><div class="food-progress-meta"><span>เป้าหมาย ฿${money(goal)}</span><b data-food-panel-percent>0%</b></div><div class="food-progress" role="progressbar" aria-label="Donation live progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i data-food-panel-progress></i></div><div class="food-donation-list" data-food-donation-list><div class="food-empty">กำลังโหลดรายการโดเนท...</div></div></section>
+      </div>
+    </div></section>
+  </main>`+footer();
+  if(!project.personalQueueEnabled){document.querySelector('.queue-live').hidden=true;document.querySelector('.queue-summary').classList.add('is-disabled')}
+  if(!project.donationLiveEnabled){document.querySelector('.donation-live-panel').hidden=true;document.querySelector('.donation-summary').classList.add('is-disabled')}
+  if(project.sheetUrl)setTimeout(()=>refreshFoodSupportProject(project.id),0);else setFoodSupportError('ยังไม่ได้เชื่อม Google Sheet');
+}
+projectDetailPage=function(slug){
+  ensureProjectSettings();const project=db.siteSettings.projects.items.find(item=>item.slug===slug&&item.visible!==false);
+  if(project?.projectType==='foodSupportQueue')foodSupportQueuePage(project);else donationProjectDetailPage(slug);
+};
+function foodSheetCell(cell){return String(cell?.f??cell?.v??'').trim()}
+function foodSheetDate(cell){
+  const raw=cell?.v;if(raw instanceof Date)return raw;
+  const google=String(raw||'').match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)$/);
+  if(google)return new Date(+google[1],+google[2],+google[3],+google[4]||0,+google[5]||0,+google[6]||0);
+  const value=foodSheetCell(cell),local=value.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  return local?new Date(+local[3],+local[2]-1,+local[1],+local[4]||0,+local[5]||0,+local[6]||0):new Date(value);
+}
+function foodSupportRows(table,project={}){
+  const headers=(table.cols||[]).map(column=>String(column.label||column.id||'').trim().toLowerCase());
+  const find=(...names)=>headers.findIndex(header=>names.some(name=>header.includes(name)));
+  const timestamp=find('timestamp','ประทับเวลา'),type=find('type of support','ประเภทการสนับสนุน'),account=find('x account','บัญชี x','แอคเคาท์ x','twitter'),amount=find('donation amount','จำนวนเงิน','ยอดเงิน'),queue=find('queue','ลำดับคิว');
+  if(timestamp<0||type<0)throw new Error('ไม่พบคอลัมน์ Timestamp หรือ Type of support');
+  const rows=(table.rows||[]).map((row,index)=>{
+    const cells=row.c||[],date=foodSheetDate(cells[timestamp]),supportType=foodSheetCell(cells[type]),xAccount=foodSheetCell(cells[account])||'—',rawAmount=cells[amount]?.v,donationAmount=typeof rawAmount==='number'?rawAmount:Number(foodSheetCell(cells[amount]).replace(/[^0-9.-]/g,''));
+    const key=[Number.isNaN(date.getTime())?foodSheetCell(cells[timestamp]):date.toISOString(),xAccount,supportType].join('|');
+    return{key,date,supportType,xAccount,amount:donationAmount,queue:foodSheetCell(cells[queue])};
+  }).filter(row=>!Number.isNaN(row.date.getTime()));
+  const donation=rows.filter(row=>/donation|savewrg official/i.test(row.supportType)&&Number.isFinite(row.amount)&&row.amount>0).sort((a,b)=>b.date-a.date);
+  const personal=rows.filter(row=>/personal support|จัดส่งในนามส่วนตัว/i.test(row.supportType)).sort((a,b)=>a.date-b.date).map((row,index)=>({...row,queue:row.queue||String(index+1),status:project.queueStatuses?.[row.key]||'ลงทะเบียนแล้ว'}));
+  return{donation,personal};
+}
+function loadFoodSupportTable(project){
+  const source=googleSheetSource(project.sheetUrl);if(!source)return Promise.reject(new Error('ลิงก์ Google Sheet ไม่ถูกต้อง'));
+  return new Promise((resolve,reject)=>{
+    const callback=`auausaveFoodSheet_${Date.now()}_${Math.random().toString(36).slice(2)}`,script=document.createElement('script');let timer;
+    const cleanup=()=>{delete window[callback];script.remove();clearTimeout(timer)};
+    timer=setTimeout(()=>{cleanup();reject(new Error('Google Sheet ตอบกลับช้าเกินไป'))},15000);
+    window[callback]=response=>{if(response?.status==='error'){cleanup();reject(new Error(response.errors?.[0]?.message||'Google Sheet ไม่อนุญาตให้อ่านข้อมูล'));return}cleanup();response?.table?resolve(response.table):reject(new Error('ไม่พบข้อมูลใน Google Sheet'))};
+    script.onerror=()=>{cleanup();reject(new Error('โหลด Google Sheet ไม่สำเร็จ'))};
+    const sheet=project.sheetName?`&sheet=${encodeURIComponent(project.sheetName)}`:'';
+    script.src=`https://docs.google.com/spreadsheets/d/${source.id}/gviz/tq?gid=${source.gid}${sheet}&tqx=responseHandler:${callback}`;document.head.appendChild(script);
+  });
+}
+function foodStatusClass(value){return'value-'+({'ลงทะเบียนแล้ว':'registered','กำลังตรวจสอบ':'checking','ยืนยันคิวแล้ว':'confirmed','ดำเนินการเรียบร้อย':'done','ยกเลิก':'cancelled'}[value]||'registered')}
+function toggleFoodQueueAll(button){const list=document.querySelector('[data-food-queue-list]');list?.classList.toggle('show-all');button.textContent=list?.classList.contains('show-all')?'ย่อรายการ':'ดูทั้งหมด'}
+function setFoodSupportError(message){
+  document.querySelectorAll('.food-live-time').forEach(node=>node.textContent=message);
+  document.querySelectorAll('.food-empty').forEach(node=>node.textContent='ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่ภายหลัง');
+}
+async function refreshFoodSupportProject(projectId){
+  ensureProjectSettings();const project=db.siteSettings.projects.items.find(item=>item.id===projectId);if(!project)return;
+  try{
+    const {donation,personal}=foodSupportRows(await loadFoodSupportTable(project),project),goal=Number(project.donationGoal??project.goal)||0,maxQueue=Math.max(0,Number(project.maximumQueue)||0),total=donation.reduce((sum,row)=>sum+row.amount,0),progress=goal?Math.min(total/goal*100,100):0,money=value=>new Intl.NumberFormat('th-TH',{maximumFractionDigits:2}).format(value),updated=`อัปเดตล่าสุด ${new Intl.DateTimeFormat('th-TH',{dateStyle:'short',timeStyle:'short'}).format(new Date())}`;
+    ['[data-food-total]','[data-food-panel-total]'].forEach(selector=>{const node=document.querySelector(selector);if(node)node.textContent=`฿${money(total)}`});
+    document.querySelector('[data-food-donation-count]').textContent=donation.length;document.querySelector('[data-food-panel-count]').textContent=donation.length;document.querySelector('[data-food-queue-count]').textContent=personal.length;document.querySelector('[data-food-queue-left]').textContent=Math.max(maxQueue-personal.length,0);
+    document.querySelector('[data-food-percent]').textContent=`${progress.toFixed(1)}%`;document.querySelector('[data-food-panel-percent]').textContent=`${progress.toFixed(1)}%`;
+    ['[data-food-progress]','[data-food-panel-progress]'].forEach(selector=>{const bar=document.querySelector(selector);if(bar){bar.style.width=`${progress}%`;bar.parentElement.setAttribute('aria-valuenow',progress.toFixed(1))}});
+    document.querySelector('[data-food-queue-time]').textContent=updated;document.querySelector('[data-food-donation-time]').textContent=updated;
+    const queueList=document.querySelector('[data-food-queue-list]');queueList.innerHTML=personal.map(row=>`<div class="food-queue-row"><b>#${escapePageText(row.queue)}</b><span>${escapePageText(row.xAccount)}</span><em class="${foodStatusClass(row.status)}">${escapePageText(row.status)}</em></div>`).join('')||'<div class="food-empty">ยังไม่มีผู้ลงทะเบียนคิว</div>';
+    const viewAll=document.querySelector('[data-food-view-all]');if(viewAll)viewAll.hidden=personal.length<=8;
+    document.querySelector('[data-food-donation-list]').innerHTML=donation.slice(0,12).map(row=>`<div><span><b>${escapePageText(row.xAccount)}</b><small>${new Intl.DateTimeFormat('th-TH',{dateStyle:'medium',timeStyle:'short'}).format(row.date)}</small></span><strong>฿${money(row.amount)}</strong></div>`).join('')||'<div class="food-empty">ยังไม่มีรายการโดเนท</div>';
+  }catch(error){setFoodSupportError(`โหลดไม่สำเร็จ: ${error.message}`)}
+}
+openProjectForm=function(id=''){
+  donationOpenProjectForm(id);const item=db.siteSettings.projects.items.find(project=>project.id===id)||{},form=document.querySelector('#modal form'),grid=form?.querySelector('.form-grid');if(!grid)return;
+  grid.insertAdjacentHTML('afterbegin',`<div class="field full"><label>Project Type</label><select name="projectType"><option value="donation" ${item.projectType!=='foodSupportQueue'?'selected':''}>Donation Project</option><option value="foodSupportQueue" ${item.projectType==='foodSupportQueue'?'selected':''}>Food Support Queue</option></select></div>
+    <div class="field full"><label>Google Form Main URL</label><input name="googleFormMainUrl" type="url" value="${escapePageText(item.googleFormMainUrl||item.formUrl||'')}"></div>
+    <div class="field full"><label>Donation Pre-filled Form URL</label><input name="donationFormUrl" type="url" value="${escapePageText(item.donationFormUrl||'')}"></div>
+    <div class="field full"><label>Personal Support Pre-filled Form URL</label><input name="personalSupportFormUrl" type="url" value="${escapePageText(item.personalSupportFormUrl||'')}"></div>
+    <div class="field"><label>Sheet Name</label><input name="sheetName" value="${escapePageText(item.sheetName||'')}"></div><div class="field"><label>Donation Goal</label><input name="donationGoal" type="number" min="0" value="${Number(item.donationGoal??item.goal)||0}"></div>
+    <div class="field"><label>Maximum Queue</label><input name="maximumQueue" type="number" min="0" value="${Number(item.maximumQueue)||0}"></div>
+    <div class="field"><label class="hero-overlay-toggle"><input type="checkbox" name="donationLiveEnabled" ${item.donationLiveEnabled===false?'':'checked'}><span>เปิด Donation Live Update</span></label></div>
+    <div class="field"><label class="hero-overlay-toggle"><input type="checkbox" name="personalQueueEnabled" ${item.personalQueueEnabled===false?'':'checked'}><span>เปิด Personal Support Queue</span></label></div>`);
+};
+saveProjectForm=function(event,id=''){
+  event.preventDefault();ensureProjectSettings();const form=new FormData(event.currentTarget),title=String(form.get('title')||'').trim(),slug=String(form.get('slug')||title).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||`project-${Date.now()}`;
+  if(db.siteSettings.projects.items.some(project=>project.slug===slug&&project.id!==id)){toast('Slug นี้ถูกใช้แล้ว');return}
+  const existing=db.siteSettings.projects.items.find(item=>item.id===id),values={title,slug,status:form.get('status')||'active',projectType:form.get('projectType')||'donation',description:existing?.description||'',descriptionHtml:existing?.descriptionHtml||'',goal:Number(form.get('goal'))||0,donationGoal:Number(form.get('donationGoal'))||0,maximumQueue:Number(form.get('maximumQueue'))||0,startDate:form.get('startDate')||'',cardImage:String(form.get('cardImage')||'').trim(),banner:String(form.get('banner')||'').trim(),qrCode:String(form.get('qrCode')||'').trim(),bankName:String(form.get('bankName')||'').trim(),accountNumber:String(form.get('accountNumber')||'').trim(),accountName:String(form.get('accountName')||'').trim(),formUrl:String(form.get('formUrl')||'').trim(),googleFormMainUrl:String(form.get('googleFormMainUrl')||'').trim(),donationFormUrl:String(form.get('donationFormUrl')||'').trim(),personalSupportFormUrl:String(form.get('personalSupportFormUrl')||'').trim(),sheetUrl:String(form.get('sheetUrl')||'').trim(),sheetName:String(form.get('sheetName')||'').trim(),donationLiveEnabled:form.get('donationLiveEnabled')==='on',personalQueueEnabled:form.get('personalQueueEnabled')==='on',visible:form.get('visible')==='on',queueStatuses:existing?.queueStatuses||{}};
+  if(existing)Object.assign(existing,values);else db.siteSettings.projects.items.unshift({id:`project_${Date.now()}`,...values});
+  save();closeModal();projectsAdmin();toast('บันทึกโปรเจกต์แล้ว');
+};
+function openFoodQueueAdmin(projectId){
+  ensureProjectSettings();const project=db.siteSettings.projects.items.find(item=>item.id===projectId);if(!project)return;
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal project-admin-modal"><div class="modal-head"><div><small>PERSONAL SUPPORT</small><h2>จัดการสถานะคิว</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="food-admin-queue" data-food-admin-list><div class="empty">กำลัง sync ข้อมูลจาก Google Sheet...</div></div></div></div>`);
+  loadFoodSupportTable(project).then(table=>{const {personal}=foodSupportRows(table,project),list=document.querySelector('[data-food-admin-list]');if(!list)return;list.innerHTML=personal.map(row=>`<div><b>#${escapePageText(row.queue)}</b><span>${escapePageText(row.xAccount)}</span><select onchange="saveFoodQueueStatus('${project.id}','${encodeURIComponent(row.key)}',this.value)">${['ลงทะเบียนแล้ว','กำลังตรวจสอบ','ยืนยันคิวแล้ว','ดำเนินการเรียบร้อย','ยกเลิก'].map(status=>`<option ${status===row.status?'selected':''}>${status}</option>`).join('')}</select></div>`).join('')||'<div class="empty">ยังไม่มีผู้ลงทะเบียนคิว</div>'}).catch(error=>{const list=document.querySelector('[data-food-admin-list]');if(list)list.innerHTML=`<div class="empty">Sync ไม่สำเร็จ: ${escapePageText(error.message)}</div>`});
+}
+function saveFoodQueueStatus(projectId,encodedKey,status){
+  const project=db.siteSettings.projects.items.find(item=>item.id===projectId);if(!project)return;project.queueStatuses||={};project.queueStatuses[decodeURIComponent(encodedKey)]=status;save();toast('อัปเดตสถานะคิวแล้ว');
+}
+const foodProjectsAdmin=projectsAdmin;
+projectsAdmin=function(){
+  foodProjectsAdmin();document.querySelectorAll('.project-admin-item').forEach((card,index)=>{const project=db.siteSettings.projects.items[index];if(project?.projectType==='foodSupportQueue')card.querySelector('.project-admin-actions')?.insertAdjacentHTML('afterbegin',`<button class="btn outline" onclick="openFoodQueueAdmin('${project.id}')">จัดการคิว</button>`)});
+};
 let mobileCalendarSelectedDate = "";
 function localDateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
@@ -3787,14 +3973,134 @@ const openPageTextEditorBeforeNoEyebrow=openPageTextEditor;
 openPageTextEditor=function(page,language){openPageTextEditorBeforeNoEyebrow(page,language);document.querySelector('#modal [name="eyebrow"]')?.closest('.field')?.remove()};
 const editHomeSectionBeforeNoEyebrow=editHomeSection;
 editHomeSection=function(id){editHomeSectionBeforeNoEyebrow(id);document.querySelector('#modal [name="eyebrow"]')?.closest('.field')?.remove()};
+const PUBLIC_HEADING_EYEBROW_SELECTOR='.hero .hero-grid .eyebrow,.page-hero>.container>.eyebrow,.project-detail-hero>.container>.eyebrow,.couple-profile .eyebrow,.artist-profile-copy>.eyebrow,.profile-head .eyebrow,.section-head>div>.eyebrow,.filmography-head>small';
+function removePublicHeadingEyebrows(root=document){
+  if(root.nodeType===1&&root.matches?.(PUBLIC_HEADING_EYEBROW_SELECTOR))root.remove();
+  root.querySelectorAll?.(PUBLIC_HEADING_EYEBROW_SELECTOR).forEach(element=>element.remove());
+}
 function applySimplifiedPublicContent(){
   ensureManagedPageTitles();
-  document.querySelectorAll('.artist-card .tag,.schedule-card-head>span,.page-hero .eyebrow,.hero .hero-grid .eyebrow,.section-head .eyebrow,.filmography-head>small,.couple-profile .eyebrow,.artist-profile-copy>.eyebrow,.project-detail-hero>.container>.eyebrow').forEach(element=>element.remove());
+  document.querySelectorAll('.artist-card .tag,.schedule-card-head>span').forEach(element=>element.remove());
+  removePublicHeadingEyebrows();
   const pageKey=route.startsWith('/')?({AT01:'auausave',AT02:'auau',AT03:'save',AT04:'mhiipraew'}[artistIdFromPublicRoute(route)]):route,title=db.siteSettings.pageTitles[pageKey],heading=document.querySelector('.page-hero h1,.project-hub-hero h1');
   if(title&&heading)heading.textContent=title;
   if(route.startsWith('/')){const profileTitle=document.querySelector('.couple-profile h1,.artist-profile-copy h1,.profile-head h1');if(title&&profileTitle)profileTitle.textContent=title}
 }
 const routerBeforeSimplifiedContent=router;
 router=function(){routerBeforeSimplifiedContent();applySimplifiedPublicContent()};
+const publicEyebrowObserver=new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(removePublicHeadingEyebrows)));
+publicEyebrowObserver.observe(app,{childList:true,subtree:true});
 ensureManagedPageTitles();
 router();
+
+/* One language-neutral title/description source for managed public pages. */
+const renderLegacyPageLanguageSettings=renderPageLanguageSettings;
+renderPageLanguageSettings=function(onlyPage=''){
+  if(!UNIFIED_PAGE_CONTENT_KEYS.has(onlyPage))return renderLegacyPageLanguageSettings(onlyPage);
+  ensureUnifiedPageContent();
+  const labels={artists:'Artists',schedule:'Schedule',presenters:'Presenters',awards:'Awards'},content=db.siteSettings.pageCopy[onlyPage];
+  return `<section class="panel unified-page-content-settings" data-page-content-settings="${onlyPage}"><div class="panel-head"><div><small>PAGE CONTENT</small><h2>หัวข้อและคำอธิบายหน้า ${labels[onlyPage]}</h2><p class="master-note">กรอกภาษาใดก็ได้ตามที่ต้องการ ข้อความนี้เป็นข้อมูลชุดเดียวที่หน้าบ้านนำไปแสดง</p></div><button class="btn outline" onclick="openUnifiedPageContentEditor('${onlyPage}')">แก้ไขข้อความ</button></div><div class="unified-page-content-preview"><small>PREVIEW</small><h3>${escapePageText(content.title)}</h3><p>${escapePageText(content.description)}</p></div></section>`;
+};
+function openUnifiedPageContentEditor(page){
+  ensureUnifiedPageContent();
+  const content=db.siteSettings.pageCopy[page],labels={artists:'Artists',schedule:'Schedule',presenters:'Presenters',awards:'Awards'};
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>แก้ไขหน้า ${labels[page]}</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveUnifiedPageContent(event,'${page}')"><div class="form-grid"><div class="field full"><label>หัวข้อ</label><textarea name="title" required>${escapePageText(content.title)}</textarea></div><div class="field full"><label>คำอธิบาย</label><textarea name="description" rows="4">${escapePageText(content.description)}</textarea></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึกข้อความ</button></div></form></div></div>`);
+}
+async function saveUnifiedPageContent(event,page){
+  event.preventDefault();
+  ensureUnifiedPageContent();
+  const formElement=event.currentTarget,button=formElement.querySelector('[type="submit"]'),form=new FormData(formElement),defaults=UNIFIED_PAGE_CONTENT_DEFAULTS[page],previous=structuredClone(db.siteSettings.pageCopy[page]);
+  db.siteSettings.pageCopy[page]={
+    title:String(form.get('title')||'').trim()||defaults.title,
+    description:String(form.get('description')||'').trim(),
+    updatedAt:Date.now()
+  };
+  ensureUnifiedPageContent();
+  button.disabled=true;
+  button.textContent='กำลังบันทึก...';
+  save(false);
+  const synced=await syncDatabaseInBackground();
+  if(!synced){
+    db.siteSettings.pageCopy[page]=previous;
+    save(false);
+    button.disabled=false;
+    button.textContent='บันทึกข้อความ';
+    toast('บันทึกไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง');
+    return;
+  }
+  closeModal();admin();toast('บันทึกหัวข้อและคำอธิบายแล้ว');
+}
+const pageContentAdminBeforeUnifiedCleanup=pageContentAdmin;
+pageContentAdmin=function(){
+  pageContentAdminBeforeUnifiedCleanup();
+  document.querySelector('.managed-page-title-editor')?.remove();
+};
+function applyUnifiedPublicPageContent(){
+  const page={artists:'artists',schedule:'schedule',presenters:'presenters',awards:'awards'}[route];
+  if(!page)return;
+  ensureUnifiedPageContent();
+  const content=db.siteSettings.pageCopy[page],hero=document.querySelector('.page-hero'),heading=hero?.querySelector('h1'),description=hero?.querySelector('p');
+  if(heading)heading.textContent=content.title;
+  if(description)description.textContent=content.description;
+  if(page==='schedule'){
+    const mobileHeading=document.querySelector('.mobile-calendar-title h1');
+    if(mobileHeading)mobileHeading.textContent=content.title;
+  }
+}
+const calendarPageBeforeUnifiedContent=calendarPage;
+calendarPage=function(){calendarPageBeforeUnifiedContent();applyUnifiedPublicPageContent()};
+const routerBeforeUnifiedPageContent=router;
+router=function(){routerBeforeUnifiedPageContent();applyUnifiedPublicPageContent()};
+ensureUnifiedPageContent();
+try{localStorage.setItem('auausave-house-db-v9',JSON.stringify(db))}catch(error){console.warn('Page content cache cleanup:',error.message)}
+router();
+
+/* Always attach managed page copy after every other admin renderer has finished. */
+const adminBeforeFinalPageContentPlacement=admin;
+admin=function(){
+  adminBeforeFinalPageContentPlacement();
+  if(!adminAuthenticated)return;
+  const pageByTab={artists:'artists',events:'schedule',presenters:'presenters',awards:'awards'},page=pageByTab[adminTab],main=document.querySelector('.admin-main'),top=main?.querySelector('.admin-top');
+  document.querySelectorAll('[data-page-content-settings]').forEach(panel=>panel.remove());
+  if(page&&top)top.insertAdjacentHTML('afterend',renderPageLanguageSettings(page));
+  document.querySelectorAll('.sidebar .side-nav button').forEach(button=>{
+    const action=button.getAttribute('onclick')||'',text=button.textContent.trim();
+    if(action.includes("adminTab='pagecontent'")||text==='Homepage Content')button.innerHTML='▤ &nbsp; Homepage';
+    if(action.includes("adminTab='artists'")||text==='Profiles'||text==='จัดการศิลปิน')button.innerHTML='◉ &nbsp; Artist';
+  });
+};
+
+/* Card order controls use the same persistent up/down pattern as homepage sections. */
+renderHomepageArtistOrderEditor=function(){
+  const artists=homepageOrderedArtists();
+  return `<section class="panel homepage-artist-order-editor"><div class="panel-head"><div><small>ARTIST CARDS ORDER</small><h2>จัดลำดับการ์ดศิลปิน</h2><p class="master-note">ลากการ์ดหรือใช้ปุ่มขึ้น–ลง ระบบบันทึกลำดับทันทีเหมือนส่วนจัดลำดับหน้าแรก</p></div></div><div class="section-builder-list homepage-card-order-list">${artists.map((artist,index)=>`<article class="builder-item" draggable="true" ondragstart="homeArtistDragStart(event,'${artist.id}')" ondragover="event.preventDefault()" ondrop="homeArtistDrop(event,'${artist.id}')"><div class="builder-order"><button type="button" onclick="moveHomepageArtistCard('${artist.id}',-1)" ${index===0?'disabled':''}>↑</button><span>${String(index+1).padStart(2,'0')}</span><button type="button" onclick="moveHomepageArtistCard('${artist.id}',1)" ${index===artists.length-1?'disabled':''}>↓</button></div><div class="home-artist-sort-thumb" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="">`:`<span>${escapePageText(artist.initial||artist.name.slice(0,2))}</span>`}</div><div class="builder-content"><small>ARTIST CARD</small><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div></article>`).join('')}</div></section>`;
+};
+renderHomepageScheduleOrderEditor=function(){
+  const artists=homepageScheduleArtists();
+  return `<section class="panel homepage-schedule-order-editor"><div class="panel-head"><div><small>SCHEDULE CARD ORDER</small><h2>จัดลำดับกลุ่มตารางงาน</h2><p class="master-note">ลากการ์ดหรือใช้ปุ่มขึ้น–ลง ระบบบันทึกลำดับทันทีเหมือนส่วนจัดลำดับหน้าแรก</p></div></div><div class="section-builder-list homepage-card-order-list">${artists.map((artist,index)=>`<article class="builder-item" draggable="true" ondragstart="homeScheduleDragStart(event,'${artist.id}')" ondragover="event.preventDefault()" ondrop="homeScheduleDrop(event,'${artist.id}')"><div class="builder-order"><button type="button" onclick="moveHomepageScheduleCard('${artist.id}',-1)" ${index===0?'disabled':''}>↑</button><span>${String(index+1).padStart(2,'0')}</span><button type="button" onclick="moveHomepageScheduleCard('${artist.id}',1)" ${index===artists.length-1?'disabled':''}>↓</button></div><div class="home-schedule-sort-thumb ${artistScheduleCardClass(artist.id,index)}" style="background:${artistDisplayColor(artist.id,index)};color:#fff"><b>${escapePageText(artist.name)}</b></div><div class="builder-content"><small>SCHEDULE GROUP</small><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div></article>`).join('')}</div></section>`;
+};
+
+/* Fanbase social entries mirror artist socials: platform + URL only. */
+function fanbaseAccountLabel(link){
+  if(String(link.username||'').trim())return String(link.username).trim();
+  try{
+    const url=new URL(link.url),parts=url.pathname.split('/').filter(Boolean),value=decodeURIComponent(parts.at(-1)||url.hostname.replace(/^www\./,''));
+    return value.startsWith('@')?value:`@${value}`;
+  }catch{return''}
+}
+fanbaseSocialButton=function(link){
+  const platform=escapePageText(link.platformName||link.displayLabel||'Social'),account=escapePageText(fanbaseAccountLabel(link));
+  return `<a class="fanbase-social-button fanbase-social-square" href="${escapePageText(link.url)}" target="_blank" rel="noopener noreferrer"><span>${platform}</span>${account?`<small>${account}</small>`:''}<b>↗</b></a>`;
+};
+fanbaseLinkEditor=function(link={},index=0){
+  return `<article class="fanbase-link-editor" draggable="true" ondragstart="fanbaseLinkDragStart(event)" ondragover="fanbaseLinkDragOver(event)" ondrop="fanbaseLinkDrop(event)"><header><b>ช่องทาง ${index+1}</b><button type="button" onclick="this.closest('.fanbase-link-editor').remove();reindexFanbaseLinks()">ลบ</button></header><div class="form-grid fanbase-simple-fields"><div class="field"><label>ชื่อแพลตฟอร์ม</label><input data-platform value="${escapePageText(link.platformName||link.displayLabel||'')}" placeholder="X, Instagram, TikTok…" required></div><div class="field"><label>ลิงก์</label><input data-url type="url" value="${escapePageText(link.url||'')}" placeholder="https://..." required></div><input data-order type="hidden" value="${index+1}"></div></article>`;
+};
+saveFanbaseForm=function(event,id){
+  event.preventDefault();
+  const form=event.target,links=[...form.querySelectorAll('.fanbase-link-editor')].map((card,index)=>({platformName:card.querySelector('[data-platform]').value.trim(),url:card.querySelector('[data-url]').value.trim(),linkType:'external',active:true,displayOrder:index+1}));
+  if(links.some(link=>!link.platformName))return alert('กรุณากรอกชื่อแพลตฟอร์มให้ครบ');
+  if(links.some(link=>!/^https?:\/\/[^\s]+$/i.test(link.url)))return alert('ลิงก์ต้องขึ้นต้นด้วย http:// หรือ https://');
+  const old=db.siteSettings.fanbases.find(item=>item.id===id),item={id:id||`fanbase_${Date.now()}`,displayName:form.displayName.value.trim(),username:form.username.value.trim(),description:form.description.value.trim(),accentColor:form.accentColor.value,active:form.active.value==='true',socialLinks:links,displayOrder:old?.displayOrder||db.siteSettings.fanbases.length+1};
+  old?Object.assign(old,item):db.siteSettings.fanbases.push(item);
+  save();closeModal();fanbaseAdmin();toast('บันทึก Fanbase แล้ว');
+};
