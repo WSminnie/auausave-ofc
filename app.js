@@ -2577,7 +2577,7 @@ function imageCropPreset(field){
   if(field==='heroImage')return{canChoose:false,orientation:'square',ratio:.976,shape:'hero'};
   if(field==='thumbnail')return{canChoose:false,orientation:'landscape',ratio:16/9,shape:'video'};
   if(field==='cardImage')return{canChoose:false,orientation:'square',ratio:1,shape:'project-card'};
-  if(field==='banner')return{canChoose:false,orientation:'landscape',ratio:2160/900,shape:'project-banner'};
+  if(field==='banner')return{canChoose:false,orientation:'landscape',ratio:1600/400,shape:'project-banner'};
   if(field==='qrCode')return{canChoose:false,orientation:'square',ratio:1,shape:'project-qr'};
   if(field==='logo')return{canChoose:false,orientation:'square',ratio:1,shape:'logo'};
   if(field==='announcementImage')return{canChoose:false,orientation:'portrait',ratio:presenterMediaAspectRatio(),shape:'presenter'};
@@ -2605,7 +2605,7 @@ function drawCropPreview(){
   const state=cropImageState,canvas=document.querySelector('#cropImageCanvas');if(!state||!canvas)return;
   const size=cropCanvasSize();canvas.width=size.width;canvas.height=size.height;
   drawCropState(canvas.getContext('2d'),size.width,size.height,state);
-  canvas.className=`${cropFrameClass()}${state.drag?' is-dragging':''}`;const label=document.querySelector('#cropRatioLabel');if(label)label.textContent=state.preset.shape==='hero'?'กรอบ Hero หน้าบ้าน':state.preset.shape==='project-banner'?'แบนเนอร์หน้าบ้าน 2160 × 900':state.orientation==='landscape'?'แนวนอน':state.orientation==='square'?'สี่เหลี่ยม':'แนวตั้ง';
+  canvas.className=`${cropFrameClass()}${state.drag?' is-dragging':''}`;const label=document.querySelector('#cropRatioLabel');if(label)label.textContent=state.preset.shape==='hero'?'กรอบ Hero หน้าบ้าน':state.preset.shape==='project-banner'?'แบนเนอร์โปรเจกต์ 1600 × 400':state.orientation==='landscape'?'แนวนอน':state.orientation==='square'?'สี่เหลี่ยม':'แนวตั้ง';
 }
 function updateCropControl(name,value){if(!cropImageState)return;cropImageState[name]=Number(value);drawCropPreview();}
 function cropDragStart(event){if(!cropImageState)return;const canvas=event.currentTarget;canvas.setPointerCapture?.(event.pointerId);cropImageState.drag={x:event.clientX,y:event.clientY,panX:cropImageState.panX,panY:cropImageState.panY};canvas.classList.add('is-dragging');}
@@ -2615,7 +2615,7 @@ function changeCropOrientation(value){if(!cropImageState)return;cropImageState.o
 function closeCropImage(){const state=cropImageState;document.querySelector('#cropImageModal')?.remove();if(state?.input){state.input.value='';const submit=state.input.closest('form')?.querySelector('[type="submit"]');if(submit)submit.disabled=false;}cropImageState=null;}
 function applyCroppedImage(){
   const state=cropImageState,previewCanvas=document.querySelector('#cropImageCanvas');if(!state||!previewCanvas)return;
-  const ratio=cropRatio(),output=document.createElement('canvas');output.width=state.preset.shape==='project-banner'?2160:(state.orientation==='landscape'?1200:(state.orientation==='square'?1000:900));output.height=state.preset.shape==='project-banner'?900:Math.round(output.width/ratio);
+  const ratio=cropRatio(),output=document.createElement('canvas');output.width=state.preset.shape==='project-banner'?1600:(state.orientation==='landscape'?1200:(state.orientation==='square'?1000:900));output.height=state.preset.shape==='project-banner'?400:Math.round(output.width/ratio);
   drawCropState(output.getContext('2d'),output.width,output.height,state);
   const data=output.toDataURL('image/jpeg',.88),hidden=document.querySelector(`#modal [name="${state.field}"]`),preview=document.querySelector(`#uploadPreview_${state.field}`);
   if(!hidden||!preview){toast('ไม่พบช่องบันทึกรูป กรุณาปิดฟอร์มแล้วลองใหม่');closeCropImage();return;}
@@ -3262,7 +3262,7 @@ async function refreshProjectCardTotal(project){
 }
 function projectDetailPage(slug){
   ensureProjectSettings();const project=db.siteSettings.projects.items.find(item=>item.slug===slug&&item.visible!==false);if(!project){projectHubPage();return}
-  const banner=project.banner?`<div class="project-banner-placeholder has-image"><img src="${escapePageText(project.banner)}" alt="${escapePageText(project.title)}"></div>`:`<div class="project-banner-placeholder"><span>PROJECT BANNER · 16:9</span><strong>พื้นที่สำหรับรูปแบนเนอร์โปรเจกต์</strong><small>เพิ่มรูปได้จากหลังบ้าน</small></div>`;
+  const banner=project.banner?`<div class="project-banner-placeholder has-image"><img src="${escapePageText(project.banner)}" alt="${escapePageText(project.title)}"></div>`:`<div class="project-banner-placeholder"><span>PROJECT BANNER · 1600 × 400</span><strong>พื้นที่สำหรับรูปแบนเนอร์โปรเจกต์</strong><small>เพิ่มรูปได้จากหลังบ้าน</small></div>`;
   const qr=project.qrCode?`<div class="project-qr-placeholder has-image"><img src="${escapePageText(project.qrCode)}" alt="QR Code"></div>`:`<div class="project-qr-placeholder"><span>QR</span></div>`;
   const formAction=project.formUrl?`window.open('${escapePageText(project.formUrl)}','_blank','noopener')`:`toast('กรุณาใส่ลิงก์ Google Form ในหลังบ้าน')`;
   app.innerHTML=nav('projects')+`<main><section class="project-detail-hero"><div class="container"><a href="#projects">← Our Projects</a><span class="eyebrow">${project.status==='active'?'ACTIVE PROJECT':'FAN PROJECT'} · ${escapePageText(project.round||'')}</span><h1>${escapePageText(project.title)}</h1><div><div class="project-detail-description">${sanitizeProjectRichText(project.descriptionHtml||`<p>${escapePageText(project.description||'')}</p>`)}</div><span><b>${project.startDate?escapePageText(project.startDate):'OPEN'}</b><small>อัปเดตยอดแบบเรียลไทม์</small></span></div></div></section><section class="section project-media-section"><div class="container">${banner}<div class="project-payment-grid"><div class="project-qr-card">${qr}<p><small>SCAN TO SUPPORT</small><strong>สแกน QR Code<br>เพื่อร่วมสนับสนุน</strong></p></div><div class="project-account-card"><span>PAYMENT DETAILS</span><h2>รายละเอียดบัญชี</h2><dl><div><dt>ธนาคาร</dt><dd>${escapePageText(project.bankName||'—')}</dd></div><div><dt>เลขที่บัญชี</dt><dd>${escapePageText(project.accountNumber||'—')}</dd></div><div><dt>ชื่อบัญชี</dt><dd>${escapePageText(project.accountName||'—')}</dd></div></dl><small>กรุณาตรวจสอบชื่อบัญชีก่อนทำรายการทุกครั้ง<br>Please verify the account holder’s name before making any transaction.</small></div></div><div class="project-form-callout"><div><span>สำคัญ · หลังโอนเงิน</span><h2>กรอกฟอร์มแจ้งยอด<br>เพื่อให้ยอดขึ้นบนเว็บไซต์</h2><p>ระบบจะแสดงยอดจากคำตอบในฟอร์มเท่านั้น อย่าลืมแนบหลักฐานการโอนให้ครบถ้วน</p></div><button type="button" class="project-form-cta" onclick="${formAction}"><small>STEP 02</small><strong>กรอกฟอร์มแจ้งยอด</strong><b>เปิด Google Form ➚</b></button></div></div></section>${renderDonationDashboard(project)}</main>`+footer();
@@ -3506,7 +3506,7 @@ function foodSupportFormButton(url,label,missing){
 }
 function foodSupportQueuePage(project){
   const openingBalance=Math.max(0,Number(project.openingBalance)||0),maxQueue=Math.max(0,Number(project.maximumQueue)||0),money=value=>new Intl.NumberFormat('th-TH',{maximumFractionDigits:2}).format(value);
-  const banner=project.banner?`<div class="project-banner-placeholder has-image"><img src="${escapePageText(project.banner)}" alt="${escapePageText(project.title)}"></div>`:`<div class="project-banner-placeholder"><span>PROJECT BANNER · 12:5</span><strong>${escapePageText(project.title)}</strong></div>`;
+  const banner=project.banner?`<div class="project-banner-placeholder has-image"><img src="${escapePageText(project.banner)}" alt="${escapePageText(project.title)}"></div>`:`<div class="project-banner-placeholder"><span>PROJECT BANNER · 1600 × 400</span><strong>${escapePageText(project.title)}</strong></div>`;
   const qr=project.qrCode?`<div class="project-qr-placeholder has-image"><img src="${escapePageText(project.qrCode)}" alt="QR Code สำหรับร่วมสนับสนุน"></div>`:`<div class="project-qr-placeholder"><span>QR</span></div>`;
   app.innerHTML=nav('projects')+`<main class="food-support-page">
     <section class="project-detail-hero"><div class="container"><a href="#projects">← Our Projects</a><span class="eyebrow">${project.status==='active'?'ACTIVE PROJECT':'FAN PROJECT'} · FOOD SUPPORT QUEUE</span><h1>${escapePageText(project.title)}</h1><div><div class="project-detail-description">${sanitizeProjectRichText(project.descriptionHtml||`<p>${escapePageText(project.description||'')}</p>`)}</div></div></div></section>
@@ -3564,9 +3564,9 @@ function foodSupportRows(table,project={}){
   const headers=(table.cols||[]).map(column=>String(column.label||column.id||'').trim().toLowerCase());
   const find=(...names)=>headers.findIndex(header=>names.some(name=>header.includes(name)));
   const timestamp=find('timestamp','ประทับเวลา'),type=find('type of support','ประเภทการสนับสนุน'),account=find('x account','บัญชี x','แอคเคาท์ x','twitter'),amount=find('donation amount','จำนวนเงิน','ยอดเงิน'),queue=find('queue','ลำดับคิว');
-  if(timestamp<0||type<0)throw new Error('ไม่พบคอลัมน์ Timestamp หรือ Type of support');
+  if(timestamp<0)throw new Error('ไม่พบคอลัมน์ Timestamp');
   const rows=(table.rows||[]).map((row,index)=>{
-    const cells=row.c||[],date=foodSheetDate(cells[timestamp]),supportType=foodSheetCell(cells[type]),xAccount=foodSheetCell(cells[account])||'—',rawAmount=cells[amount]?.v,donationAmount=typeof rawAmount==='number'?rawAmount:Number(foodSheetCell(cells[amount]).replace(/[^0-9.-]/g,''));
+    const cells=row.c||[],date=foodSheetDate(cells[timestamp]),supportType=type>=0?foodSheetCell(cells[type]):'Personal Support',xAccount=foodSheetCell(cells[account])||'—',rawAmount=cells[amount]?.v,donationAmount=typeof rawAmount==='number'?rawAmount:Number(foodSheetCell(cells[amount]).replace(/[^0-9.-]/g,''));
     const key=[Number.isNaN(date.getTime())?foodSheetCell(cells[timestamp]):date.toISOString(),xAccount,supportType].join('|');
     return{key,date,supportType,xAccount,amount:donationAmount,queue:foodSheetCell(cells[queue])};
   }).filter(row=>!Number.isNaN(row.date.getTime()));
