@@ -934,3 +934,18 @@ html{
   .food-live-grid .queue-live{grid-column:auto;grid-row:auto;order:1}
   .food-live-grid .donation-live-panel{grid-column:auto;grid-row:auto;order:2}
 }
+.food-opening-balance{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 22px;padding:12px 14px;border:1px solid #ddd4c9;border-radius:12px;background:#f3eee7;color:#817a71;font-size:10px}
+.food-opening-balance b{color:#171717;font-size:14px}
+.project-type-groups{display:grid;gap:52px}
+.project-type-group .project-filter-row{align-items:end}
+.project-type-group .project-filter-row>div{display:grid;gap:5px}
+.project-type-group .project-filter-row small{color:#d86666;font-size:9px;font-weight:900;letter-spacing:1.5px}
+.project-type-group .project-filter-row b{font-size:28px}
+.food-project-hub-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.food-project-card .project-simple-copy{display:grid!important;align-items:start}
+.food-project-card .project-simple-copy strong{display:grid;justify-items:start}
+.food-project-card .project-simple-copy strong small{color:#817a71;font-size:9px}
+.food-project-card .project-simple-copy strong span{font-size:18px}
+.project-admin-actions button:disabled{opacity:.38;cursor:not-allowed}
+@media(max-width:900px){.food-project-hub-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.food-project-hub-grid{grid-template-columns:1fr}.project-type-groups{gap:38px}}
