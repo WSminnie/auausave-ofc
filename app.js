@@ -3533,7 +3533,7 @@ projectDetailPage=function(slug){
 };
 function projectHubSimpleCard(project,type='donation'){
   const money=value=>new Intl.NumberFormat('th-TH',{maximumFractionDigits:2}).format(Number(value)||0);
-  const amount=type==='combined'?`<small>ยอดรวมปัจจุบัน</small><span data-food-project-card-total="${escapePageText(project.id)}">฿${money(project.openingBalance)}</span>`:type==='personal'?`<small>คิวที่ลงทะเบียน / สูงสุด</small><span data-personal-project-card-count="${escapePageText(project.id)}">${project.sheetUrl?'กำลังอัปเดต…':'0'}</span><em>/ ${Number(project.maximumQueue)||0} คิว</em>`:`<small>ยอดเรียลไทม์ / เป้า</small><span data-project-card-total="${escapePageText(project.id)}">${project.sheetUrl?'กำลังอัปเดต…':'฿0'}</span><em>/ ฿${money(project.goal)}</em>`;
+  const amount=type==='combined'?`<small>ยอดรวมปัจจุบัน</small><span data-food-project-card-total="${escapePageText(project.id)}">฿${money(project.openingBalance)}</span>`:type==='personal'?`<small>คิวคงเหลือ / คิวทั้งหมด</small><span data-personal-project-card-count="${escapePageText(project.id)}">${project.sheetUrl?'กำลังอัปเดต…':'0 / 0 คิว'}</span>`:`<small>ยอดเรียลไทม์ / เป้า</small><span data-project-card-total="${escapePageText(project.id)}">${project.sheetUrl?'กำลังอัปเดต…':'฿0'}</span><em>/ ฿${money(project.goal)}</em>`;
   return `<a class="project-hub-card project-simple-card ${type!=='donation'?'food-project-card':''}" href="#project/${escapePageText(project.slug)}"><div class="project-simple-image">${project.cardImage?`<img src="${escapePageText(project.cardImage)}" alt="${escapePageText(project.title)}">`:`<span>${escapePageText(project.title.slice(0,2).toUpperCase())}</span>`}</div><div class="project-simple-copy"><h2>${escapePageText(project.title)}</h2><strong>${amount}</strong></div></a>`;
 }
 projectHubPage=function(){
@@ -3544,8 +3544,8 @@ projectHubPage=function(){
   visible.filter(project=>typeOf(project)==='donation'&&project.sheetUrl).forEach(refreshProjectCardTotal);visible.filter(project=>typeOf(project)==='personal').forEach(refreshPersonalProjectCardCount);visible.filter(project=>typeOf(project)==='combined').forEach(refreshFoodProjectCardTotal);
 };
 async function refreshPersonalProjectCardCount(project){
-  const target=document.querySelector(`[data-personal-project-card-count="${CSS.escape(project.id)}"]`);if(!target)return;if(!project.sheetUrl){target.textContent='0';return}
-  try{const {personal}=foodSupportRows(await loadFoodSupportTable(project),project);target.textContent=activeFoodQueueCount(personal)}catch(error){target.textContent='—';target.title=error.message}
+  const target=document.querySelector(`[data-personal-project-card-count="${CSS.escape(project.id)}"]`);if(!target)return;if(!project.sheetUrl){target.textContent='0 / 0 คิว';return}
+  try{const {personal}=foodSupportRows(await loadFoodSupportTable(project),project);target.textContent=`${activeFoodQueueCount(personal)} / ${personal.length} คิว`}catch(error){target.textContent='—';target.title=error.message}
 }
 async function refreshFoodProjectCardTotal(project){
   const target=document.querySelector(`[data-food-project-card-total="${CSS.escape(project.id)}"]`);if(!target)return;
