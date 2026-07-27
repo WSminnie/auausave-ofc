@@ -899,3 +899,30 @@ html{
   }
   .nav .links{top:calc(var(--site-header-height) - 5px)}
 }
+
+/* Food Support Queue — site palette and desktop column order */
+.food-support-content{background:#eee9e1;color:#171717}
+.food-summary-card,.food-live-card{border-color:#d7cec3;box-shadow:0 14px 40px rgba(23,23,23,.06)}
+.food-summary-card small,.food-live-card header small{color:#d86666}
+.food-summary-numbers>strong,.food-donation-kpis>strong,.food-queue-numbers strong{color:#d86666}
+.food-summary-numbers>span b,.food-donation-kpis>span b{color:#171717}
+.food-progress-meta{color:#817a71}
+.food-progress-meta b{color:#d86666}
+.food-progress{background:#eee3df}
+.food-progress i{background:linear-gradient(90deg,#d86666,#efb4a8)}
+.food-support-cta{background:#171717}
+.food-queue-numbers p{background:#f3eee7}
+.food-table-head{background:#eee9e2;color:#817a71}
+.food-queue-row{border-color:#eee9e2}
+.food-queue-row>b,.food-admin-queue b{color:#d86666}
+.food-queue-row em{background:#f4e6e3;color:#a74d50}
+.food-view-all{border-color:#d7cec3;color:#d86666}
+.food-donation-list>div:not(.food-empty){border-color:#eee9e2}
+.food-live-time,.food-donation-list span small,.food-empty{color:#817a71}
+.food-admin-queue>div:not(.empty),.food-admin-queue select{border-color:#d7cec3}
+.food-live-grid .donation-live-panel{grid-column:1;grid-row:1}
+.food-live-grid .queue-live{grid-column:2;grid-row:1}
+@media(max-width:900px){
+  .food-live-grid .queue-live{grid-column:auto;grid-row:auto;order:1}
+  .food-live-grid .donation-live-panel{grid-column:auto;grid-row:auto;order:2}
+}
