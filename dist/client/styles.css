@@ -947,6 +947,7 @@ html{
 .project-section-actions{display:flex;align-items:center;gap:7px}
 .project-section-actions .btn{padding:8px 11px}
 .project-section-actions .icon-btn{color:#a23c45}
+.project-admin-modal .field[hidden]{display:none!important}
 @media(max-width:600px){.project-admin-section>header{align-items:flex-start;flex-direction:column}.project-section-actions{width:100%;flex-wrap:wrap}.project-section-actions .btn{flex:1}}
 @media(max-width:900px){
   .food-summary-grid{grid-template-columns:1fr}
