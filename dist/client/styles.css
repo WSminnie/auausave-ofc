@@ -934,6 +934,15 @@ html{
 .food-admin-queue>div:not(.empty),.food-admin-queue select{border-color:#d7cec3}
 .food-live-grid .donation-live-panel{grid-column:1;grid-row:1}
 .food-live-grid .queue-live{grid-column:2;grid-row:1}
+.queue-only-support .food-summary-grid,.queue-only-support .food-live-grid{grid-template-columns:1fr}
+.queue-only-support .queue-summary,.queue-only-support .queue-live{grid-column:1;grid-row:auto}
+.project-admin-list{gap:30px}
+.project-admin-section{display:grid;gap:14px}
+.project-admin-section>header{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.project-admin-section>header small{color:#d86666;font-size:9px;font-weight:900;letter-spacing:1.4px}
+.project-admin-section>header h2{margin:5px 0 0;font-size:24px}
+.project-admin-section>header>span{color:var(--muted);font-size:10px}
+.project-admin-section-list{display:grid;gap:14px}
 @media(max-width:900px){
   .food-summary-grid{grid-template-columns:1fr}
   .food-live-grid .queue-live{grid-column:auto;grid-row:auto;order:1}
