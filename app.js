@@ -3545,7 +3545,7 @@ projectHubPage=function(){
 };
 async function refreshPersonalProjectCardCount(project){
   const target=document.querySelector(`[data-personal-project-card-count="${CSS.escape(project.id)}"]`);if(!target)return;if(!project.sheetUrl){target.textContent='0';return}
-  try{const {personal}=foodSupportRows(await loadFoodSupportTable(project),project);target.textContent=personal.length}catch(error){target.textContent='—';target.title=error.message}
+  try{const {personal}=foodSupportRows(await loadFoodSupportTable(project),project);target.textContent=activeFoodQueueCount(personal)}catch(error){target.textContent='—';target.title=error.message}
 }
 async function refreshFoodProjectCardTotal(project){
   const target=document.querySelector(`[data-food-project-card-total="${CSS.escape(project.id)}"]`);if(!target)return;
@@ -3573,7 +3573,7 @@ function foodSupportRows(table,project={}){
     return{key,date,supportType,xAccount,amount:donationAmount,queue:foodSheetCell(cells[queue])};
   }).filter(row=>!Number.isNaN(row.date.getTime()));
   const donation=rows.filter(row=>/donation|savewrg official/i.test(row.supportType)&&Number.isFinite(row.amount)&&row.amount>0).sort((a,b)=>b.date-a.date);
-  const personal=rows.filter(row=>/personal support|จัดส่งในนามส่วนตัว/i.test(row.supportType)).sort((a,b)=>a.date-b.date).map((row,index)=>({...row,queue:row.queue||String(index+1),status:project.queueStatuses?.[row.key]||'ลงทะเบียนแล้ว'}));
+  const personal=rows.filter(row=>/personal support|จัดส่งในนามส่วนตัว/i.test(row.supportType)).sort((a,b)=>a.date-b.date).map((row,index)=>({...row,queue:row.queue||String(index+1),status:normalizeFoodStatus(project.queueStatuses?.[row.key]||'ลงทะเบียนแล้ว')}));
   return{donation,personal};
 }
 function loadFoodSupportTable(project){
@@ -3588,7 +3588,10 @@ function loadFoodSupportTable(project){
     script.src=`https://docs.google.com/spreadsheets/d/${source.id}/gviz/tq?gid=${source.gid}${sheet}&tqx=responseHandler:${callback}`;document.head.appendChild(script);
   });
 }
-function foodStatusClass(value){return'value-'+({'ลงทะเบียนแล้ว':'registered','กำลังตรวจสอบ':'checking','ยืนยันคิวแล้ว':'confirmed','ดำเนินการเรียบร้อย':'done','ไม่สะดวกจัดส่ง (Not Available)':'unavailable','ยกเลิก':'cancelled'}[value]||'registered')}
+function normalizeFoodStatus(value){return value==='ไม่สะดวกจัดส่ง (Not Available)'?'ไม่สะดวกจัดส่ง':value}
+function foodStatusEnglish(value){return({'ลงทะเบียนแล้ว':'Registered','กำลังตรวจสอบ':'Under Review','ยืนยันคิวแล้ว':'Queue Confirmed','ดำเนินการเรียบร้อย':'Completed','ไม่สะดวกจัดส่ง':'Not Available','ยกเลิก':'Cancelled'}[normalizeFoodStatus(value)]||'Registered')}
+function foodStatusClass(value){return'value-'+({'ลงทะเบียนแล้ว':'registered','กำลังตรวจสอบ':'checking','ยืนยันคิวแล้ว':'confirmed','ดำเนินการเรียบร้อย':'done','ไม่สะดวกจัดส่ง':'unavailable','ยกเลิก':'cancelled'}[normalizeFoodStatus(value)]||'registered')}
+function activeFoodQueueCount(rows){return rows.filter(row=>!['ดำเนินการเรียบร้อย','ไม่สะดวกจัดส่ง','ยกเลิก'].includes(normalizeFoodStatus(row.status))).length}
 function toggleFoodQueueAll(button){const list=document.querySelector('[data-food-queue-list]');list?.classList.toggle('show-all');button.textContent=list?.classList.contains('show-all')?'ย่อรายการ':'ดูทั้งหมด'}
 function setFoodSupportError(message){
   document.querySelectorAll('.food-live-time').forEach(node=>node.textContent=message);
@@ -3599,7 +3602,7 @@ async function refreshFoodSupportProject(projectId){
   try{
     const {donation,personal}=foodSupportRows(await loadFoodSupportTable(project),project),openingBalance=Math.max(0,Number(project.openingBalance)||0),maxQueue=Math.max(0,Number(project.maximumQueue)||0),total=openingBalance+donation.reduce((sum,row)=>sum+row.amount,0),money=value=>new Intl.NumberFormat('th-TH',{maximumFractionDigits:2}).format(value),updated=`อัปเดตล่าสุด ${new Intl.DateTimeFormat('th-TH',{dateStyle:'short',timeStyle:'short'}).format(new Date())}`;
     const foodTotal=document.querySelector('[data-food-total]'),donationCount=document.querySelector('[data-food-donation-count]');if(foodTotal)foodTotal.textContent=`฿${money(total)}`;if(donationCount)donationCount.textContent=donation.length;
-    document.querySelector('[data-food-queue-count]').textContent=personal.length;document.querySelector('[data-food-queue-left]').textContent=Math.max(maxQueue-personal.length,0);
+    const activeQueueCount=activeFoodQueueCount(personal);document.querySelector('[data-food-queue-count]').textContent=activeQueueCount;document.querySelector('[data-food-queue-left]').textContent=Math.max(maxQueue-activeQueueCount,0);
     document.querySelector('[data-food-queue-time]').textContent=updated;const donationStatus=document.querySelector('[data-food-donation-status]');if(donationStatus)donationStatus.title=updated;
     const queueList=document.querySelector('[data-food-queue-list]');queueList.innerHTML=personal.map(row=>`<div class="food-queue-row"><b>#${escapePageText(row.queue)}</b><span>${escapePageText(row.xAccount)}</span><em class="${foodStatusClass(row.status)}">${escapePageText(row.status)}</em></div>`).join('')||'<div class="food-empty">ยังไม่มีผู้ลงทะเบียนคิว</div>';
     const viewAll=document.querySelector('[data-food-view-all]');if(viewAll)viewAll.hidden=personal.length<=8;
@@ -3635,10 +3638,10 @@ saveProjectForm=function(event,id=''){
 function openFoodQueueAdmin(projectId){
   ensureProjectSettings();const project=db.siteSettings.projects.items.find(item=>item.id===projectId);if(!project)return;
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal project-admin-modal"><div class="modal-head"><div><small>PERSONAL SUPPORT</small><h2>จัดการสถานะคิว</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="food-admin-queue" data-food-admin-list><div class="empty">กำลัง sync ข้อมูลจาก Google Sheet...</div></div></div></div>`);
-  loadFoodSupportTable(project).then(table=>{const {personal}=foodSupportRows(table,project),list=document.querySelector('[data-food-admin-list]');if(!list)return;list.innerHTML=personal.map(row=>`<div><b>#${escapePageText(row.queue)}</b><span>${escapePageText(row.xAccount)}</span><select onchange="saveFoodQueueStatus('${project.id}','${encodeURIComponent(row.key)}',this.value)">${['ลงทะเบียนแล้ว','กำลังตรวจสอบ','ยืนยันคิวแล้ว','ดำเนินการเรียบร้อย','ไม่สะดวกจัดส่ง (Not Available)','ยกเลิก'].map(status=>`<option ${status===row.status?'selected':''}>${status}</option>`).join('')}</select></div>`).join('')||'<div class="empty">ยังไม่มีผู้ลงทะเบียนคิว</div>'}).catch(error=>{const list=document.querySelector('[data-food-admin-list]');if(list)list.innerHTML=`<div class="empty">Sync ไม่สำเร็จ: ${escapePageText(error.message)}</div>`});
+  loadFoodSupportTable(project).then(table=>{const {personal}=foodSupportRows(table,project),list=document.querySelector('[data-food-admin-list]');if(!list)return;list.innerHTML=personal.map(row=>`<div><b>#${escapePageText(row.queue)}</b><span>${escapePageText(row.xAccount)}</span><label class="food-admin-status"><select onchange="saveFoodQueueStatus('${project.id}','${encodeURIComponent(row.key)}',this.value);this.nextElementSibling.textContent=foodStatusEnglish(this.value)">${['ลงทะเบียนแล้ว','กำลังตรวจสอบ','ยืนยันคิวแล้ว','ดำเนินการเรียบร้อย','ไม่สะดวกจัดส่ง','ยกเลิก'].map(status=>`<option ${status===normalizeFoodStatus(row.status)?'selected':''}>${status}</option>`).join('')}</select><small>${foodStatusEnglish(row.status)}</small></label></div>`).join('')||'<div class="empty">ยังไม่มีผู้ลงทะเบียนคิว</div>'}).catch(error=>{const list=document.querySelector('[data-food-admin-list]');if(list)list.innerHTML=`<div class="empty">Sync ไม่สำเร็จ: ${escapePageText(error.message)}</div>`});
 }
 function saveFoodQueueStatus(projectId,encodedKey,status){
-  const project=db.siteSettings.projects.items.find(item=>item.id===projectId);if(!project)return;project.queueStatuses||={};project.queueStatuses[decodeURIComponent(encodedKey)]=status;save();toast('อัปเดตสถานะคิวแล้ว');
+  const project=db.siteSettings.projects.items.find(item=>item.id===projectId);if(!project)return;project.queueStatuses||={};project.queueStatuses[decodeURIComponent(encodedKey)]=normalizeFoodStatus(status);save();toast('อัปเดตสถานะคิวแล้ว');
 }
 const foodProjectsAdmin=projectsAdmin;
 function moveProjectOrder(projectId,direction){
