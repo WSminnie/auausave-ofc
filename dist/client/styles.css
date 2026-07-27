@@ -901,6 +901,7 @@ html{
 }
 
 /* Food Support Queue — site palette and desktop column order */
+.food-queue-row em.value-unavailable{background:#eee9e2;color:#655d55}
 .food-support-content{background:#eee9e1;color:#171717}
 .food-summary-card,.food-live-card{border-color:#d7cec3;box-shadow:0 14px 40px rgba(23,23,23,.06)}
 .food-summary-card small,.food-live-card header small{color:#d86666}
