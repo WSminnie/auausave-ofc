@@ -901,6 +901,7 @@ html{
 }
 
 /* Food Support Queue — site palette and desktop column order */
+.food-summary-grid{grid-template-columns:minmax(0,1.12fr) minmax(320px,.88fr)}
 .food-queue-row em.value-unavailable{background:#eee9e2;color:#655d55}
 .food-support-content{background:#eee9e1;color:#171717}
 .food-summary-card,.food-live-card{border-color:#d7cec3;box-shadow:0 14px 40px rgba(23,23,23,.06)}
@@ -924,6 +925,7 @@ html{
 .food-live-grid .donation-live-panel{grid-column:1;grid-row:1}
 .food-live-grid .queue-live{grid-column:2;grid-row:1}
 @media(max-width:900px){
+  .food-summary-grid{grid-template-columns:1fr}
   .food-live-grid .queue-live{grid-column:auto;grid-row:auto;order:1}
   .food-live-grid .donation-live-panel{grid-column:auto;grid-row:auto;order:2}
 }
