@@ -3506,8 +3506,15 @@ function foodSupportFormButton(url,label,missing){
 }
 function foodSupportQueuePage(project){
   const openingBalance=Math.max(0,Number(project.openingBalance)||0),maxQueue=Math.max(0,Number(project.maximumQueue)||0),money=value=>new Intl.NumberFormat('th-TH',{maximumFractionDigits:2}).format(value);
+  const cardImage=project.cardImage?`<img src="${escapePageText(project.cardImage)}" alt="${escapePageText(project.title)}">`:`<span>${escapePageText(project.title.slice(0,2).toUpperCase())}</span>`;
+  const qr=project.qrCode?`<div class="project-qr-placeholder has-image"><img src="${escapePageText(project.qrCode)}" alt="QR Code สำหรับร่วมสนับสนุน"></div>`:`<div class="project-qr-placeholder"><span>QR</span></div>`;
   app.innerHTML=nav('projects')+`<main class="food-support-page">
     <section class="project-detail-hero"><div class="container"><a href="#projects">← Our Projects</a><span class="eyebrow">${project.status==='active'?'ACTIVE PROJECT':'FAN PROJECT'} · FOOD SUPPORT QUEUE</span><h1>${escapePageText(project.title)}</h1><div><div class="project-detail-description">${sanitizeProjectRichText(project.descriptionHtml||`<p>${escapePageText(project.description||'')}</p>`)}</div></div></div></section>
+    <section class="section food-project-media-section"><div class="container"><div class="food-project-media-grid">
+      <div class="food-project-detail-image">${cardImage}</div>
+      <div class="project-qr-card">${qr}<p><small>SCAN TO SUPPORT</small><strong>สแกน QR Code<br>เพื่อร่วมสนับสนุน</strong></p></div>
+      <div class="project-account-card"><span>PAYMENT DETAILS</span><h2>รายละเอียดบัญชี</h2><dl><div><dt><span>ธนาคาร</span><small>BANK</small></dt><dd>${escapePageText(project.bankName||'—')}</dd></div><div><dt><span>เลขที่บัญชี</span><small>ACCOUNT NUMBER</small></dt><dd>${escapePageText(project.accountNumber||'—')}</dd></div><div><dt><span>ชื่อบัญชี</span><small>ACCOUNT NAME</small></dt><dd>${escapePageText(project.accountName||'—')}</dd></div></dl><small>กรุณาตรวจสอบชื่อบัญชีก่อนทำรายการทุกครั้ง<br>Please verify the account holder’s name before making any transaction.</small></div>
+    </div></div></section>
     <section class="section food-support-content"><div class="container">
       <div class="food-summary-grid">
         <article class="food-summary-card donation-summary"><div><small>DONATION WITH THE HOUSE</small><h2>ร่วมโดเนทกับบ้าน</h2></div><div class="food-summary-numbers"><strong data-food-total>฿${money(openingBalance)}</strong><span><b data-food-donation-count>0</b> รายการ</span></div><div class="food-opening-balance"><span>ยอดยกมา / OPENING BALANCE</span><b>฿${money(openingBalance)}</b></div>${foodSupportFormButton(project.donationFormUrl||project.formUrl,'ร่วมโดเนท','ยังไม่ได้ตั้งค่า Donation Pre-filled Form URL')}</article>
@@ -3608,7 +3615,7 @@ openProjectForm=function(id=''){
     <div class="field"><label>Maximum Queue</label><input name="maximumQueue" type="number" min="0" value="${Number(item.maximumQueue)||0}"></div>
     <div class="field"><label class="hero-overlay-toggle"><input type="checkbox" name="donationLiveEnabled" ${item.donationLiveEnabled===false?'':'checked'}><span>เปิด Donation Live Update</span></label></div>
     <div class="field"><label class="hero-overlay-toggle"><input type="checkbox" name="personalQueueEnabled" ${item.personalQueueEnabled===false?'':'checked'}><span>เปิด Personal Support Queue</span></label></div>`);
-  const typeSelect=form.querySelector('[name="projectType"]'),syncTypeFields=()=>{const isFood=typeSelect.value==='foodSupportQueue';form.querySelector('[name="goal"]')?.closest('.field')?.toggleAttribute('hidden',isFood);form.querySelectorAll('[data-food-project-field]').forEach(field=>field.hidden=!isFood)};typeSelect.addEventListener('change',syncTypeFields);syncTypeFields();
+  const typeSelect=form.querySelector('[name="projectType"]'),syncTypeFields=()=>{const isFood=typeSelect.value==='foodSupportQueue';form.querySelector('[name="goal"]')?.closest('.field')?.toggleAttribute('hidden',isFood);document.querySelector('#uploadPreview_banner')?.closest('.field')?.toggleAttribute('hidden',isFood);form.querySelectorAll('[data-food-project-field]').forEach(field=>field.hidden=!isFood)};typeSelect.addEventListener('change',syncTypeFields);syncTypeFields();
 };
 saveProjectForm=function(event,id=''){
   event.preventDefault();ensureProjectSettings();const form=new FormData(event.currentTarget),title=String(form.get('title')||'').trim(),slug=String(form.get('slug')||title).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||`project-${Date.now()}`;
