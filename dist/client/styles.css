@@ -951,6 +951,19 @@ html{
 .food-queue-row em.value-unavailable{background:#f3ece2;color:#765a35}
 .food-queue-row em>span,.food-queue-row em>small{display:block}
 .food-queue-row em>small{margin-top:2px;font-size:7px;font-weight:700;line-height:1.15;opacity:.72}
+@media(max-width:900px){
+  .food-support-page .project-payment-grid{grid-template-columns:1fr}
+  .food-support-page .project-payment-grid>*{min-width:0}
+  .food-support-page .project-qr-card{width:min(420px,100%);aspect-ratio:1}
+  .food-support-page .project-account-card dl>div{grid-template-columns:minmax(90px,120px) minmax(0,1fr)}
+  .food-support-page .project-account-card dd{min-width:0;overflow-wrap:anywhere}
+}
+@media(max-width:480px){
+  .food-support-page .project-qr-card,.food-support-page .project-account-card{padding:18px;border-radius:18px}
+  .food-support-page .project-account-card h2{font-size:28px}
+  .food-support-page .project-account-card dl>div{grid-template-columns:82px minmax(0,1fr);gap:10px}
+  .food-support-page .food-table-head,.food-support-page .food-queue-row{grid-template-columns:40px minmax(0,1fr) 106px}
+}
 @media(max-width:600px){.project-admin-section>header{align-items:flex-start;flex-direction:column}.project-section-actions{width:100%;flex-wrap:wrap}.project-section-actions .btn{flex:1}}
 @media(max-width:900px){
   .food-summary-grid{grid-template-columns:1fr}
