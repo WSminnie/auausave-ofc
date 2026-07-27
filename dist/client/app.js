@@ -144,6 +144,7 @@ function ensureHomePageSettings() {
   db.siteSettings ||= { heroImage: "", heroFit: "cover", heroPosition: "center" };
   db.siteSettings.personalProfiles ||= {};
   db.siteSettings.presenterDates ||= {};
+  db.siteSettings.presenterOrderByYear ||= {};
   db.siteSettings.awardDates ||= {};
   db.siteSettings.awardImages ||= {};
   (db.awards||[]).forEach(item=>{ if (!item.image && db.siteSettings.awardImages[item.id]) item.image=db.siteSettings.awardImages[item.id]; });
@@ -272,7 +273,7 @@ const save = (sync = true) => {
 };
 function applySyncedMediaUrls(synced, snapshot) {
   if (!synced) return;
-  const mediaFields = {artists:['image'],events:['poster'],awards:['image'],presenters:['logo','announcementImage','announcementVideo'],videos:['thumbnail']};
+  const mediaFields = {artists:['image'],events:['poster'],awards:['image'],presenters:['logo','announcementImage'],videos:['thumbnail']};
   Object.entries(mediaFields).forEach(([table,fields]) => {
     (synced[table] || []).forEach(remoteItem => {
       const localItem = (db[table] || []).find(item => item.id === remoteItem.id);
@@ -380,13 +381,13 @@ nav = function (active = '') {
   return renderNavBeforeLanguages(active);
 };
 function footer() {
-  return `<footer class="footer"><div class="container"><span class="eyebrow">The artist community</span><h2>KEEP THE<br>MEMORIES CLOSE.</h2><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH <b>↗</b></a><a href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC <b>↗</b></a><a href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC <b>↗</b></a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE TH</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
+  return `<footer class="footer"><div class="container"><span class="eyebrow">The artist community</span><h2>KEEP THE<br>MEMORIES CLOSE.</h2><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a class="creator-link creator-auausave" href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH</a><a class="creator-link creator-auau" href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC</a><a class="creator-link creator-save" href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC</a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE TH</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
 }
 footer=function(){
-  return `<footer class="footer footer-compact"><div class="container"><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH <b>↗</b></a><a href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC <b>↗</b></a><a href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC <b>↗</b></a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE TH</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
+  return `<footer class="footer footer-compact"><div class="container"><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a class="creator-link creator-auausave" href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH</a><a class="creator-link creator-auau" href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC</a><a class="creator-link creator-save" href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC</a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE TH</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
 };
 function artistCards() {
-  return `<div class="artists">${sortedArtists().map((a) => `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(a.id)}'"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<span>${a.initial}</span>`}<small class="tag">${sameArtistId(a.id,"duo") ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><span class="arrow">↗</span><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
+  return `<div class="artists">${sortedArtists().map((a) => `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(a.id)}'"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<span>${a.initial}</span>`}<small class="tag">${sameArtistId(a.id,"duo") ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><span class="arrow">➚</span><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
 }
 function scheduleRows(items = db.events) {
   return items.length
@@ -394,7 +395,7 @@ function scheduleRows(items = db.events) {
         .sort((a, b) => a.date.localeCompare(b.date))
         .map(
           (e) =>
-            `<div class="schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div><h3>${e.title}</h3><p>${artistName(e.artistId)} · ${e.place}</p></div><span class="event-type">${e.type}</span>${e.source ? `<a class="round-arrow" href="${e.source}" target="_blank" title="ดูต้นทาง">↗</a>` : "<span></span>"}</div>`,
+            `<div class="schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div><h3>${e.title}</h3><p>${artistName(e.artistId)} · ${e.place}</p></div><span class="event-type">${e.type}</span>${e.source ? `<a class="round-arrow" href="${e.source}" target="_blank" title="ดูต้นทาง">➚</a>` : "<span></span>"}</div>`,
         )
         .join("")
     : `<div class="empty">ยังไม่มีข้อมูลในขณะนี้</div>`;
@@ -414,7 +415,7 @@ function videos(items = db.videos) {
 function home() {
   app.innerHTML =
     nav() +
-    `<main><section class="hero"><div class="container hero-grid"><div><span class="eyebrow">AuauSave fanbase · บ้านของอู่อู๋เซฟ</span><h1>OUR HOUSE.<br>OUR STORY.</h1><p>บ้านแฟนคลับของอู่อู๋เซฟ พื้นที่เก็บทุกโมเมนต์ของ <b>#AuauSave</b> พร้อมติดตามผลงานเดี่ยว ตารางงาน และความสำเร็จของอู่อู๋และเซฟ</p><a class="scroll" href="#artists"><span>↓</span> CHOOSE YOUR PATH</a></div><div class="hero-art"><div class="orbit"></div></div></div></section><section class="section path-section"><div class="container"><div class="section-head"><div><span class="eyebrow">Two paths · One house</span><h2>เลือกพาสที่อยากติดตาม</h2></div><p>ทุกเรื่องราวถูกจัดไว้อย่างชัดเจน ทั้งโมเมนต์คู่และเส้นทางเดี่ยวของทั้งสองคน</p></div><div class="path-grid"><a href="#/AUAUSAVE" class="path-card couple"><span>01 · COUPLE PATH</span><h3>อู่อู๋เซฟ</h3><p>#AuauSave · งานคู่ · รางวัลคู่ · โมเมนต์ของเรา</p><b>เข้าสู่พาสคู่ ↗</b></a><div class="path-card solo"><span>02 · SOLO PATH</span><h3>เส้นทางเดี่ยว</h3><p>แยกติดตามงานและรางวัลเดี่ยวของแต่ละคน</p><div class="solo-links"><a href="#/AUAU">AUAU ↗</a><a href="#/SAVE">SAVE ↗</a></div></div></div></div></section><section class="section" id="featured"><div class="container"><div class="section-head"><div><span class="eyebrow">AuauSave house</span><h2>คู่และเดี่ยวในบ้านเดียวกัน</h2></div><a class="btn outline" href="#artists">View all ↗</a></div>${artistCards()}</div></section><section class="section"><div class="container schedule-wrap"><div class="section-head"><div><span class="eyebrow" style="color:var(--yellow)">Upcoming</span><h2>ตารางงานเร็วๆ นี้</h2></div><a class="btn light" href="#schedule">ดูตารางทั้งหมด</a></div>${scheduleRows(db.events.slice(0, 3))}</div></section><section class="section"><div class="container"><div class="section-head"><div><span class="eyebrow">Watch & remember</span><h2>AuauSave on YouTube</h2></div><a class="btn outline" href="#videos">ดูวิดีโอทั้งหมด ↗</a></div>${videos(db.videos.slice(0, 3))}</div></section></main>` +
+    `<main><section class="hero"><div class="container hero-grid"><div><span class="eyebrow">AuauSave fanbase · บ้านของอู่อู๋เซฟ</span><h1>OUR HOUSE.<br>OUR STORY.</h1><p>บ้านแฟนคลับของอู่อู๋เซฟ พื้นที่เก็บทุกโมเมนต์ของ <b>#AuauSave</b> พร้อมติดตามผลงานเดี่ยว ตารางงาน และความสำเร็จของอู่อู๋และเซฟ</p><a class="scroll" href="#artists"><span>↓</span> CHOOSE YOUR PATH</a></div><div class="hero-art"><div class="orbit"></div></div></div></section><section class="section path-section"><div class="container"><div class="section-head"><div><span class="eyebrow">Two paths · One house</span><h2>เลือกพาสที่อยากติดตาม</h2></div><p>ทุกเรื่องราวถูกจัดไว้อย่างชัดเจน ทั้งโมเมนต์คู่และเส้นทางเดี่ยวของทั้งสองคน</p></div><div class="path-grid"><a href="#/AUAUSAVE" class="path-card couple"><span>01 · COUPLE PATH</span><h3>อู่อู๋เซฟ</h3><p>#AuauSave · งานคู่ · รางวัลคู่ · โมเมนต์ของเรา</p><b>เข้าสู่พาสคู่ ➚</b></a><div class="path-card solo"><span>02 · SOLO PATH</span><h3>เส้นทางเดี่ยว</h3><p>แยกติดตามงานและรางวัลเดี่ยวของแต่ละคน</p><div class="solo-links"><a href="#/AUAU">AUAU ➚</a><a href="#/SAVE">SAVE ➚</a></div></div></div></div></section><section class="section" id="featured"><div class="container"><div class="section-head"><div><span class="eyebrow">AuauSave house</span><h2>คู่และเดี่ยวในบ้านเดียวกัน</h2></div><a class="btn outline" href="#artists">View all ➚</a></div>${artistCards()}</div></section><section class="section"><div class="container schedule-wrap"><div class="section-head"><div><span class="eyebrow" style="color:var(--yellow)">Upcoming</span><h2>ตารางงานเร็วๆ นี้</h2></div><a class="btn light" href="#schedule">ดูตารางทั้งหมด</a></div>${scheduleRows(db.events.slice(0, 3))}</div></section><section class="section"><div class="container"><div class="section-head"><div><span class="eyebrow">Watch & remember</span><h2>AuauSave on YouTube</h2></div><a class="btn outline" href="#videos">ดูวิดีโอทั้งหมด ➚</a></div>${videos(db.videos.slice(0, 3))}</div></section></main>` +
     footer();
 }
 function listing(type) {
@@ -439,7 +440,7 @@ function listing(type) {
       .sort((a, b) => b.year - a.year)
       .map(
         (r) =>
-          `<article class="award">${awardImage(r)?`<img class="award-image" src="${awardImage(r)}" alt="${r.title}">`:''}<span class="eyebrow">${artistName(r.artistId)}</span><h3>${r.title}</h3><p>${r.org}</p><time class="award-date">${awardDisplayDate(r)}</time>${r.source ? `<a class="source-link" href="${r.source}" target="_blank">ดูข้อมูลต้นทาง ↗</a>` : ""}</article>`,
+          `<article class="award">${awardImage(r)?`<img class="award-image" src="${awardImage(r)}" alt="${r.title}">`:''}<span class="eyebrow">${artistName(r.artistId)}</span><h3>${r.title}</h3><p>${r.org}</p><time class="award-date">${awardDisplayDate(r)}</time>${r.source ? `<a class="source-link" href="${r.source}" target="_blank">ดูข้อมูลต้นทาง ➚</a>` : ""}</article>`,
       )
       .join("")}</div>`;
   }
@@ -510,8 +511,8 @@ function artistSeriesSection(artistId) {
   const archive = db.siteSettings.artistArchive[artistId];
   if (!archive || archive.visibility?.series === false) return '';
   const allowedArtists=sameArtistId(artistId,'duo')?['AT01']:['AT01',artistId],series = db.siteSettings.timeline.filter(item=>(item.artistIds||[]).some(id=>allowedArtists.includes(canonicalArtistId(id)))).sort((a,b)=>(Number(b.year)||0)-(Number(a.year)||0));
-  const card = item => {const links=(item.links?.length?item.links:(item.url?[{label:'Open',url:item.url}]:[])).map(link=>typeof link==='string'?{label:'Open',url:link}:link).map(link=>{const text=link.label||link.title||'',url=link.url||link.href||(/^https?:\/\//i.test(text)?text:'');return{label:text&&text!==url?text:'Open',url};}).filter(link=>link.url);const imageOrientation=item.imageOrientation==='landscape'?'landscape':'portrait',posterUrl=versionedMediaUrl(item.poster,item.imageVersion||item.id);return `<article class="filmography-card timeline-image-${imageOrientation} ${item.upcoming?'is-upcoming-card':''}" data-timeline-artists="${escapePageText((item.artistIds||[]).join('|'))}">${item.poster?`<img src="${escapePageText(posterUrl)}" alt="${escapePageText(item.title)}">`:`<div class="filmography-placeholder"><span>${escapePageText(item.title.slice(0,2).toUpperCase())}</span></div>`}${item.upcoming?'<span class="timeline-upcoming-badge">UPCOMING</span>':''}<small>${escapePageText(timelineDateLabel(item))}</small><h3>${escapePageText(item.title)}</h3>${item.description?`<p>${escapePageText(item.description)}</p>`:''}${item.note?`<div class="timeline-note">${escapePageText(item.note)}</div>`:''}${links.length?`<div class="archive-card-links">${links.map(link=>`<a href="${escapePageText(link.url)}" target="_blank" rel="noopener noreferrer">${escapePageText(link.label)} ↗</a>`).join('')}</div>`:''}</article>`;};
-  const lane = (title,items,className='',description='',category='series') => {const renderRows=list=>{const group=item=>item.upcoming?'UPCOMING':(item.year||'TBA'),years=[...new Set(list.map(group))];return `<div class="filmography-timeline">${years.map(year=>`<section class="filmography-year-group ${year==='UPCOMING'?'is-upcoming-group':''}"><header><i></i><b>${escapePageText(year)}</b></header><div class="filmography-year-cards">${list.filter(item=>group(item)===year).map(card).join('')}</div></section>`).join('')||'<div class="empty">No items yet.</div>'}</div>`;};const groups=db.siteSettings.timelineGroups?.[category]||[],visibleGroups=groups.filter(group=>!Array.isArray(group.visibleArtistIds)||!group.visibleArtistIds.length||group.visibleArtistIds.map(canonicalArtistId).includes(artistId)),grouped=visibleGroups.map(group=>({group,items:items.filter(item=>item.groupId===group.id)})).filter(entry=>entry.items.length),ungrouped=items.filter(item=>!visibleGroups.some(group=>group.id===item.groupId)),ungroupedContent=ungrouped.length?(category==='music-video'?renderRows(ungrouped):`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>Other</h4></div>${renderRows(ungrouped)}</section>`):'',body=visibleGroups.length?[...grouped.map(entry=>`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>${escapePageText(entry.group.title)}</h4>${entry.group.description?`<p>${escapePageText(entry.group.description)}</p>`:''}</div>${renderRows(entry.items)}</section>`),ungroupedContent].join(''):renderRows(items);return `<section class="timeline-subsection ${className}"><div class="timeline-subsection-head"><div><h3>${escapePageText(title)}</h3>${description?`<p>${escapePageText(description)}</p>`:''}</div><span>${items.length} items</span></div>${body}</section>`;};
+  const card = item => {const links=(item.links?.length?item.links:(item.url?[{label:'Open',url:item.url}]:[])).map(link=>typeof link==='string'?{label:'Open',url:link}:link).map(link=>{const text=link.label||link.title||'',url=link.url||link.href||(/^https?:\/\//i.test(text)?text:'');return{label:text&&text!==url?text:'Open',url};}).filter(link=>link.url);const imageOrientation=item.imageOrientation==='landscape'?'landscape':'portrait',posterUrl=versionedMediaUrl(item.poster,item.imageVersion||item.id);return `<article class="filmography-card timeline-image-${imageOrientation} ${item.upcoming?'is-upcoming-card':''}" data-timeline-artists="${escapePageText((item.artistIds||[]).join('|'))}">${item.poster?`<img src="${escapePageText(posterUrl)}" alt="${escapePageText(item.title)}">`:`<div class="filmography-placeholder"><span>${escapePageText(item.title.slice(0,2).toUpperCase())}</span></div>`}${item.upcoming?'<span class="timeline-upcoming-badge">UPCOMING</span>':''}<small>${escapePageText(timelineDateLabel(item))}</small><h3>${escapePageText(item.title)}</h3>${item.description?`<p>${escapePageText(item.description)}</p>`:''}${item.note?`<div class="timeline-note">${escapePageText(item.note)}</div>`:''}${links.length?`<div class="archive-card-links">${links.map(link=>`<a href="${escapePageText(link.url)}" target="_blank" rel="noopener noreferrer">${escapePageText(link.label)} ➚</a>`).join('')}</div>`:''}</article>`;};
+  const lane = (title,items,className='',description='',category='series') => {const renderRows=list=>{const group=item=>item.upcoming?'UPCOMING':(item.year||'TBA'),years=[...new Set(list.map(group))];return `<div class="filmography-timeline"><div class="filmography-timeline-track">${years.map(year=>`<section class="filmography-year-group ${year==='UPCOMING'?'is-upcoming-group':''}"><header><i></i><b>${escapePageText(year)}</b></header><div class="filmography-year-cards">${list.filter(item=>group(item)===year).map(card).join('')}</div></section>`).join('')||'<div class="empty">No items yet.</div>'}</div></div>`;};const groups=db.siteSettings.timelineGroups?.[category]||[],visibleGroups=groups.filter(group=>!Array.isArray(group.visibleArtistIds)||!group.visibleArtistIds.length||group.visibleArtistIds.map(canonicalArtistId).includes(artistId)),grouped=visibleGroups.map(group=>({group,items:items.filter(item=>item.groupId===group.id)})).filter(entry=>entry.items.length),ungrouped=items.filter(item=>!visibleGroups.some(group=>group.id===item.groupId)),ungroupedContent=ungrouped.length?(category==='music-video'?renderRows(ungrouped):`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>Other</h4></div>${renderRows(ungrouped)}</section>`):'',body=visibleGroups.length?[...grouped.map(entry=>`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>${escapePageText(entry.group.title)}</h4>${entry.group.description?`<p>${escapePageText(entry.group.description)}</p>`:''}</div>${renderRows(entry.items)}</section>`),ungroupedContent].join(''):renderRows(items);return `<section class="timeline-subsection ${className}"><div class="timeline-subsection-head"><div><h3>${escapePageText(title)}</h3>${description?`<p>${escapePageText(description)}</p>`:''}</div><span>${items.length} items</span></div>${body}</section>`;};
   const visible=db.siteSettings.timelineVisibility, content=db.siteSettings.timelineCategoryContent||{},regular=[...series].sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));
   const filters=sameArtistId(artistId,'duo')?'':`<div class="timeline-artist-filters"><button class="active" onclick="filterArtistTimeline(this,'all')">All</button><button onclick="filterArtistTimeline(this,'AT01')">AUAUSAVE</button><button onclick="filterArtistTimeline(this,'${artistId}')">${escapePageText(artistName(artistId))}</button></div>`;
   return `<section class="section artist-filmography" data-artist-timeline="${artistId}"><div class="container"><div class="filmography-head"><small>OUR TIMELINE</small><h2>Timeline</h2><p>Series, variety shows and music videos of ${escapePageText(artistName(artistId))}</p>${filters}</div>${visible.series!==false?lane(content.series?.title||'Series',regular.filter(item=>(item.category||'series')==='series'),' ',content.series?.description||'','series'):''}${visible.variety!==false?lane(content.variety?.title||'Variety Show',regular.filter(item=>item.category==='variety'),' ',content.variety?.description||'','variety'):''}${visible['music-video']!==false?lane(content['music-video']?.title||'Music Video',regular.filter(item=>item.category==='music-video'),' ',content['music-video']?.description||'','music-video'):''}</div></section>`;
@@ -530,13 +531,13 @@ function coupleArchivePage() {
   const filterTypes = db.masterData.types.filter(type => events.some(event => eventHasType(event,type.id)));
   const media = [
     ...events.filter(item => item.poster || item.source).map(item => ({kind:item.poster?'image':'link',src:item.poster||'',url:item.source||'',title:item.title})),
-    ...db.presenters.filter(item => itemMatchesArtist(item, 'AT01') && (item.announcementImage || item.announcementVideo)).map(item => ({kind:item.announcementVideo?'video':'image',src:item.announcementVideo||item.announcementImage,url:item.url||'',title:item.brand})),
+    ...db.presenters.filter(item => itemMatchesArtist(item, 'AT01') && item.announcementImage).map(item => ({kind:'image',src:item.announcementImage,url:item.url||'',title:item.brand})),
   ];
-  app.innerHTML = nav('artists') + `<main class="couple-archive"><section class="couple-profile"><div class="container couple-profile-grid"><div class="couple-profile-image" style="background:${artist.color}">${artist.image?`<img src="${artist.image}" alt="AUAUSAVE">`:`<span>AS</span>`}</div><div><span class="eyebrow">COUPLE ARCHIVE</span><h1>AUAUSAVE</h1><p>${artist.bio || 'The shared journey of Auau and Save, collected in one place.'}</p><a class="couple-hashtag" href="https://x.com/hashtag/AuauSave" target="_blank">#AuauSave ↗</a></div></div></section>
-  <section class="section archive-projects"><div class="container"><div class="archive-section-head"><span>02</span><div><small>TOGETHER ON SCREEN</small><h2>Series & Projects</h2></div><p>Series, shared projects, promotions and fan projects.</p></div><div class="archive-project-grid">${projects.map(item=>`<article><small>${item.seriesId ? (db.masterData.series.find(series=>series.id===item.seriesId)?.label || 'SERIES') : 'SERIES'}</small><h3>${item.title}</h3><p>${item.place||'AUAUSAVE project'}</p>${item.source?`<a href="${item.source}" target="_blank">View source ↗</a>`:''}</article>`).join('') || '<div class="empty">No series or project information yet.</div>'}</div></div></section>
-  <section class="section"><div class="container"><div class="archive-section-head"><span>02</span><div><small>MEET AUAUSAVE</small><h2>Events</h2></div><p>Search couple schedules by date range and event type.</p></div><div class="couple-event-search"><label>From<input id="coupleEventFrom" type="date" value="${monthStart}" onchange="filterCoupleArchiveEvents()"></label><label>To<input id="coupleEventTo" type="date" value="${monthEnd}" onchange="filterCoupleArchiveEvents()"></label><span class="couple-event-result"></span></div><div class="couple-event-filters"><button class="active" data-type="all" onclick="filterCoupleArchiveEvents('all')">All</button>${filterTypes.map(type=>`<button data-type="${type.id}" onclick="filterCoupleArchiveEvents('${type.id}')">${type.label}</button>`).join('')}</div><div class="couple-event-list">${events.map(item=>`<article class="couple-event-card" data-date="${item.date}" data-types="${eventTypeValues(item.type).map(type=>type.toLowerCase()).join('|')}"><time><b>${day(item.date)}</b><span>${month(item.date)} ${item.date.slice(0,4)}</span></time><div><small>${eventTypeValues(item.type).join(' · ')}</small><h3>${item.title}</h3><p>${item.place||'TBA'}</p></div>${item.source?`<a href="${item.source}" target="_blank">↗</a>`:''}</article>`).join('') || '<div class="empty">No couple events yet.</div>'}</div></div></section>
+  app.innerHTML = nav('artists') + `<main class="couple-archive"><section class="couple-profile"><div class="container couple-profile-grid"><div class="couple-profile-image" style="background:${artist.color}">${artist.image?`<img src="${artist.image}" alt="AUAUSAVE">`:`<span>AS</span>`}</div><div><span class="eyebrow">COUPLE ARCHIVE</span><h1>AUAUSAVE</h1><p>${artist.bio || 'The shared journey of Auau and Save, collected in one place.'}</p><a class="couple-hashtag" href="https://x.com/hashtag/AuauSave" target="_blank">#AuauSave ➚</a></div></div></section>
+  <section class="section archive-projects"><div class="container"><div class="archive-section-head"><span>02</span><div><small>TOGETHER ON SCREEN</small><h2>Series & Projects</h2></div><p>Series, shared projects, promotions and fan projects.</p></div><div class="archive-project-grid">${projects.map(item=>`<article><small>${item.seriesId ? (db.masterData.series.find(series=>series.id===item.seriesId)?.label || 'SERIES') : 'SERIES'}</small><h3>${item.title}</h3><p>${item.place||'AUAUSAVE project'}</p>${item.source?`<a href="${item.source}" target="_blank">View source ➚</a>`:''}</article>`).join('') || '<div class="empty">No series or project information yet.</div>'}</div></div></section>
+  <section class="section"><div class="container"><div class="archive-section-head"><span>02</span><div><small>MEET AUAUSAVE</small><h2>Events</h2></div><p>Search couple schedules by date range and event type.</p></div><div class="couple-event-search"><label>From<input id="coupleEventFrom" type="date" value="${monthStart}" onchange="filterCoupleArchiveEvents()"></label><label>To<input id="coupleEventTo" type="date" value="${monthEnd}" onchange="filterCoupleArchiveEvents()"></label><span class="couple-event-result"></span></div><div class="couple-event-filters"><button class="active" data-type="all" onclick="filterCoupleArchiveEvents('all')">All</button>${filterTypes.map(type=>`<button data-type="${type.id}" onclick="filterCoupleArchiveEvents('${type.id}')">${type.label}</button>`).join('')}</div><div class="couple-event-list">${events.map(item=>`<article class="couple-event-card" data-date="${item.date}" data-types="${eventTypeValues(item.type).map(type=>type.toLowerCase()).join('|')}"><time><b>${day(item.date)}</b><span>${month(item.date)} ${item.date.slice(0,4)}</span></time><div><small>${eventTypeValues(item.type).join(' · ')}</small><h3>${item.title}</h3><p>${item.place||'TBA'}</p></div>${item.source?`<a href="${item.source}" target="_blank">➚</a>`:''}</article>`).join('') || '<div class="empty">No couple events yet.</div>'}</div></div></section>
   <section class="section archive-awards"><div class="container"><div class="archive-section-head"><span>04</span><div><small>SHARED ACHIEVEMENTS</small><h2>Awards</h2></div><div class="archive-award-table"><div class="archive-award-row head"><span>Year</span><span>Award</span><span>Organization / Category</span><span>Result</span></div>${awards.map(item=>`<div class="archive-award-row"><strong>${item.year}</strong><span>${awardImage(item)?`<img class="award-image" src="${awardImage(item)}" alt="${item.title}">`:''}${item.title}</span><span>${item.org}<time class="award-date">${awardDisplayDate(item)}</time></span><span>Recipient</span></div>`).join('') || '<div class="empty">No couple awards yet.</div>'}</div></div></section>
-  <section class="section"><div class="container"><div class="archive-section-head"><span>04</span><div><small>PHOTO · VIDEO · SOURCE</small><h2>Media Gallery</h2></div><p>Event photos, short clips and original post links.</p></div><div class="couple-media-grid">${media.map(item=>`<article>${item.kind==='video'?`<video src="${item.src}" controls playsinline></video>`:item.kind==='image'?`<img src="${item.src}" alt="${item.title}">`:'<div class="media-link-art">↗</div>'}<div><h3>${item.title}</h3>${item.url?`<a href="${item.url}" target="_blank">View original post ↗</a>`:''}</div></article>`).join('') || '<div class="empty">No media has been added yet.</div>'}</div></div></section></main>` + footer();
+  <section class="section"><div class="container"><div class="archive-section-head"><span>04</span><div><small>PHOTO · VIDEO · SOURCE</small><h2>Media Gallery</h2></div><p>Event photos, short clips and original post links.</p></div><div class="couple-media-grid">${media.map(item=>`<article>${item.kind==='video'?`<video src="${item.src}" controls playsinline></video>`:item.kind==='image'?`<img src="${item.src}" alt="${item.title}">`:'<div class="media-link-art">➚</div>'}<div><h3>${item.title}</h3>${item.url?`<a href="${item.url}" target="_blank">View original post ➚</a>`:''}</div></article>`).join('') || '<div class="empty">No media has been added yet.</div>'}</div></div></section></main>` + footer();
   document.querySelectorAll('.couple-event-card').forEach((card,index) => card.dataset.artist = canonicalArtistId(events[index]?.artistId || 'AT01'));
   document.querySelector('.couple-event-filters:not(.couple-artist-filters)')?.remove();
   document.querySelector('.couple-event-search')?.insertAdjacentHTML('afterend', `<div class="couple-event-filters couple-artist-filters"><button class="active" data-artist="all" onclick="filterCoupleArchiveArtist('all')">All</button><button data-artist="AT01" onclick="filterCoupleArchiveArtist('AT01')">AUAUSAVE</button><button data-artist="AT02" onclick="filterCoupleArchiveArtist('AT02')">AUAU</button><button data-artist="AT03" onclick="filterCoupleArchiveArtist('AT03')">SAVE</button></div>`);
@@ -551,7 +552,7 @@ function coupleArchivePage() {
     const grid = galleryHeading.closest('.section').querySelector('.couple-media-grid');
     if (archiveData.gallery.length) {
       grid.querySelector('.empty')?.remove();
-      grid.insertAdjacentHTML('beforeend', archiveData.gallery.map(item=>`<article>${item.type==='video'?`<video src="${item.mediaUrl}" controls playsinline></video>`:item.mediaUrl?`<img src="${item.mediaUrl}" alt="${item.title}">`:'<div class="media-link-art">X</div>'}<div><h3>${item.title}</h3>${item.xUrl?`<a href="${item.xUrl}" target="_blank">View X post ↗</a>`:''}</div></article>`).join(''));
+      grid.insertAdjacentHTML('beforeend', archiveData.gallery.map(item=>`<article>${item.type==='video'?`<video src="${item.mediaUrl}" controls playsinline></video>`:item.mediaUrl?`<img src="${item.mediaUrl}" alt="${item.title}">`:'<div class="media-link-art">X</div>'}<div><h3>${item.title}</h3>${item.xUrl?`<a href="${item.xUrl}" target="_blank">View X post ➚</a>`:''}</div></article>`).join(''));
     }
   }
   [...document.querySelectorAll('.archive-section-head h2')].forEach(heading => {
@@ -629,7 +630,7 @@ function homeScheduleSection() {
     month: "long",
     year: "numeric",
   }).format(new Date(`${ym}-01`));
-  return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><span class="eyebrow">This month · ${monthLabel}</span><h2>ตารางงานเดือนนี้</h2></div><a class="btn outline" href="#schedule">เปิดปฏิทินทั้งหมด ↗</a></div><div class="schedule-columns"><article class="schedule-card duo-card"><div class="schedule-card-head"><span>COUPLE PATH</span><h3>ตารางงานคู่</h3><p>#AuauSave</p></div>${compactSchedule(monthly.filter((e) => e.artistId === "duo"))}</article><article class="schedule-card auau-card"><div class="schedule-card-head"><span>SOLO PATH</span><h3>ตารางงาน AUAU</h3><p>Auau · DEXX</p></div>${compactSchedule(monthly.filter((e) => e.artistId === "auau"))}</article><article class="schedule-card save-card"><div class="schedule-card-head"><span>SOLO PATH</span><h3>ตารางงาน SAVE</h3><p>Save</p></div>${compactSchedule(monthly.filter((e) => e.artistId === "save"))}</article></div></div></section>`;
+  return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><span class="eyebrow">This month · ${monthLabel}</span><h2>ตารางงานเดือนนี้</h2></div><a class="btn outline" href="#schedule">เปิดปฏิทินทั้งหมด ➚</a></div><div class="schedule-columns"><article class="schedule-card duo-card"><div class="schedule-card-head"><span>COUPLE PATH</span><h3>ตารางงานคู่</h3><p>#AuauSave</p></div>${compactSchedule(monthly.filter((e) => e.artistId === "duo"))}</article><article class="schedule-card auau-card"><div class="schedule-card-head"><span>SOLO PATH</span><h3>ตารางงาน AUAU</h3><p>Auau · DEXX</p></div>${compactSchedule(monthly.filter((e) => e.artistId === "auau"))}</article><article class="schedule-card save-card"><div class="schedule-card-head"><span>SOLO PATH</span><h3>ตารางงาน SAVE</h3><p>Save</p></div>${compactSchedule(monthly.filter((e) => e.artistId === "save"))}</article></div></div></section>`;
 }
 const renderBaseHome = home;
 home = function () {
@@ -686,7 +687,7 @@ function showEvent(id) {
   if (!e) return;
   document.body.insertAdjacentHTML(
     "beforeend",
-    `<div class="modal-backdrop" id="modal"><div class="modal event-modal"><div class="modal-head"><span class="eyebrow">${artistName(e.artistId)} · ${e.type}</span><button class="close" onclick="closeModal()">×</button></div><h2>${e.title}</h2><p class="event-date">${fmtDate(e.date)}</p><p>${e.place}</p>${e.source ? `<a class="btn" target="_blank" href="${e.source}">View Source ↗</a>` : ""}</div></div>`,
+    `<div class="modal-backdrop" id="modal"><div class="modal event-modal"><div class="modal-head"><span class="eyebrow">${artistName(e.artistId)} · ${e.type}</span><button class="close" onclick="closeModal()">×</button></div><h2>${e.title}</h2><p class="event-date">${fmtDate(e.date)}</p><p>${e.place}</p>${e.source ? `<a class="btn" target="_blank" href="${e.source}">View Source ➚</a>` : ""}</div></div>`,
   );
 }
 const renderEventWithoutPoster = showEvent;
@@ -706,18 +707,43 @@ listing = function (type) {
   else renderBaseListing(type);
 };
 
+function presenterYear(item) {
+  return String(item?.year || 'ไม่ระบุปี');
+}
+function presenterDateValue(item) {
+  const saved=db.siteSettings?.presenterDates?.[item.id]||{};
+  const year=Number(item.year)||0, month=Number(item.month||saved.month)||0, day=Number(item.day||saved.day)||0;
+  return year*10000+month*100+day;
+}
+function presenterYears(items=db.presenters) {
+  return [...new Set(items.map(presenterYear))].sort((a,b)=>(Number(b)||-1)-(Number(a)||-1));
+}
+function orderedPresentersForYear(items,year) {
+  ensureHomePageSettings();
+  const yearItems=items.filter(item=>presenterYear(item)===String(year));
+  const savedOrder=db.siteSettings.presenterOrderByYear[String(year)];
+  if (!Array.isArray(savedOrder)) {
+    return [...yearItems].sort((a,b)=>presenterDateValue(b)-presenterDateValue(a)||String(a.brand||'').localeCompare(String(b.brand||'')));
+  }
+  const position=new Map(savedOrder.map((id,index)=>[id,index]));
+  return [...yearItems].sort((a,b)=>{
+    const ai=position.has(a.id)?position.get(a.id):Number.MAX_SAFE_INTEGER;
+    const bi=position.has(b.id)?position.get(b.id):Number.MAX_SAFE_INTEGER;
+    return ai-bi || presenterDateValue(b)-presenterDateValue(a) || String(a.brand||'').localeCompare(String(b.brand||''));
+  });
+}
+function orderedPresenters(items=db.presenters) {
+  return presenterYears(items).flatMap(year=>orderedPresentersForYear(items,year));
+}
 function presenterCards(items = db.presenters) {
-  const currentYear=String(new Date().getFullYear());
-  items=[...items].sort((a,b)=>{const aCurrent=String(a.year)===currentYear,bCurrent=String(b.year)===currentYear;if(aCurrent!==bCurrent)return aCurrent?-1:1;return (Number(b.year)||0)-(Number(a.year)||0);});
-  return `<div class="presenter-grid">${
-    items
+  const years=presenterYears(items);
+  return years.map(year=>`<section class="presenter-year-group"><h3 class="presenter-year-heading">${year}</h3><div class="presenter-grid">${
+    orderedPresentersForYear(items,year)
       .map((p) => {
-        const fit = p.mediaFit || "contain",
-          position = p.mediaPosition || "center";
-        return `<article class="presenter-card ${p.announcementImage || p.announcementVideo ? "has-poster" : ""}" style="--brand:${p.color || "#777"}">${p.announcementVideo ? `<div class="presenter-poster video-poster"><video src="${p.announcementVideo}" controls playsinline preload="metadata" style="object-fit:${fit};object-position:${position}"></video></div>` : p.announcementImage ? `<div class="presenter-poster"><img src="${p.announcementImage}" alt="โปสเตอร์ ${p.brand}" style="object-fit:${fit};object-position:${position}"></div>` : ""}<div class="presenter-detail"><div class="brand-mark">${p.logo ? `<img src="${p.logo}" alt="${p.brand}">` : p.brand.slice(0, 2).toUpperCase()}</div><span>${sameArtistId(p.artistId,"duo") ? "#AUAUSAVE" : artistName(p.artistId)}</span><h3>${p.brand}</h3><p>${p.role} · ${p.year}</p>${p.url ? `<a href="${p.url}" target="_blank">View Details ↗</a>` : ""}</div></article>`;
+        return `<article class="presenter-card ${p.announcementImage ? "has-poster" : ""}" style="--brand:${p.color || "#777"}">${p.announcementImage ? `<div class="presenter-poster presenter-card-media"><img src="${p.announcementImage}" alt="โปสเตอร์ ${p.brand}"></div>` : ""}<div class="presenter-detail"><div class="brand-mark">${p.logo ? `<img src="${p.logo}" alt="${p.brand}">` : p.brand.slice(0, 2).toUpperCase()}</div><span>${sameArtistId(p.artistId,"duo") ? "#AUAUSAVE" : artistName(p.artistId)}</span><h3>${p.brand}</h3><p>${p.role} · ${p.year}</p>${p.url ? `<a href="${p.url}" target="_blank">View Details ➚</a>` : ""}</div></article>`;
       })
       .join("") || '<div class="empty">ยังไม่มีข้อมูลพรีเซนเตอร์</div>'
-  }</div>`;
+  }</div></section>`).join('');
 }
 function presenterPage() {
   app.innerHTML =
@@ -737,7 +763,7 @@ home = function () {
     .querySelector("footer")
     ?.insertAdjacentHTML(
       "beforebegin",
-      `<section class="section presenter-home"><div class="container"><div class="section-head"><div><span class="eyebrow">Brand & Partnership</span><h2>Our Presenters</h2></div><a class="btn outline" href="#presenters">View all ↗</a></div>${presenterCards(db.presenters.slice(0, 3))}</div></section>`,
+      `<section class="section presenter-home"><div class="container"><div class="section-head"><div><span class="eyebrow">Brand & Partnership</span><h2>Our Presenters</h2></div><a class="btn outline" href="#presenters">View all ➚</a></div>${presenterCards(db.presenters.slice(0, 3))}</div></section>`,
     );
 };
 function videoTile(v) {
@@ -747,14 +773,14 @@ function youtubeHub(compact = false) {
   const featured = db.videos.find((v) => v.featured === "yes") || db.videos[0],
     groups = db.siteSettings.youtubeCategories;
   if (!featured) return '<div class="empty">ยังไม่มีวิดีโอ</div>';
-  return `<div class="featured-watch ${compact?'home-featured-watch':''}"><div class="featured-player">${featured.embedUrl ? `<iframe src="${featured.embedUrl}" title="${featured.title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${featured.url}" target="_blank" style="background:${featured.color}">${featured.thumbnail ? `<img src="${featured.thumbnail}" alt="${featured.title}">` : ""}<span class="big-play">▶</span><small>เปิดดูบน YouTube</small></a>`}</div><div class="featured-copy"><span class="eyebrow">Featured video</span><h2>${featured.title}</h2><p>${artistName(featured.artistId)} · ${featured.views}</p><a class="btn" href="${featured.url}" target="_blank">เปิดบน YouTube ↗</a></div></div>${groups
+  return `<div class="featured-watch ${compact?'home-featured-watch':''}"><div class="featured-player">${featured.embedUrl ? `<iframe src="${featured.embedUrl}" title="${featured.title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${featured.url}" target="_blank" style="background:${featured.color}">${featured.thumbnail ? `<img src="${featured.thumbnail}" alt="${featured.title}">` : ""}<span class="big-play">▶</span><small>เปิดดูบน YouTube</small></a>`}</div><div class="featured-copy"><span class="eyebrow">Featured video</span><h2>${featured.title}</h2><p>${artistName(featured.artistId)} · ${featured.views}</p><a class="btn" href="${featured.url}" target="_blank">เปิดบน YouTube ➚</a></div></div>${groups
     .map((group, index) => {
       const {id: key, title, description: desc, linkLabel, linkUrl} = group;
       const items = db.videos.filter(
         (v) => v.category === key && v.id !== featured.id,
       );
       if (compact && !items.length) return "";
-      return `<section class="video-category ${compact?'home-video-category':''}"><div class="category-title"><div><span>${String(index + 1).padStart(2, '0')}</span><h2>${title}</h2></div><p>${desc || ''}</p>${linkUrl ? `<a class="channel-link" href="${linkUrl}" target="_blank" rel="noopener">${linkLabel || 'Open link ↗'}</a>` : ''}</div>${compact?'<div class="home-video-carousel"><button class="carousel-arrow prev" type="button" aria-label="Previous videos" onclick="scrollHomeVideos(this,-1)">←</button>':''}<div class="hub-grid">${
+      return `<section class="video-category ${compact?'home-video-category':''}"><div class="category-title"><div><span>${String(index + 1).padStart(2, '0')}</span><h2>${title}</h2></div><p>${desc || ''}</p>${linkUrl ? `<a class="channel-link" href="${linkUrl}" target="_blank" rel="noopener">${linkLabel || 'Open link ➚'}</a>` : ''}</div>${compact?'<div class="home-video-carousel"><button class="carousel-arrow prev" type="button" aria-label="Previous videos" onclick="scrollHomeVideos(this,-1)">←</button>':''}<div class="hub-grid">${
         items
           .slice(0, compact ? 99 : 99)
           .map(videoTile)
@@ -783,7 +809,7 @@ home = function () {
       .find((h) => h.textContent.includes("AuauSave on YouTube"))
       ?.closest(".section");
   if (target)
-    target.innerHTML = `<div class="container"><div class="section-head"><div><span class="eyebrow">Watch & remember</span><h2>AuauSave on YouTube</h2></div><a class="btn outline" href="#videos">View all ↗</a></div>${youtubeHub(true)}</div>`;
+    target.innerHTML = `<div class="container"><div class="section-head"><div><span class="eyebrow">Watch & remember</span><h2>AuauSave on YouTube</h2></div><a class="btn outline" href="#videos">View all ➚</a></div>${youtubeHub(true)}</div>`;
 };
 
 function addDexxChannelLink() {
@@ -795,7 +821,7 @@ function addDexxChannelLink() {
   if (title && !title.querySelector(".channel-link")) {
     title.insertAdjacentHTML(
       "beforeend",
-      `<a class="channel-link" href="https://www.youtube.com/@DEXXOfficialTH" target="_blank" rel="noopener">เปิดช่อง DEXX Official TH ↗</a>`,
+      `<a class="channel-link" href="https://www.youtube.com/@DEXXOfficialTH" target="_blank" rel="noopener">เปิดช่อง DEXX Official TH ➚</a>`,
     );
   }
 }
@@ -978,7 +1004,7 @@ function dashboardAdmin() {
     )
     .join(
       "",
-    )}</div><a class="back" href="#home">← กลับหน้าเว็บไซต์</a></aside><main class="admin-main dashboard-main"><div class="admin-top"><div><small style="color:var(--muted)">AUAUSAVE HOUSE · ${year}</small><h1>ภาพรวมหลังบ้าน</h1></div><button class="btn" onclick="adminTab='events';admin()">จัดการปฏิทิน ↗</button></div><div class="dashboard-stats"><article><span>ตารางงานปีนี้</span><b>${yearEvents.length}</b><small>รายการทั้งหมดใน ${year}</small></article><article><span>งานเดือนนี้</span><b>${monthEvents.length}</b><small>${new Intl.DateTimeFormat("th-TH", { month: "long" }).format(now)}</small></article><article><span>งานที่กำลังจะมาถึง</span><b>${upcoming.length}</b><small>ตั้งแต่วันนี้เป็นต้นไป</small></article><article><span>ศิลปิน/พาส</span><b>${db.artists.length}</b><small>#AUAUSAVE · AUAU · SAVE</small></article></div><div class="dashboard-grid"><section class="dash-panel chart-panel"><div class="panel-head"><div><small>EVENT ACTIVITY</small><h2>ตารางงานรายเดือน</h2></div><b>${yearEvents.length} งาน</b></div><div class="bar-chart">${months.map((n, i) => `<div class="bar-col"><span>${n || ""}</span><div class="bar" style="height:${Math.max((n / max) * 180, n ? 8 : 2)}px"></div><small>${["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."][i]}</small></div>`).join("")}</div></section><section class="dash-panel path-panel"><div class="panel-head"><div><small>PATH SUMMARY</small><h2>แยกตามพาส</h2></div></div><div class="path-metric duo"><div><b>#AUAUSAVE</b><span>${paths.duo} งาน</span></div><div class="metric-track"><i style="width:${(paths.duo / yearEvents.length) * 100 || 0}%"></i></div></div><div class="path-metric auau"><div><b>AUAU</b><span>${paths.auau} งาน</span></div><div class="metric-track"><i style="width:${(paths.auau / yearEvents.length) * 100 || 0}%"></i></div></div><div class="path-metric save"><div><b>SAVE</b><span>${paths.save} งาน</span></div><div class="metric-track"><i style="width:${(paths.save / yearEvents.length) * 100 || 0}%"></i></div></div></section><section class="dash-panel upcoming-panel"><div class="panel-head"><div><small>NEXT SCHEDULE</small><h2>งานที่กำลังจะมาถึง</h2></div><button onclick="adminTab='events';admin()">ดูทั้งหมด</button></div>${
+    )}</div><a class="back" href="#home">← กลับหน้าเว็บไซต์</a></aside><main class="admin-main dashboard-main"><div class="admin-top"><div><small style="color:var(--muted)">AUAUSAVE HOUSE · ${year}</small><h1>ภาพรวมหลังบ้าน</h1></div><button class="btn" onclick="adminTab='events';admin()">จัดการปฏิทิน ➚</button></div><div class="dashboard-stats"><article><span>ตารางงานปีนี้</span><b>${yearEvents.length}</b><small>รายการทั้งหมดใน ${year}</small></article><article><span>งานเดือนนี้</span><b>${monthEvents.length}</b><small>${new Intl.DateTimeFormat("th-TH", { month: "long" }).format(now)}</small></article><article><span>งานที่กำลังจะมาถึง</span><b>${upcoming.length}</b><small>ตั้งแต่วันนี้เป็นต้นไป</small></article><article><span>ศิลปิน/พาส</span><b>${db.artists.length}</b><small>#AUAUSAVE · AUAU · SAVE</small></article></div><div class="dashboard-grid"><section class="dash-panel chart-panel"><div class="panel-head"><div><small>EVENT ACTIVITY</small><h2>ตารางงานรายเดือน</h2></div><b>${yearEvents.length} งาน</b></div><div class="bar-chart">${months.map((n, i) => `<div class="bar-col"><span>${n || ""}</span><div class="bar" style="height:${Math.max((n / max) * 180, n ? 8 : 2)}px"></div><small>${["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."][i]}</small></div>`).join("")}</div></section><section class="dash-panel path-panel"><div class="panel-head"><div><small>PATH SUMMARY</small><h2>แยกตามพาส</h2></div></div><div class="path-metric duo"><div><b>#AUAUSAVE</b><span>${paths.duo} งาน</span></div><div class="metric-track"><i style="width:${(paths.duo / yearEvents.length) * 100 || 0}%"></i></div></div><div class="path-metric auau"><div><b>AUAU</b><span>${paths.auau} งาน</span></div><div class="metric-track"><i style="width:${(paths.auau / yearEvents.length) * 100 || 0}%"></i></div></div><div class="path-metric save"><div><b>SAVE</b><span>${paths.save} งาน</span></div><div class="metric-track"><i style="width:${(paths.save / yearEvents.length) * 100 || 0}%"></i></div></div></section><section class="dash-panel upcoming-panel"><div class="panel-head"><div><small>NEXT SCHEDULE</small><h2>งานที่กำลังจะมาถึง</h2></div><button onclick="adminTab='events';admin()">ดูทั้งหมด</button></div>${
     upcoming
       .slice(0, 5)
       .map(
@@ -1490,23 +1516,7 @@ openForm = function (type, id) {
 const renderPresenterImageForm = openForm;
 openForm = function (type, id) {
   renderPresenterImageForm(type, id);
-  if (type !== "presenters") return;
-  const item = id ? db.presenters.find((x) => x.id === id) : {},
-    grid = document.querySelector("#modal .form-grid");
-  if (grid) {
-    grid.insertAdjacentHTML(
-      "beforeend",
-      videoUploadTemplate(item.announcementVideo || ""),
-    );
-    grid.insertAdjacentHTML(
-      "beforeend",
-      `<div class="field media-display-setting"><label>การแสดงรูป/วิดีโอหน้าบ้าน</label><select name="mediaFit"><option value="contain" ${(item.mediaFit || "contain") === "contain" ? "selected" : ""}>แสดงเต็มภาพ — ไม่ครอป</option><option value="cover" ${item.mediaFit === "cover" ? "selected" : ""}>เต็มกรอบ — อาจมีการครอป</option></select></div><div class="field media-display-setting"><label>ตำแหน่งรูป/วิดีโอ</label><select name="mediaPosition"><option value="top" ${item.mediaPosition === "top" ? "selected" : ""}>ด้านบน</option><option value="center" ${(item.mediaPosition || "center") === "center" ? "selected" : ""}>กึ่งกลาง</option><option value="bottom" ${item.mediaPosition === "bottom" ? "selected" : ""}>ด้านล่าง</option></select></div><div class="display-hint full">ค่า “แสดงเต็มภาพ” เหมาะกับโปสเตอร์แนวตั้งและวิดีโอ เพราะจะแสดงภาพครบโดยไม่ตัดขอบ</div>`,
-    );
-  }
 };
-function videoUploadTemplate(value = "") {
-  return `<div class="field full video-upload-field"><label>วิดีโอประกาศพรีเซนเตอร์จากแบรนด์</label><div class="image-uploader"><div class="upload-preview video-preview ${value ? "has-image" : ""}" id="uploadPreview_announcementVideo">${value ? `<video src="${value}" controls></video>` : "<span>▶<small>เลือกวิดีโอ</small></span>"}</div><div><input type="file" accept="video/mp4,video/webm" onchange="handleVideoUpload(this)"><input type="hidden" name="announcementVideo" value="${value}"><p>รองรับ MP4, WebM · สูงสุด 3 MB สำหรับเว็บต้นแบบ</p>${value ? '<button type="button" class="remove-image" onclick="removeUploadedVideo()">ลบวิดีโอนี้</button>' : ""}</div></div></div>`;
-}
 const renderFormBeforeYoutubeSettings = openForm;
 openForm = function (type, id) {
   renderFormBeforeYoutubeSettings(type, id);
@@ -1519,31 +1529,6 @@ openForm = function (type, id) {
       `<div class="field"><label>หมวดวิดีโอ</label><select name="category" required><option value="auau" ${(item.category || "auau") === "auau" ? "selected" : ""}>AUAU</option><option value="dexx" ${item.category === "dexx" ? "selected" : ""}>AUAU · DEXX</option><option value="variety" ${item.category === "variety" ? "selected" : ""}>AUAUSAVE & VARIETY</option></select></div><div class="field"><label>ตั้งเป็นวิดีโอหลัก</label><select name="featured"><option value="no" ${item.featured !== "yes" ? "selected" : ""}>ไม่ใช่</option><option value="yes" ${item.featured === "yes" ? "selected" : ""}>ใช่ — แสดงเป็นวิดีโอหลัก</option></select></div><div class="field full"><label>YouTube Embed URL</label><input name="embedUrl" value="${item.embedUrl || ""}" placeholder="https://www.youtube.com/embed/VIDEO_ID"><small class="form-help">ใช้ลิงก์ /embed/ เพื่อให้เปิดดูได้ทันทีบนเว็บไซต์</small></div>`,
     );
 };
-function handleVideoUpload(input) {
-  const file = input.files[0];
-  if (!file) return;
-  if (file.size > 3 * 1024 * 1024) {
-    toast("วิดีโอต้องมีขนาดไม่เกิน 3 MB");
-    input.value = "";
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const hidden = document.querySelector('#modal [name="announcementVideo"]'),
-      preview = document.querySelector("#uploadPreview_announcementVideo");
-    hidden.value = reader.result;
-    preview.classList.add("has-image");
-    preview.innerHTML = `<video src="${reader.result}" controls></video>`;
-    toast("เตรียมวิดีโอเรียบร้อย กดบันทึกเพื่อยืนยัน");
-  };
-  reader.readAsDataURL(file);
-}
-function removeUploadedVideo() {
-  document.querySelector('#modal [name="announcementVideo"]').value = "";
-  const preview = document.querySelector("#uploadPreview_announcementVideo");
-  preview.classList.remove("has-image");
-  preview.innerHTML = "<span>▶<small>เลือกวิดีโอ</small></span>";
-}
 function handleImageUpload(input, field) {
   const file = input.files[0];
   if (!file) return;
@@ -1727,7 +1712,7 @@ function pageContentAdmin() {
   const sections = db.siteSettings.homeSections;
   const hero = db.siteSettings;
   const heroSection = sections.find(section => section.id === 'hero');
-  app.innerHTML = `<div class="admin"><div class="admin-shell"><aside class="sidebar"><div class="brand"><i></i>AUAUSAVE HOUSE</div><div class="side-nav"><button data-icon="⌂" onclick="adminTab='dashboard';admin()">⌂ &nbsp; Dashboard</button><button data-icon="▤" class="active">▤ &nbsp; จัดหน้าแรก</button>${Object.entries(configs).map(([k,v])=>`<button data-icon="${v.icon}" onclick="adminTab='${k}';admin()">${v.icon} &nbsp; ${v.label}</button>`).join('')}<button data-icon="⚙" onclick="adminTab='master';admin()">⚙ &nbsp; Master Data</button></div><a class="back" href="#home">← ดูหน้าบ้าน</a></aside><main class="admin-main"><div class="admin-top"><div><small style="color:var(--muted)">HOME PAGE BUILDER</small><h1>จัดการข้อความและลำดับหน้าแรก</h1></div><a class="btn" href="#home">ดูตัวอย่างหน้าบ้าน ↗</a></div><section class="panel home-setting-panel"><div class="panel-head"><div><small>HOMEPAGE PREVIEW & CONTENT</small><h2>ตัวอย่าง หัวข้อ และคำอธิบายหน้าหลัก</h2></div><div class="home-preview-actions"><button class="btn outline" data-home-action="home-copy">แก้ไขหัวข้อและคำอธิบาย</button><button class="btn" data-home-action="hero-settings">เปลี่ยนรูปหน้าหลัก</button></div></div><div class="homepage-preview"><div class="homepage-preview-copy"><small>${heroSection?.eyebrow || 'AUAUSAVE FANBASE'}</small><h3>${(heroSection?.title || 'OUR HOUSE.\nOUR STORY.').replace(/\n/g,'<br>')}</h3><p>${heroSection?.description || 'บ้านแฟนคลับของอู่อู๋เซฟ'}</p></div><div class="hero-setting-preview">${hero.heroImage?`<img src="${hero.heroImage}" style="object-fit:${hero.heroFit};object-position:${hero.heroPosition}">`:'<span>ยังไม่ได้อัปโหลดรูป Hero</span>'}</div></div></section><div class="builder-note">ใช้ปุ่มขึ้นลงเพื่อจัดลำดับ ส่วนที่ซ่อนไว้จะไม่ปรากฏบนหน้าบ้าน</div><section class="section-builder-list">${sections.map((s,i)=>`<article class="builder-item ${s.visible===false?'is-hidden':''}"><div class="builder-order"><button data-home-action="move" data-index="${i}" data-direction="-1" ${i===0?'disabled':''}>↑</button><span>${String(i+1).padStart(2,'0')}</span><button data-home-action="move" data-index="${i}" data-direction="1" ${i===sections.length-1?'disabled':''}>↓</button></div><div class="builder-content"><small>${s.id.toUpperCase()}</small><h3>${s.title.replace(/\n/g,' / ')}</h3><p>${s.description||'ไม่มีคำอธิบาย'}</p></div><div class="builder-actions"><button class="visibility-btn" data-home-action="toggle" data-section-id="${s.id}">${s.visible===false?'○ ซ่อนอยู่':'● แสดงอยู่'}</button><button class="btn outline" data-home-action="edit" data-section-id="${s.id}">แก้ไขข้อความ</button></div></article>`).join('')}</section></main></div></div>`;
+  app.innerHTML = `<div class="admin"><div class="admin-shell"><aside class="sidebar"><div class="brand"><i></i>AUAUSAVE HOUSE</div><div class="side-nav"><button data-icon="⌂" onclick="adminTab='dashboard';admin()">⌂ &nbsp; Dashboard</button><button data-icon="▤" class="active">▤ &nbsp; จัดหน้าแรก</button>${Object.entries(configs).map(([k,v])=>`<button data-icon="${v.icon}" onclick="adminTab='${k}';admin()">${v.icon} &nbsp; ${v.label}</button>`).join('')}<button data-icon="⚙" onclick="adminTab='master';admin()">⚙ &nbsp; Master Data</button></div><a class="back" href="#home">← ดูหน้าบ้าน</a></aside><main class="admin-main"><div class="admin-top"><div><small style="color:var(--muted)">HOME PAGE BUILDER</small><h1>จัดการข้อความและลำดับหน้าแรก</h1></div><a class="btn" href="#home">ดูตัวอย่างหน้าบ้าน ➚</a></div><section class="panel home-setting-panel"><div class="panel-head"><div><small>HOMEPAGE PREVIEW & CONTENT</small><h2>ตัวอย่าง หัวข้อ และคำอธิบายหน้าหลัก</h2></div><div class="home-preview-actions"><button class="btn outline" data-home-action="home-copy">แก้ไขหัวข้อและคำอธิบาย</button><button class="btn" data-home-action="hero-settings">เปลี่ยนรูปหน้าหลัก</button></div></div><div class="homepage-preview"><div class="homepage-preview-copy"><small>${heroSection?.eyebrow || 'AUAUSAVE FANBASE'}</small><h3>${(heroSection?.title || 'OUR HOUSE.\nOUR STORY.').replace(/\n/g,'<br>')}</h3><p>${heroSection?.description || 'บ้านแฟนคลับของอู่อู๋เซฟ'}</p></div><div class="hero-setting-preview">${hero.heroImage?`<img src="${hero.heroImage}" style="object-fit:${hero.heroFit};object-position:${hero.heroPosition}">`:'<span>ยังไม่ได้อัปโหลดรูป Hero</span>'}</div></div></section><div class="builder-note">ใช้ปุ่มขึ้นลงเพื่อจัดลำดับ ส่วนที่ซ่อนไว้จะไม่ปรากฏบนหน้าบ้าน</div><section class="section-builder-list">${sections.map((s,i)=>`<article class="builder-item ${s.visible===false?'is-hidden':''}"><div class="builder-order"><button data-home-action="move" data-index="${i}" data-direction="-1" ${i===0?'disabled':''}>↑</button><span>${String(i+1).padStart(2,'0')}</span><button data-home-action="move" data-index="${i}" data-direction="1" ${i===sections.length-1?'disabled':''}>↓</button></div><div class="builder-content"><small>${s.id.toUpperCase()}</small><h3>${s.title.replace(/\n/g,' / ')}</h3><p>${s.description||'ไม่มีคำอธิบาย'}</p></div><div class="builder-actions"><button class="visibility-btn" data-home-action="toggle" data-section-id="${s.id}">${s.visible===false?'○ ซ่อนอยู่':'● แสดงอยู่'}</button><button class="btn outline" data-home-action="edit" data-section-id="${s.id}">แก้ไขข้อความ</button></div></article>`).join('')}</section></main></div></div>`;
   app.querySelector('[data-home-action="edit"][data-section-id="hero"]')?.remove();
   app.querySelectorAll('[data-home-action]').forEach(button => button.addEventListener('click', () => {
     const action = button.dataset.homeAction;
@@ -1880,7 +1865,7 @@ admin = function () {
   insertPageContentSettingsForAdminTab();
   document.querySelector('.db-connect-btn')?.remove();
   const main = document.querySelector('.admin-main');
-  if (main && !main.querySelector('.admin-global-header')) main.insertAdjacentHTML('afterbegin', `<header class="admin-global-header"><div class="admin-global-title"><span>ADMIN</span><strong>AUAUSAVE HOUSE</strong></div><div class="admin-global-actions"><span class="admin-db-status ${adminDatabaseLoaded ? 'is-connected' : 'has-error'}"><i></i>${adminDatabaseStatus}</span>${currentAdminEmail?`<span class="admin-user-email" title="${escapePageText(currentAdminEmail)}"><b>●</b>${escapePageText(currentAdminEmail)}</span>`:''}<a href="#home">ดูหน้าบ้าน ↗</a><button class="btn outline admin-logout-btn" onclick="adminSignOut()">ออกจากระบบ</button></div></header>`);
+  if (main && !main.querySelector('.admin-global-header')) main.insertAdjacentHTML('afterbegin', `<header class="admin-global-header"><div class="admin-global-title"><span>ADMIN</span><strong>AUAUSAVE HOUSE</strong></div><div class="admin-global-actions"><span class="admin-db-status ${adminDatabaseLoaded ? 'is-connected' : 'has-error'}"><i></i>${adminDatabaseStatus}</span>${currentAdminEmail?`<span class="admin-user-email" title="${escapePageText(currentAdminEmail)}"><b>●</b>${escapePageText(currentAdminEmail)}</span>`:''}<a href="#home">ดูหน้าบ้าน ➚</a><button class="btn outline admin-logout-btn" onclick="adminSignOut()">ออกจากระบบ</button></div></header>`);
 };
 
 function youtubeCategoryAdminPanel() {
@@ -1893,7 +1878,7 @@ function youtubeCategoryAdminPanel() {
 
 function openYoutubeCategoryForm(id = '') {
   const category = db.siteSettings.youtubeCategories.find(item => item.id === id) || {};
-  document.body.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>${id?'แก้ไข':'สร้าง'}หัวข้อ YouTube</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveYoutubeCategory(event,'${id}')"><div class="form-grid"><div class="field full"><label>ชื่อหัวข้อ</label><input name="title" value="${escapePageText(category.title || '')}" required></div><div class="field full"><label>คำอธิบาย</label><textarea name="description">${escapePageText(category.description || '')}</textarea></div><div class="field"><label>ข้อความปุ่มลิงก์ (ถ้ามี)</label><input name="linkLabel" value="${escapePageText(category.linkLabel || '')}" placeholder="Open channel ↗"></div><div class="field"><label>ลิงก์ประจำหัวข้อ (ถ้ามี)</label><input name="linkUrl" type="url" value="${escapePageText(category.linkUrl || '')}" placeholder="https://..."></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึกหัวข้อ</button></div></form></div></div>`);
+  document.body.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><h2>${id?'แก้ไข':'สร้าง'}หัวข้อ YouTube</h2><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveYoutubeCategory(event,'${id}')"><div class="form-grid"><div class="field full"><label>ชื่อหัวข้อ</label><input name="title" value="${escapePageText(category.title || '')}" required></div><div class="field full"><label>คำอธิบาย</label><textarea name="description">${escapePageText(category.description || '')}</textarea></div><div class="field"><label>ข้อความปุ่มลิงก์ (ถ้ามี)</label><input name="linkLabel" value="${escapePageText(category.linkLabel || '')}" placeholder="Open channel ➚"></div><div class="field"><label>ลิงก์ประจำหัวข้อ (ถ้ามี)</label><input name="linkUrl" type="url" value="${escapePageText(category.linkUrl || '')}" placeholder="https://..."></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึกหัวข้อ</button></div></form></div></div>`);
 }
 
 function saveYoutubeCategory(event, id = '') {
@@ -1999,21 +1984,36 @@ admin = function () {
   });
 };
 
+let presenterOrderSaving=false;
 function yearlyOrderPanel(type) {
-  const items = db[type], years = [...new Set(items.map(item => String(item.year || 'ไม่ระบุปี'))) ].sort((a,b) => Number(b) - Number(a));
+  const items = db[type], years = type === 'presenters' ? presenterYears(items) : [...new Set(items.map(item => String(item.year || 'ไม่ระบุปี'))) ].sort((a,b) => Number(b) - Number(a));
   const label = type === 'presenters' ? 'พรีเซนเตอร์' : 'รางวัล';
   return `<section class="panel yearly-order-admin"><div class="panel-head"><div><small>YEAR & DISPLAY ORDER</small><h2>จัด${label}ตามปีและลำดับ</h2><p class="master-note">รายการจะแยกตามปี และเลื่อนขึ้น–ลงได้ภายในปีเดียวกัน</p></div><button class="btn" onclick="openForm('${type}')">+ เพิ่ม${label}</button></div><div class="youtube-admin-sections">${years.map(year => {
-    const yearItems = items.filter(item => String(item.year || 'ไม่ระบุปี') === year);
-    return `<article class="youtube-admin-section"><div class="yearly-admin-year"><div><small>YEAR</small><h3>${year}</h3></div><span>${yearItems.length} รายการ</span></div><div class="youtube-admin-video-list">${yearItems.map((item,index)=>`<div><div><strong>${type==='presenters' ? item.brand : item.title}</strong><small>${type==='presenters'?`${presenterAdminDate(item)} · `:''}${artistName(item.artistId)}${type==='awards' && item.org ? ` · ${item.org}` : ''}</small></div><div class="actions"><button class="icon-btn" onclick="moveYearlyItem('${type}','${item.id}',-1)" ${index===0?'disabled':''}>↑</button><button class="icon-btn" onclick="moveYearlyItem('${type}','${item.id}',1)" ${index===yearItems.length-1?'disabled':''}>↓</button><button class="icon-btn" onclick="openForm('${type}','${item.id}')">✎</button></div></div>`).join('')}</div></article>`;
+    const yearItems = type === 'presenters' ? orderedPresentersForYear(items,year) : items.filter(item => String(item.year || 'ไม่ระบุปี') === year);
+    const saving=type==='presenters'&&presenterOrderSaving;
+    return `<article class="youtube-admin-section"><div class="yearly-admin-year"><div><small>YEAR</small><h3>${year}</h3></div><span>${yearItems.length} รายการ</span></div><div class="youtube-admin-video-list">${yearItems.map((item,index)=>`<div><div><strong>${type==='presenters' ? item.brand : item.title}</strong><small>${type==='presenters'?`${presenterAdminDate(item)} · `:''}${artistName(item.artistId)}${type==='awards' && item.org ? ` · ${item.org}` : ''}</small></div><div class="actions"><button class="icon-btn" onclick="moveYearlyItem('${type}','${item.id}',-1)" ${saving||index===0?'disabled':''}>↑</button><button class="icon-btn" onclick="moveYearlyItem('${type}','${item.id}',1)" ${saving||index===yearItems.length-1?'disabled':''}>↓</button><button class="icon-btn" onclick="openForm('${type}','${item.id}')" ${saving?'disabled':''}>✎</button></div></div>`).join('')}</div></article>`;
   }).join('') || '<div class="empty">ยังไม่มีข้อมูล</div>'}</div></section>`;
 }
 
-function moveYearlyItem(type, id, direction) {
+async function moveYearlyItem(type, id, direction) {
+  if (type==='presenters'&&presenterOrderSaving) return;
   const item = db[type].find(entry => entry.id === id);
   if (!item) return;
-  const sameYear = db[type].filter(entry => String(entry.year) === String(item.year));
+  const sameYear = type==='presenters' ? orderedPresentersForYear(db.presenters,presenterYear(item)) : db[type].filter(entry => String(entry.year) === String(item.year));
   const index = sameYear.findIndex(entry => entry.id === id), target = index + direction;
   if (target < 0 || target >= sameYear.length) return;
+  if (type==='presenters') {
+    presenterOrderSaving=true;
+    [sameYear[index],sameYear[target]]=[sameYear[target],sameYear[index]];
+    db.siteSettings.presenterOrderByYear[presenterYear(item)]=sameYear.map(entry=>entry.id);
+    save(false);
+    admin();
+    const saved=await syncDatabaseInBackground();
+    presenterOrderSaving=false;
+    admin();
+    if (saved!==false) toast('บันทึกลำดับเรียบร้อยแล้ว');
+    return;
+  }
   const firstIndex = db[type].indexOf(sameYear[index]), secondIndex = db[type].indexOf(sameYear[target]);
   [db[type][firstIndex], db[type][secondIndex]] = [db[type][secondIndex], db[type][firstIndex]];
   save(); admin();
@@ -2202,7 +2202,6 @@ async function hydrateFromSupabase() {
 
 function router() {
   route = location.hash.slice(1) || "home";
-  window.scrollTo(0, 0);
   if (route === "home") home();
   else if (
     ["artists", "schedule", "presenters", "awards"].includes(route)
@@ -2215,6 +2214,12 @@ function router() {
   else if (route === "admin") requestAdminAccess();
   else home();
   document.documentElement.lang = 'th';
+  scrollPageToTop();
+}
+function scrollPageToTop() {
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  });
 }
 window.addEventListener("hashchange", router);
 window.addEventListener("storage", event => {
@@ -2499,6 +2504,8 @@ admin=function(){renderAdminWithBulkEvents();addBulkEventButton();};
 let cropImageState=null;
 function imageCropPreset(field){
   const orientationSelect=document.querySelector('#modal [name="imageOrientation"]'),canChoose=Boolean(orientationSelect);
+  const modalForm=document.querySelector('#modal form');
+  const isArtistImage=field==='image'&&String(modalForm?.getAttribute('onsubmit')||'').includes("'artists'");
   if(canChoose)return{canChoose,orientation:orientationSelect.value==='landscape'?'landscape':'portrait'};
   if(field==='heroImage')return{canChoose:false,orientation:'square',ratio:.976,shape:'hero'};
   if(field==='thumbnail')return{canChoose:false,orientation:'landscape',ratio:16/9,shape:'video'};
@@ -2506,20 +2513,31 @@ function imageCropPreset(field){
   if(field==='banner')return{canChoose:false,orientation:'landscape',ratio:2160/900,shape:'project-banner'};
   if(field==='qrCode')return{canChoose:false,orientation:'square',ratio:1,shape:'project-qr'};
   if(field==='logo')return{canChoose:false,orientation:'square',ratio:1,shape:'logo'};
-  if(field==='announcementImage')return{canChoose:false,orientation:'landscape',ratio:16/10,shape:'presenter'};
+  if(field==='announcementImage')return{canChoose:false,orientation:'portrait',ratio:presenterMediaAspectRatio(),shape:'presenter'};
   if(field==='image'&&adminTab==='awards')return{canChoose:false,orientation:'portrait',ratio:2/3,shape:'award'};
-  if(field==='image'&&adminTab==='artists')return{canChoose:false,orientation:'portrait',ratio:3/4,shape:'artist'};
+  if(isArtistImage)return{canChoose:false,orientation:'square',ratio:1,shape:'artist'};
   if(field==='poster'&&adminTab==='events')return{canChoose:false,orientation:'portrait',ratio:3/4,shape:'event'};
   return{canChoose:false,orientation:'portrait',ratio:3/4,shape:'timeline'};
 }
 function cropRatio(state=cropImageState){return state.preset.ratio||(state.orientation==='landscape'?16/9:3/4);}
 function cropCanvasSize(){const ratio=cropRatio(),width=1200;return{width,height:Math.round(width/ratio)};}
 function cropFrameClass(){if(!cropImageState)return'';if(cropImageState.preset.canChoose)return cropImageState.orientation==='landscape'?'crop-frame-timeline-landscape':'crop-frame-timeline-portrait';return`crop-frame-${cropImageState.preset.shape||'default'}`;}
+function drawCropState(context,width,height,state=cropImageState){
+  if(!context||!state?.image)return;
+  const imageWidth=state.image.naturalWidth,imageHeight=state.image.naturalHeight;
+  const scaleX=width/imageWidth,scaleY=height/imageHeight;
+  const coverScale=Math.max(scaleX,scaleY)*state.zoom;
+  const drawWidth=imageWidth*coverScale,drawHeight=imageHeight*coverScale;
+  const overflowX=Math.max(0,(drawWidth-width)/2),overflowY=Math.max(0,(drawHeight-height)/2);
+  const x=(width-drawWidth)/2+(state.panX/100)*overflowX;
+  const y=(height-drawHeight)/2+(state.panY/100)*overflowY;
+  context.clearRect(0,0,width,height);
+  context.drawImage(state.image,x,y,drawWidth,drawHeight);
+}
 function drawCropPreview(){
   const state=cropImageState,canvas=document.querySelector('#cropImageCanvas');if(!state||!canvas)return;
   const size=cropCanvasSize();canvas.width=size.width;canvas.height=size.height;
-  const context=canvas.getContext('2d'),base=Math.max(size.width/state.image.naturalWidth,size.height/state.image.naturalHeight),scale=base*state.zoom,drawWidth=state.image.naturalWidth*scale,drawHeight=state.image.naturalHeight*scale,maxX=Math.max(0,(drawWidth-size.width)/2),maxY=Math.max(0,(drawHeight-size.height)/2),x=(size.width-drawWidth)/2+(state.panX/100)*maxX,y=(size.height-drawHeight)/2+(state.panY/100)*maxY;
-  context.clearRect(0,0,size.width,size.height);context.drawImage(state.image,x,y,drawWidth,drawHeight);
+  drawCropState(canvas.getContext('2d'),size.width,size.height,state);
   canvas.className=`${cropFrameClass()}${state.drag?' is-dragging':''}`;const label=document.querySelector('#cropRatioLabel');if(label)label.textContent=state.preset.shape==='hero'?'กรอบ Hero หน้าบ้าน':state.preset.shape==='project-banner'?'แบนเนอร์หน้าบ้าน 2160 × 900':state.orientation==='landscape'?'แนวนอน':state.orientation==='square'?'สี่เหลี่ยม':'แนวตั้ง';
 }
 function updateCropControl(name,value){if(!cropImageState)return;cropImageState[name]=Number(value);drawCropPreview();}
@@ -2530,8 +2548,11 @@ function changeCropOrientation(value){if(!cropImageState)return;cropImageState.o
 function closeCropImage(){const state=cropImageState;document.querySelector('#cropImageModal')?.remove();if(state?.input){state.input.value='';const submit=state.input.closest('form')?.querySelector('[type="submit"]');if(submit)submit.disabled=false;}cropImageState=null;}
 function applyCroppedImage(){
   const state=cropImageState,previewCanvas=document.querySelector('#cropImageCanvas');if(!state||!previewCanvas)return;
-  const ratio=cropRatio(),output=document.createElement('canvas');output.width=state.preset.shape==='project-banner'?2160:(state.orientation==='landscape'?1200:(state.orientation==='square'?1000:900));output.height=state.preset.shape==='project-banner'?900:Math.round(output.width/ratio);output.getContext('2d').drawImage(previewCanvas,0,0,output.width,output.height);
-  const data=output.toDataURL('image/jpeg',.88),hidden=document.querySelector(`#modal [name="${state.field}"]`),preview=document.querySelector(`#uploadPreview_${state.field}`);if(hidden)hidden.value=data;if(preview){preview.classList.add('has-image');preview.innerHTML=`<img src="${data}" alt="preview">`;}
+  const ratio=cropRatio(),output=document.createElement('canvas');output.width=state.preset.shape==='project-banner'?2160:(state.orientation==='landscape'?1200:(state.orientation==='square'?1000:900));output.height=state.preset.shape==='project-banner'?900:Math.round(output.width/ratio);
+  drawCropState(output.getContext('2d'),output.width,output.height,state);
+  const data=output.toDataURL('image/jpeg',.88),hidden=document.querySelector(`#modal [name="${state.field}"]`),preview=document.querySelector(`#uploadPreview_${state.field}`);
+  if(!hidden||!preview){toast('ไม่พบช่องบันทึกรูป กรุณาปิดฟอร์มแล้วลองใหม่');closeCropImage();return;}
+  hidden.value=data;preview.classList.add('has-image');preview.innerHTML=`<img src="${data}" alt="preview">`;
   const orientationSelect=document.querySelector('#modal [name="imageOrientation"]');if(state.preset.canChoose&&orientationSelect)orientationSelect.value=state.orientation;
   const submit=state.input.closest('form')?.querySelector('[type="submit"]');if(submit)submit.disabled=false;document.querySelector('#cropImageModal')?.remove();cropImageState=null;toast('ปรับรูปเรียบร้อยแล้ว กดบันทึกเพื่อยืนยัน');
 }
@@ -2539,7 +2560,7 @@ function openCropImage(input,field,image,preset){
   cropImageState={input,field,image,preset,orientation:preset.orientation,zoom:1,panX:0,panY:0};const submit=input.closest('form')?.querySelector('[type="submit"]');if(submit)submit.disabled=true;
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop crop-image-backdrop" id="cropImageModal"><div class="modal crop-image-modal"><div class="modal-head"><div><small>ADJUST IMAGE</small><h2>Crop Image / Adjust Image</h2><p>ลากรูปด้วยเมาส์หรือนิ้วเพื่อจัดตำแหน่งให้พอดีกับกรอบหน้าบ้าน</p></div><button class="close" onclick="closeCropImage()">×</button></div>${preset.canChoose?`<div class="crop-orientation"><b>เลือกรูปแบบรูปก่อนปรับ</b><div><button type="button" class="${preset.orientation==='portrait'?'active':''}" onclick="this.parentElement.querySelectorAll('button').forEach(button=>button.classList.remove('active'));this.classList.add('active');changeCropOrientation('portrait')">▯ แนวตั้ง</button><button type="button" class="${preset.orientation==='landscape'?'active':''}" onclick="this.parentElement.querySelectorAll('button').forEach(button=>button.classList.remove('active'));this.classList.add('active');changeCropOrientation('landscape')">▭ แนวนอน</button></div></div>`:''}<div class="crop-stage"><canvas id="cropImageCanvas" onpointerdown="cropDragStart(event)" onpointermove="cropDragMove(event)" onpointerup="cropDragEnd(event)" onpointercancel="cropDragEnd(event)"></canvas><span id="cropRatioLabel"></span></div><div class="crop-controls"><label><span>ซูมเข้า–ออก</span><input id="cropZoom" type="range" min="1" max="3" value="1" step="0.01" oninput="updateCropControl('zoom',this.value)"></label><label><span>เลื่อนซ้าย–ขวา</span><input id="cropPanX" type="range" min="-100" max="100" value="0" oninput="updateCropControl('panX',this.value)"></label><label><span>เลื่อนขึ้น–ลง</span><input id="cropPanY" type="range" min="-100" max="100" value="0" oninput="updateCropControl('panY',this.value)"></label></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeCropImage()">ยกเลิก</button><button type="button" class="btn" onclick="applyCroppedImage()">ใช้รูปที่ปรับแล้ว</button></div></div></div>`);drawCropPreview();
 }
-handleImageUpload=function(input,field){const file=input.files?.[0];if(!file)return;if(file.size>8*1024*1024){toast('กรุณาเลือกรูปขนาดไม่เกิน 8 MB');input.value='';return;}const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>openCropImage(input,field,image,imageCropPreset(field));image.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};image.src=reader.result;};reader.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};reader.readAsDataURL(file);};
+handleImageUpload=function(input,field){const file=input.files?.[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type)){toast('รองรับเฉพาะไฟล์ JPG, JPEG, PNG และ WebP');input.value='';return;}if(file.size>8*1024*1024){toast('กรุณาเลือกรูปขนาดไม่เกิน 8 MB');input.value='';return;}const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>openCropImage(input,field,image,imageCropPreset(field));image.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};image.src=reader.result;};reader.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};reader.readAsDataURL(file);};
 
 const openHomeSettingsWithOverlay=openHomeSettings;
 openHomeSettings=function(){openHomeSettingsWithOverlay();const grid=document.querySelector('#modal .form-grid'),settings=db.siteSettings;if(!grid)return;grid.querySelector('[name="heroFit"]')?.closest('.field')?.remove();grid.querySelector('[name="heroPosition"]')?.closest('.field')?.remove();grid.insertAdjacentHTML('beforeend',`<div class="field full hero-overlay-settings"><label>ข้อความบนรูปหน้าหลัก</label><input name="heroOverlayText" value="${escapePageText(settings.heroOverlayText??'STAY CLOSE. STAY INSPIRED.')}" placeholder="STAY CLOSE. STAY INSPIRED."><label class="hero-overlay-toggle"><input type="checkbox" name="heroOverlayVisible" ${settings.heroOverlayVisible!==false?'checked':''}><span>แสดงข้อความบนรูปหน้าบ้าน</span></label></div>`);};
@@ -2616,7 +2637,7 @@ function homepageOrderedArtists(){
 const artistCardsBeforeHomepageOrder = artistCards;
 artistCards = function(){
   const cards = homepageOrderedArtists().filter(artist => db.siteSettings.homeArtistCards[artist.id]?.visible !== false);
-  return `<div class="artists homepage-artist-grid">${cards.map(artist => {const settings=db.siteSettings.homeArtistCards[artist.id]||{};return `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(artist.id)}'"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial)}</span>`}<small class="tag">${escapePageText(settings.badge||'')}</small></div><div class="artist-meta"><span class="arrow">↗</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role)}</p></div></article>`;}).join('')}</div>`;
+  return `<div class="artists homepage-artist-grid">${cards.map(artist => {const settings=db.siteSettings.homeArtistCards[artist.id]||{};return `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(artist.id)}'"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial)}</span>`}<small class="tag">${escapePageText(settings.badge||'')}</small></div><div class="artist-meta"><span class="arrow">➚</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role)}</p></div></article>`;}).join('')}</div>`;
 };
 function homeArtistDragStart(event,artistId){event.dataTransfer.setData('text/plain',artistId);event.dataTransfer.effectAllowed='move';}
 function homeArtistDrop(event,targetId){event.preventDefault();ensureHomepageArtistCards();const sourceId=event.dataTransfer.getData('text/plain'),list=db.siteSettings.homeArtistOrder,from=list.indexOf(sourceId),to=list.indexOf(targetId);if(from<0||to<0||from===to)return;const [item]=list.splice(from,1);list.splice(to,0,item);save();pageContentAdmin();toast('บันทึกลำดับการ์ดศิลปินแล้ว');}
@@ -2675,7 +2696,7 @@ rowCells = function(type,x){
 };
 const scheduleRowsBeforeDynamicEventArtists = scheduleRows;
 scheduleRows = function(items = db.events){
-  return items.length ? [...items].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>`<div class="schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div><h3>${escapePageText(e.title)}</h3><p>${escapePageText(eventArtistNames(e))} · ${escapePageText(e.place||'')}</p></div><span class="event-type">${escapePageText(e.type||'')}</span>${e.source ? `<a class="round-arrow" href="${escapePageText(e.source)}" target="_blank" title="ดูต้นทาง">↗</a>` : "<span></span>"}</div>`).join("") : `<div class="empty">ยังไม่มีข้อมูลในขณะนี้</div>`;
+  return items.length ? [...items].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>`<div class="schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div><h3>${escapePageText(e.title)}</h3><p>${escapePageText(eventArtistNames(e))} · ${escapePageText(e.place||'')}</p></div><span class="event-type">${escapePageText(e.type||'')}</span>${e.source ? `<a class="round-arrow" href="${escapePageText(e.source)}" target="_blank" title="ดูต้นทาง">➚</a>` : "<span></span>"}</div>`).join("") : `<div class="empty">ยังไม่มีข้อมูลในขณะนี้</div>`;
 };
 function eventBadge(item){
   return eventArtistIds(item).map(id => sameArtistId(id,'duo') ? '#AUAUSAVE' : artistName(id)).join(' · ') || 'ไม่ระบุ';
@@ -2737,7 +2758,7 @@ homeScheduleSection = function(){
     const description = sameArtistId(artist.id,'duo') ? '#AuauSave' : (artist.role || artist.name);
     return `<article class="schedule-card ${artistScheduleCardClass(artist.id,index)}"><div class="schedule-card-head"><span>${sameArtistId(artist.id,'duo')?'COUPLE PATH':'ARTIST PATH'}</span><h3>${escapePageText(title)}</h3><p>${escapePageText(description)}</p></div>${compactSchedule(monthly.filter(e=>itemMatchesArtist(e,artist.id)))}</article>`;
   }).join('');
-  return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><span class="eyebrow">This month · ${monthLabel}</span><h2>ตารางงานเดือนนี้</h2></div><a class="btn outline" href="#schedule">เปิดปฏิทินทั้งหมด ↗</a></div><div class="schedule-columns dynamic-schedule-columns">${cards}</div></div></section>`;
+  return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><span class="eyebrow">This month · ${monthLabel}</span><h2>ตารางงานเดือนนี้</h2></div><a class="btn outline" href="#schedule">เปิดปฏิทินทั้งหมด ➚</a></div><div class="schedule-columns dynamic-schedule-columns">${cards}</div></div></section>`;
 };
 function ensureHomepageFrontDisplaySettings(){
   ensureHomePageSettings();
@@ -2769,7 +2790,7 @@ homeScheduleSection=function(){
   ensureHomepageFrontDisplaySettings();
   const now=new Date(),ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,monthLabel=new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(now),monthly=db.events.filter(e=>e.date.startsWith(ym));
   const cards=homepageScheduleArtists().filter(artist=>db.siteSettings.homeScheduleCards[artist.id]?.visible!==false).map((artist,index)=>{const card=db.siteSettings.homeScheduleCards[artist.id]||{},color=artistDisplayColor(artist.id,index);return `<article class="schedule-card ${artistScheduleCardClass(artist.id,index)}"><div class="schedule-card-head" style="background:${color};color:#fff"><span>${escapePageText(card.eyebrow||'ARTIST PATH')}</span><h3>${escapePageText(card.title||artist.name)}</h3><p>${escapePageText(card.description||'')}</p></div>${compactSchedule(monthly.filter(e=>itemMatchesArtist(e,artist.id)))}</article>`;}).join('');
-  return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><span class="eyebrow">This month · ${monthLabel}</span><h2>This Month Schedule</h2></div><a class="btn outline" href="#schedule">View calendar ↗</a></div><div class="schedule-columns dynamic-schedule-columns">${cards||'<div class="empty">No schedule cards selected.</div>'}</div></div></section>`;
+  return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><span class="eyebrow">This month · ${monthLabel}</span><h2>This Month Schedule</h2></div><a class="btn outline" href="#schedule">View calendar ➚</a></div><div class="schedule-columns dynamic-schedule-columns">${cards||'<div class="empty">No schedule cards selected.</div>'}</div></div></section>`;
 };
 function homeScheduleDragStart(event,artistId){event.dataTransfer.setData('text/plain',artistId);event.dataTransfer.effectAllowed='move';}
 function homeScheduleDrop(event,targetId){event.preventDefault();ensureHomepageFrontDisplaySettings();const sourceId=event.dataTransfer.getData('text/plain'),list=db.siteSettings.homeScheduleOrder,from=list.indexOf(sourceId),to=list.indexOf(targetId);if(from<0||to<0||from===to)return;const [item]=list.splice(from,1);list.splice(to,0,item);save();pageContentAdmin();toast('บันทึกลำดับการ์ดตารางงานแล้ว');}
@@ -2780,7 +2801,7 @@ function renderHomepageFrontScopeEditor(){ensureHomepageFrontDisplaySettings();c
 function saveHomepageFrontScope(event){event.preventDefault();ensureHomepageFrontDisplaySettings();const form=new FormData(event.currentTarget),timeline=[...new Set(form.getAll('homeTimelineArtistIds').map(canonicalArtistId))],presenters=[...new Set(form.getAll('homePresenterArtistIds').map(canonicalArtistId))];if(!timeline.length||!presenters.length){toast('กรุณาเลือกอย่างน้อย 1 ศิลปินในแต่ละส่วน');return;}db.siteSettings.homeTimelineArtistIds=timeline;db.siteSettings.homePresenterArtistIds=presenters;save();pageContentAdmin();toast('บันทึกการแสดงผลหน้าบ้านแล้ว');}
 function homeScopedArtistIds(item){return eventArtistIds(item).length?eventArtistIds(item):(Array.isArray(item.artistIds)?item.artistIds:[item.artistId].filter(Boolean)).map(canonicalArtistId);}
 function homeTimelineItemMatchesScope(item){ensureHomepageFrontDisplaySettings();const ids=homeScopedArtistIds(item);return db.siteSettings.homeTimelineArtistIds.map(canonicalArtistId).some(id=>ids.includes(id));}
-function homeTimelineSection(){ensureHomepageFrontDisplaySettings();const visible=db.siteSettings.timelineVisibility||{},content=db.siteSettings.timelineCategoryContent||{},items=(db.siteSettings.timeline||[]).filter(homeTimelineItemMatchesScope).sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));const card=item=>{const links=(item.links?.length?item.links:(item.url?[{label:'Open',url:item.url}]:[])).map(link=>typeof link==='string'?{label:'Open',url:link}:link).map(link=>{const text=link.label||link.title||'',url=link.url||link.href||(/^https?:\/\//i.test(text)?text:'');return{label:text&&text!==url?text:'Open',url};}).filter(link=>link.url);const imageOrientation=item.imageOrientation==='landscape'?'landscape':'portrait',posterUrl=versionedMediaUrl(item.poster,item.imageVersion||item.id);return `<article class="filmography-card timeline-image-${imageOrientation}">${item.poster?`<img src="${escapePageText(posterUrl)}" alt="${escapePageText(item.title)}">`:`<div class="filmography-placeholder"><span>${escapePageText(item.title.slice(0,2).toUpperCase())}</span></div>`}${item.upcoming?'<span class="timeline-upcoming-badge">UPCOMING</span>':''}<small>${escapePageText(timelineDateLabel(item))}</small><h3>${escapePageText(item.title)}</h3>${item.description?`<p>${escapePageText(item.description)}</p>`:''}${item.note?`<div class="timeline-note">${escapePageText(item.note)}</div>`:''}${links.length?`<div class="archive-card-links">${links.map(link=>`<a href="${escapePageText(link.url)}" target="_blank" rel="noopener noreferrer">${escapePageText(link.label)} ↗</a>`).join('')}</div>`:''}</article>`;};const lane=(category,label)=>{const groupItems=items.filter(item=>(item.category||'series')===category);return groupItems.length&&visible[category]!==false?`<div class="filmography-year-group timeline-subsection"><div class="filmography-year-label"><span></span><b>${escapePageText(content[category]?.title||label)}</b><span></span></div><div class="filmography-grid">${groupItems.map(card).join('')}</div></div>`:'';};return `<section class="section artist-filmography home-timeline"><div class="container"><div class="filmography-head"><small>AUAUSAVE HOUSE</small><h2>Timeline</h2><p>Selected series, variety shows and music videos.</p></div>${lane('series','Series')}${lane('variety','Variety Show')}${lane('music-video','Music Video')}</div></section>`;}
+function homeTimelineSection(){ensureHomepageFrontDisplaySettings();const visible=db.siteSettings.timelineVisibility||{},content=db.siteSettings.timelineCategoryContent||{},items=(db.siteSettings.timeline||[]).filter(homeTimelineItemMatchesScope).sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));const card=item=>{const links=(item.links?.length?item.links:(item.url?[{label:'Open',url:item.url}]:[])).map(link=>typeof link==='string'?{label:'Open',url:link}:link).map(link=>{const text=link.label||link.title||'',url=link.url||link.href||(/^https?:\/\//i.test(text)?text:'');return{label:text&&text!==url?text:'Open',url};}).filter(link=>link.url);const imageOrientation=item.imageOrientation==='landscape'?'landscape':'portrait',posterUrl=versionedMediaUrl(item.poster,item.imageVersion||item.id);return `<article class="filmography-card timeline-image-${imageOrientation}">${item.poster?`<img src="${escapePageText(posterUrl)}" alt="${escapePageText(item.title)}">`:`<div class="filmography-placeholder"><span>${escapePageText(item.title.slice(0,2).toUpperCase())}</span></div>`}${item.upcoming?'<span class="timeline-upcoming-badge">UPCOMING</span>':''}<small>${escapePageText(timelineDateLabel(item))}</small><h3>${escapePageText(item.title)}</h3>${item.description?`<p>${escapePageText(item.description)}</p>`:''}${item.note?`<div class="timeline-note">${escapePageText(item.note)}</div>`:''}${links.length?`<div class="archive-card-links">${links.map(link=>`<a href="${escapePageText(link.url)}" target="_blank" rel="noopener noreferrer">${escapePageText(link.label)} ➚</a>`).join('')}</div>`:''}</article>`;};const lane=(category,label)=>{const groupItems=items.filter(item=>(item.category||'series')===category);if(!groupItems.length||visible[category]===false)return'';const group=item=>item.upcoming?'UPCOMING':(item.year||'TBA'),years=[...new Set(groupItems.map(group))];return `<section class="timeline-subsection"><div class="timeline-subsection-head"><div><h3>${escapePageText(content[category]?.title||label)}</h3></div><span>${groupItems.length} items</span></div><div class="filmography-timeline"><div class="filmography-timeline-track">${years.map(year=>`<section class="filmography-year-group ${year==='UPCOMING'?'is-upcoming-group':''}"><header><i></i><b>${escapePageText(year)}</b></header><div class="filmography-year-cards">${groupItems.filter(item=>group(item)===year).map(card).join('')}</div></section>`).join('')}</div></div></section>`;};return `<section class="section artist-filmography home-timeline"><div class="container"><div class="filmography-head"><small>AUAUSAVE HOUSE</small><h2>Timeline</h2><p>Selected series, variety shows and music videos.</p></div>${lane('series','Series')}${lane('variety','Variety Show')}${lane('music-video','Music Video')}</div></section>`;}
 const homeTimelineSectionBeforeEditableHeading=homeTimelineSection;
 homeTimelineSection=function(){
   const template=document.createElement('template');template.innerHTML=homeTimelineSectionBeforeEditableHeading();
@@ -2794,7 +2815,7 @@ homeTimelineSection=function(){
   return template.innerHTML;
 };
 function homePresenterMatchesScope(item){ensureHomepageFrontDisplaySettings();const ids=homeScopedArtistIds(item);return db.siteSettings.homePresenterArtistIds.map(canonicalArtistId).some(id=>ids.includes(id));}
-function homePresenterSection(){ensureHomepageFrontDisplaySettings();const items=db.presenters.filter(homePresenterMatchesScope).slice(0,6);return `<section class="section presenter-home"><div class="container"><div class="section-head"><div><span class="eyebrow">Brand & Partnership</span><h2>Our Presenters</h2></div><a class="btn outline" href="#presenters">View all ↗</a></div>${presenterCards(items)}</div></section>`;}
+function homePresenterSection(){ensureHomepageFrontDisplaySettings();const items=orderedPresenters(db.presenters.filter(homePresenterMatchesScope)).slice(0,6);return `<section class="section presenter-home"><div class="container"><div class="section-head"><div><span class="eyebrow">Brand & Partnership</span><h2>Our Presenters</h2></div><a class="btn outline" href="#presenters">View all ➚</a></div>${presenterCards(items)}</div></section>`;}
 const pageContentAdminBeforeFrontDisplaySettings=pageContentAdmin;
 pageContentAdmin=function(){pageContentAdminBeforeFrontDisplaySettings();if(!adminAuthenticated||adminTab!=='pagecontent')return;const main=document.querySelector('.admin-main');if(homeBuilderTab==='order')main?.insertAdjacentHTML('beforeend',renderHomepageScheduleOrderEditor());if(homeBuilderTab==='content')main?.insertAdjacentHTML('beforeend',renderHomepageFrontScopeEditor());};
 const homeBeforeFrontDisplaySettings=home;
@@ -2921,7 +2942,7 @@ function artistDirectoryFiltered(){
 function artistDirectoryCard(artist){
   const count=artistBuilderSections(artist.id).filter(section=>section.visible!==false).length;
   const published=artistBuilderSections(artist.id).some(section=>section.custom)||artist.image;
-  return `<article class="artist-directory-card"><div class="artist-directory-portrait" style="background:${escapePageText(artist.color||'#ddd')}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial||artist.name.slice(0,2))}</span>`}</div><div class="artist-directory-copy"><div><small>${escapePageText(artist.id)}</small><span class="artist-publish-state ${published?'is-live':''}">${published?'เผยแพร่แล้ว':'แบบร่าง'}</span></div><h2>${escapePageText(artist.name)}</h2><p>${escapePageText(artist.realName||artist.role||'')}</p><b>Sections ${count}</b></div><div class="artist-directory-actions"><button class="btn" onclick="openArtistManager('${artist.id}','layout')">จัดการโปรไฟล์</button><a class="btn outline" href="#/${artistPublicSlug(artist.id)}">ดูหน้าบ้าน ↗</a><button class="icon-btn" aria-label="แก้ไขข้อมูล" onclick="openForm('artists','${artist.id}')">✎</button></div></article>`;
+  return `<article class="artist-directory-card"><div class="artist-directory-portrait" style="background:${escapePageText(artist.color||'#ddd')}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial||artist.name.slice(0,2))}</span>`}</div><div class="artist-directory-copy"><div><small>${escapePageText(artist.id)}</small><span class="artist-publish-state ${published?'is-live':''}">${published?'เผยแพร่แล้ว':'แบบร่าง'}</span></div><h2>${escapePageText(artist.name)}</h2><p>${escapePageText(artist.realName||artist.role||'')}</p><b>Sections ${count}</b></div><div class="artist-directory-actions"><button class="btn" onclick="openArtistManager('${artist.id}','layout')">จัดการโปรไฟล์</button><a class="btn outline" href="#/${artistPublicSlug(artist.id)}">ดูหน้าบ้าน ➚</a><button class="icon-btn" aria-label="แก้ไขข้อมูล" onclick="openForm('artists','${artist.id}')">✎</button></div></article>`;
 }
 
 function renderArtistDirectoryGrid(){
@@ -2957,7 +2978,7 @@ function artistDetailAdmin(){
   if(artistManagerTab==='data') panel=renderArtistDataPanel(artist);
   else if(artistManagerTab==='personal') panel=renderArtistPersonalPanel(artist);
   else panel=renderArtistLayoutPanel(artist);
-  artistManagerShell(`<div class="admin-top artist-detail-head"><div><button class="artist-back-button" onclick="artistManagerArtistId='';artistDirectoryAdmin()">← ศิลปินทั้งหมด</button><small>จัดการศิลปิน / ${escapePageText(artist.name)}</small><h1>${escapePageText(artist.name)}</h1></div><a class="btn outline" href="#/${artistPublicSlug(artist.id)}">ดูหน้าบ้าน ↗</a></div>${artistManagerTabs(artist)}${panel}`);
+  artistManagerShell(`<div class="admin-top artist-detail-head"><div><button class="artist-back-button" onclick="artistManagerArtistId='';artistDirectoryAdmin()">← ศิลปินทั้งหมด</button><small>จัดการศิลปิน / ${escapePageText(artist.name)}</small><h1>${escapePageText(artist.name)}</h1></div><a class="btn outline" href="#/${artistPublicSlug(artist.id)}">ดูหน้าบ้าน ➚</a></div>${artistManagerTabs(artist)}${panel}`);
 }
 
 function renderArtistDataPanel(artist){
@@ -3095,7 +3116,7 @@ function renderArtistCustomSection(section,preview=false){
   const orientation=section.imageOrientation==='portrait'?'portrait':'landscape',fit=section.imageFit==='contain'?'contain':'cover',position=['top','bottom'].includes(section.imagePosition)?section.imagePosition:'center';
   const span=artistCustomGridSpan(section);
   const image=section.image?`<div class="artist-custom-image image-${orientation}"><img src="${escapePageText(section.image)}" alt="${escapePageText(section.label||'')}" style="object-fit:${fit};object-position:center ${position}"></div>`:(preview?`<div class="artist-custom-image image-${orientation} is-empty"><span>รูปภาพ</span></div>`:'');
-  const links=artistSectionLinks(section),copy=`<div class="artist-custom-copy">${section.eyebrow?`<small>${escapePageText(section.eyebrow)}</small>`:''}<h2>${escapePageText(section.label||'')}</h2>${section.body?`<p>${escapePageText(section.body).replace(/\n/g,'<br>')}</p>`:''}${links.length?`<div class="artist-custom-links">${links.map(link=>`<a class="btn outline" href="${escapePageText(link.url)}" target="_blank" rel="noopener noreferrer">${escapePageText(link.label)} ↗</a>`).join('')}</div>`:''}</div>`;
+  const links=artistSectionLinks(section),copy=`<div class="artist-custom-copy">${section.eyebrow?`<small>${escapePageText(section.eyebrow)}</small>`:''}<h2>${escapePageText(section.label||'')}</h2>${section.body?`<p>${escapePageText(section.body).replace(/\n/g,'<br>')}</p>`:''}${links.length?`<div class="artist-custom-links">${links.map(link=>`<a class="btn outline" href="${escapePageText(link.url)}" target="_blank" rel="noopener noreferrer">${escapePageText(link.label)} ➚</a>`).join('')}</div>`:''}</div>`;
   return `<article class="${preview?'preview-custom':'artist-custom-section'} span-${span} layout-${section.layout||'imageLeft'} ${section.image?'':'has-no-image'}" style="--custom-span:${span}"><div class="artist-custom-group">${section.layout==='imageRight'?copy+image:image+copy}</div></article>`;
 }
 
@@ -3115,24 +3136,20 @@ function layoutArtistCustomRows(main,sections,nodes){
   });
 }
 
-function renderDonationDashboardDraft(project={}){
-  const donations=[
-    {date:'25 ก.ค. 2026',amount:1000,time:'11:47'},{date:'25 ก.ค. 2026',amount:500,time:'11:57'},
-    {date:'25 ก.ค. 2026',amount:555,time:'12:09'},{date:'25 ก.ค. 2026',amount:50,time:'12:22'},
-    {date:'25 ก.ค. 2026',amount:500,time:'13:30'},{date:'25 ก.ค. 2026',amount:100,time:'13:47'}
-  ],goal=Number(project.goal)||95755,total=donations.reduce((sum,item)=>sum+item.amount,0),progress=Math.min(total/goal*100,100),remaining=Math.max(goal-total,0);
+function renderDonationDashboard(project={}){
+  const donations=[],goal=Number(project.goal)||0,total=0,progress=0,remaining=goal;
   const money=value=>new Intl.NumberFormat('th-TH',{maximumFractionDigits:0}).format(value);
-  return `<section class="section donation-live donation-live-draft" aria-labelledby="donation-live-title">
+  return `<section class="section donation-live" aria-labelledby="donation-live-title">
     <div class="container">
       <div class="donation-live-head">
         <div><span class="eyebrow">${escapePageText(project.title||'Mr.Fanboy Project')} · Live update</span><h2 id="donation-live-title">ทุกแรงสนับสนุน<br>กำลังพาเราไปถึงเป้าหมาย</h2></div>
-        <div class="donation-live-status"><i></i><span>LIVE UPDATE</span><small data-donation-status>${project.sheetUrl?'กำลังอ่านข้อมูลจาก Google Sheet...':'ข้อมูลตัวอย่าง · ยังไม่ได้ใส่ Google Sheet'}</small></div>
+        <div class="donation-live-status"><i></i><span>LIVE UPDATE</span><small data-donation-status>${project.sheetUrl?'กำลังอ่านข้อมูลจาก Google Sheet...':'ยังไม่ได้เชื่อม Google Sheet'}</small></div>
       </div>
       <div class="donation-kpi-grid">
         <article class="donation-main-card"><span>ยอดบริจาคปัจจุบัน / TOTAL RAISED</span><strong data-donation-total>฿${money(total)}</strong><div class="donation-progress-meta"><b data-donation-percent>${progress.toFixed(2)}%</b><span>GOAL ฿${money(goal)}</span></div><div class="donation-progress" role="progressbar" aria-valuenow="${progress.toFixed(2)}" aria-valuemin="0" aria-valuemax="100"><i data-donation-progress style="width:${progress}%"></i></div></article>
         <article class="donation-side-card"><span>ยอดที่เหลือ / AMOUNT LEFT</span><strong data-donation-remaining>฿${money(remaining)}</strong><small>ก่อนถึงเป้าหมายของโปรเจกต์ / To reach our goal</small></article>
       </div>
-      <div class="donation-recent-card donation-ledger"><div class="donation-card-head"><div><span>LIVE DONATION UPDATE</span><h3>LATEST DONATIONS</h3></div><b>AUTO UPDATE</b></div><div class="donation-ledger-head"><span>วันที่</span><span>เวลา</span><span>ยอดเงิน</span></div><div class="donation-ledger-list" data-donation-list>${donations.slice().reverse().map(item=>`<div><span>${item.date}</span><time>${item.time} น.</time><strong>฿${money(item.amount)}</strong></div>`).join('')}</div></div>
+      <div class="donation-recent-card donation-ledger"><div class="donation-card-head"><div><span>LIVE DONATION UPDATE</span><h3>LATEST DONATIONS</h3></div><b>AUTO UPDATE</b></div><div class="donation-ledger-head"><span>วันที่</span><span>เวลา</span><span>ยอดเงิน</span></div><div class="donation-ledger-list" data-donation-list><div class="empty">${project.sheetUrl?'กำลังโหลดรายการ...':'ยังไม่มีข้อมูลยอดบริจาค'}</div></div></div>
       <p class="donation-disclaimer">ยอดแสดงก่อนหักค่าธรรมเนียมการโอนต่างประเทศ / Amount shown before international transfer fees.</p>
     </div>
   </section>`;
@@ -3155,7 +3172,7 @@ function applyDonationLedgerEnglish(){
 function projectHubPage(){
   ensureProjectSettings();const projects=db.siteSettings.projects.items.filter(project=>project.visible!==false);
   const statusLabel={active:'ACTIVE NOW',upcoming:'COMING NEXT',closed:'CLOSED'};
-  app.innerHTML=nav('projects')+`<main><section class="page-hero project-hub-hero"><div class="container"><span class="eyebrow">AUAUSAVE HOUSE · FAN PROJECTS</span><h1>OUR PROJECTS</h1><p>พื้นที่รวมทุกโปรเจกต์จากแฟนคลับ ทั้งรอบปัจจุบัน โปรเจกต์ถัดไป และความทรงจำที่ผ่านมา</p></div></section><section class="section project-hub-section"><div class="container"><div class="project-filter-row"><b>All projects</b><span>${projects.length} Projects</span></div><div class="project-hub-grid">${projects.map(project=>`<a class="project-hub-card ${project.status==='active'?'is-active':'is-next'}" href="#project/${escapePageText(project.slug)}" ${project.banner?`style="background-image:linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.55)),url('${escapePageText(project.banner)}');background-size:cover;background-position:center"`:''}><div><span>${statusLabel[project.status]||'PROJECT'}</span><small>${escapePageText(project.round||'FAN PROJECT')}</small></div><h2>${escapePageText(project.title)}</h2><p>${escapePageText(project.description||'')}</p><footer><b>${project.status==='upcoming'?'เร็ว ๆ นี้':`฿${new Intl.NumberFormat('th-TH').format(2705)}`}</b><span>${project.status==='active'?'View Details ↗':'Stay tuned'}</span></footer></a>`).join('')||'<div class="empty">ยังไม่มีโปรเจกต์ที่เปิดแสดง</div>'}</div></div></section></main>`+footer();
+  app.innerHTML=nav('projects')+`<main><section class="page-hero project-hub-hero"><div class="container"><span class="eyebrow">AUAUSAVE HOUSE · FAN PROJECTS</span><h1>OUR PROJECTS</h1><p>พื้นที่รวมทุกโปรเจกต์จากแฟนคลับ ทั้งรอบปัจจุบัน โปรเจกต์ถัดไป และความทรงจำที่ผ่านมา</p></div></section><section class="section project-hub-section"><div class="container"><div class="project-filter-row"><b>All projects</b><span>${projects.length} Projects</span></div><div class="project-hub-grid">${projects.map(project=>`<a class="project-hub-card ${project.status==='active'?'is-active':'is-next'}" href="#project/${escapePageText(project.slug)}" ${project.banner?`style="background-image:linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.55)),url('${escapePageText(project.banner)}');background-size:cover;background-position:center"`:''}><div><span>${statusLabel[project.status]||'PROJECT'}</span><small>${escapePageText(project.round||'FAN PROJECT')}</small></div><h2>${escapePageText(project.title)}</h2><p>${escapePageText(project.description||'')}</p><footer><b>${project.status==='upcoming'?'เร็ว ๆ นี้':`฿${new Intl.NumberFormat('th-TH').format(2705)}`}</b><span>${project.status==='active'?'View Details ➚':'Stay tuned'}</span></footer></a>`).join('')||'<div class="empty">ยังไม่มีโปรเจกต์ที่เปิดแสดง</div>'}</div></div></section></main>`+footer();
   document.querySelectorAll('.project-hub-card').forEach((card,index)=>{const project=projects[index];if(!project)return;card.className='project-hub-card project-simple-card';card.removeAttribute('style');card.innerHTML=`<div class="project-simple-image">${project.cardImage?`<img src="${escapePageText(project.cardImage)}" alt="${escapePageText(project.title)}">`:`<span>${escapePageText(project.title.slice(0,2).toUpperCase())}</span>`}</div><div class="project-simple-copy"><h2>${escapePageText(project.title)}</h2><strong>${project.status==='upcoming'?'เร็ว ๆ นี้':`฿${new Intl.NumberFormat('th-TH').format(2705)}`}</strong></div>`;});
   document.querySelectorAll('.project-simple-card').forEach((card,index)=>{
     const project=projects[index],amount=card.querySelector('.project-simple-copy strong');if(!project||!amount)return;
@@ -3167,21 +3184,16 @@ function projectHubPage(){
 async function refreshProjectCardTotal(project){
   const target=document.querySelector(`[data-project-card-total="${CSS.escape(project.id)}"]`);if(!target)return;
   try{
-    const csvUrl=googleSheetCsvUrl(project.sheetUrl);if(!csvUrl)throw new Error();
-    const response=await fetch(csvUrl,{cache:'no-store'});if(!response.ok)throw new Error();
-    const rows=parseProjectCsv(await response.text()),headers=(rows.shift()||[]).map(value=>value.trim().toLowerCase());
-    const amountIndex=headers.findIndex(value=>value.includes('donation amount')||value.includes('จำนวนเงิน'));
-    if(amountIndex<0)throw new Error();
-    const total=rows.reduce((sum,row)=>sum+(Number(String(row[amountIndex]||'').replace(/[^0-9.-]/g,''))||0),0);
+    const total=projectDonationsFromTable(await loadGoogleSheetTable(project.sheetUrl)).reduce((sum,item)=>sum+item.amount,0);
     target.textContent=`฿${new Intl.NumberFormat('th-TH',{maximumFractionDigits:2}).format(total)}`;
-  }catch(error){target.textContent='เชื่อมยอดไม่ได้'}
+  }catch(error){target.textContent='ยังอัปเดตยอดไม่ได้';target.title=error.message||'ตรวจสอบสิทธิ์ Google Sheet'}
 }
 function projectDetailPage(slug){
   ensureProjectSettings();const project=db.siteSettings.projects.items.find(item=>item.slug===slug&&item.visible!==false);if(!project){projectHubPage();return}
   const banner=project.banner?`<div class="project-banner-placeholder has-image"><img src="${escapePageText(project.banner)}" alt="${escapePageText(project.title)}"></div>`:`<div class="project-banner-placeholder"><span>PROJECT BANNER · 16:9</span><strong>พื้นที่สำหรับรูปแบนเนอร์โปรเจกต์</strong><small>เพิ่มรูปได้จากหลังบ้าน</small></div>`;
   const qr=project.qrCode?`<div class="project-qr-placeholder has-image"><img src="${escapePageText(project.qrCode)}" alt="QR Code"></div>`:`<div class="project-qr-placeholder"><span>QR</span></div>`;
   const formAction=project.formUrl?`window.open('${escapePageText(project.formUrl)}','_blank','noopener')`:`toast('กรุณาใส่ลิงก์ Google Form ในหลังบ้าน')`;
-  app.innerHTML=nav('projects')+`<main><section class="project-detail-hero"><div class="container"><a href="#projects">← Our Projects</a><span class="eyebrow">${project.status==='active'?'ACTIVE PROJECT':'FAN PROJECT'} · ${escapePageText(project.round||'')}</span><h1>${escapePageText(project.title)}</h1><div><div class="project-detail-description">${sanitizeProjectRichText(project.descriptionHtml||`<p>${escapePageText(project.description||'')}</p>`)}</div><span><b>${project.startDate?escapePageText(project.startDate):'OPEN'}</b><small>อัปเดตยอดแบบเรียลไทม์</small></span></div></div></section><section class="section project-media-section"><div class="container">${banner}<div class="project-payment-grid"><div class="project-qr-card">${qr}<p><small>SCAN TO SUPPORT</small><strong>สแกน QR Code<br>เพื่อร่วมสนับสนุน</strong></p></div><div class="project-account-card"><span>PAYMENT DETAILS</span><h2>รายละเอียดบัญชี</h2><dl><div><dt>ธนาคาร</dt><dd>${escapePageText(project.bankName||'—')}</dd></div><div><dt>เลขที่บัญชี</dt><dd>${escapePageText(project.accountNumber||'—')}</dd></div><div><dt>ชื่อบัญชี</dt><dd>${escapePageText(project.accountName||'—')}</dd></div></dl><small>กรุณาตรวจสอบชื่อบัญชีก่อนทำรายการทุกครั้ง<br>Please verify the account holder’s name before making any transaction.</small></div></div><div class="project-form-callout"><div><span>สำคัญ · หลังโอนเงิน</span><h2>กรอกฟอร์มแจ้งยอด<br>เพื่อให้ยอดขึ้นบนเว็บไซต์</h2><p>ระบบจะแสดงยอดจากคำตอบในฟอร์มเท่านั้น อย่าลืมแนบหลักฐานการโอนให้ครบถ้วน</p></div><button type="button" class="project-form-cta" onclick="${formAction}"><small>STEP 02</small><strong>กรอกฟอร์มแจ้งยอด</strong><b>เปิด Google Form ↗</b></button></div></div></section>${renderDonationDashboardDraft(project)}</main>`+footer();
+  app.innerHTML=nav('projects')+`<main><section class="project-detail-hero"><div class="container"><a href="#projects">← Our Projects</a><span class="eyebrow">${project.status==='active'?'ACTIVE PROJECT':'FAN PROJECT'} · ${escapePageText(project.round||'')}</span><h1>${escapePageText(project.title)}</h1><div><div class="project-detail-description">${sanitizeProjectRichText(project.descriptionHtml||`<p>${escapePageText(project.description||'')}</p>`)}</div><span><b>${project.startDate?escapePageText(project.startDate):'OPEN'}</b><small>อัปเดตยอดแบบเรียลไทม์</small></span></div></div></section><section class="section project-media-section"><div class="container">${banner}<div class="project-payment-grid"><div class="project-qr-card">${qr}<p><small>SCAN TO SUPPORT</small><strong>สแกน QR Code<br>เพื่อร่วมสนับสนุน</strong></p></div><div class="project-account-card"><span>PAYMENT DETAILS</span><h2>รายละเอียดบัญชี</h2><dl><div><dt>ธนาคาร</dt><dd>${escapePageText(project.bankName||'—')}</dd></div><div><dt>เลขที่บัญชี</dt><dd>${escapePageText(project.accountNumber||'—')}</dd></div><div><dt>ชื่อบัญชี</dt><dd>${escapePageText(project.accountName||'—')}</dd></div></dl><small>กรุณาตรวจสอบชื่อบัญชีก่อนทำรายการทุกครั้ง<br>Please verify the account holder’s name before making any transaction.</small></div></div><div class="project-form-callout"><div><span>สำคัญ · หลังโอนเงิน</span><h2>กรอกฟอร์มแจ้งยอด<br>เพื่อให้ยอดขึ้นบนเว็บไซต์</h2><p>ระบบจะแสดงยอดจากคำตอบในฟอร์มเท่านั้น อย่าลืมแนบหลักฐานการโอนให้ครบถ้วน</p></div><button type="button" class="project-form-cta" onclick="${formAction}"><small>STEP 02</small><strong>กรอกฟอร์มแจ้งยอด</strong><b>เปิด Google Form ➚</b></button></div></div></section>${renderDonationDashboard(project)}</main>`+footer();
   document.querySelector('.project-detail-hero')?.remove();
   const paymentLabels=[['ธนาคาร','Bank'],['เลขที่บัญชี','Account Number'],['ชื่อบัญชี','Account Name']];
   document.querySelectorAll('.project-account-card dt').forEach((label,index)=>{
@@ -3197,7 +3209,7 @@ function projectDetailPage(slug){
     if(calloutLabel)calloutLabel.textContent='สำคัญ · IMPORTANT';
     thaiHeading?.insertAdjacentHTML('afterend','<h3 class="project-form-en-heading">SUBMIT THE DONATION FORM<br>TO DISPLAY YOUR CONTRIBUTION ON THE WEBSITE</h3>');
     thaiButtonTitle?.insertAdjacentHTML('afterend','<span class="project-form-en-label">DONATION NOTIFICATION FORM</span>');
-    if(formLink)formLink.textContent='เปิด Google Form · OPEN FORM ↗';
+    if(formLink)formLink.textContent='เปิด Google Form · OPEN FORM ➚';
   }
   applyDonationLedgerEnglish();
   const projectEyebrow=document.querySelector('.project-detail-hero .eyebrow');if(projectEyebrow)projectEyebrow.textContent=project.status==='active'?'ACTIVE PROJECT':'FAN PROJECT';
@@ -3210,6 +3222,47 @@ function googleSheetCsvUrl(value){
   const gid=(url.match(/[?#&]gid=(\d+)/)||[])[1]||'0';
   return `https://docs.google.com/spreadsheets/d/${match[1]}/gviz/tq?tqx=out:csv&gid=${gid}`;
 }
+function googleSheetSource(value){
+  const url=String(value||'').trim(),match=url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);if(!match)return null;
+  return{id:match[1],gid:(url.match(/[?#&]gid=(\d+)/)||[])[1]||'0'};
+}
+function loadGoogleSheetTable(value){
+  const source=googleSheetSource(value);if(!source)return Promise.reject(new Error('ลิงก์ Google Sheet ไม่ถูกต้อง'));
+  return new Promise((resolve,reject)=>{
+    const callback=`auausaveSheet_${Date.now()}_${Math.random().toString(36).slice(2)}`,script=document.createElement('script');
+    let timer;
+    const cleanup=()=>{delete window[callback];script.remove();clearTimeout(timer)};
+    timer=setTimeout(()=>{cleanup();reject(new Error('Google Sheet ตอบกลับช้าเกินไป'))},15000);
+    window[callback]=response=>{
+      if(response?.status==='error'){const message=response.errors?.[0]?.detailed_message||response.errors?.[0]?.message||'Google Sheet ไม่อนุญาตให้อ่านข้อมูล';cleanup();reject(new Error(message));return}
+      const table=response?.table;if(!table){cleanup();reject(new Error('ไม่พบข้อมูลใน Google Sheet'));return}
+      cleanup();resolve(table);
+    };
+    script.onerror=()=>{cleanup();reject(new Error('โหลด Google Sheet ไม่สำเร็จ'))};
+    script.src=`https://docs.google.com/spreadsheets/d/${source.id}/gviz/tq?gid=${source.gid}&tqx=responseHandler:${callback}`;
+    document.head.appendChild(script);
+  });
+}
+function projectDonationsFromTable(table){
+  const headers=(table.cols||[]).map(column=>String(column.label||column.id||'').trim().toLowerCase());
+  const timestampIndex=headers.findIndex(value=>value.includes('timestamp')||value.includes('ประทับเวลา'));
+  const amountIndex=headers.findIndex(value=>value.includes('donation amount')||value.includes('จำนวนเงิน')||value.includes('ยอดเงิน'));
+  if(timestampIndex<0||amountIndex<0)throw new Error('ไม่พบคอลัมน์ Timestamp หรือ Donation Amount');
+  const parseDate=(value,formatted)=>{
+    if(value instanceof Date)return value;
+    const google=String(value||'').match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)$/);
+    if(google)return new Date(Number(google[1]),Number(google[2]),Number(google[3]),Number(google[4])||0,Number(google[5])||0,Number(google[6])||0);
+    const local=String(formatted||value||'').match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if(local)return new Date(Number(local[3]),Number(local[2])-1,Number(local[1]),Number(local[4])||0,Number(local[5])||0,Number(local[6])||0);
+    return new Date(value||formatted||'');
+  };
+  return(table.rows||[]).map(row=>{
+    const cells=row.c||[],rawDate=cells[timestampIndex]?.v,rawAmount=cells[amountIndex]?.v;
+    const date=parseDate(rawDate,cells[timestampIndex]?.f);
+    const amount=typeof rawAmount==='number'?rawAmount:Number(String(rawAmount??cells[amountIndex]?.f??'').replace(/[^0-9.-]/g,''));
+    return{amount,date};
+  }).filter(item=>Number.isFinite(item.amount)&&item.amount>0&&!Number.isNaN(item.date.getTime()));
+}
 function parseProjectCsv(text){
   const rows=[];let row=[],cell='',quoted=false;
   for(let index=0;index<text.length;index++){const char=text[index],next=text[index+1];if(char==='"'&&quoted&&next==='"'){cell+='"';index++;continue}if(char==='"'){quoted=!quoted;continue}if(char===','&&!quoted){row.push(cell);cell='';continue}if((char==='\n'||char==='\r')&&!quoted){if(char==='\r'&&next==='\n')index++;row.push(cell);if(row.some(value=>value!==''))rows.push(row);row=[];cell='';continue}cell+=char}
@@ -3218,11 +3271,7 @@ function parseProjectCsv(text){
 async function refreshProjectDonations(projectId){
   ensureProjectSettings();const project=db.siteSettings.projects.items.find(item=>item.id===projectId),status=document.querySelector('[data-donation-status]');if(!project)return;
   try{
-    const csvUrl=googleSheetCsvUrl(project.sheetUrl);if(!csvUrl)throw new Error('ลิงก์ Google Sheet ไม่ถูกต้อง');
-    const response=await fetch(csvUrl,{cache:'no-store'});if(!response.ok)throw new Error(`อ่านชีตไม่ได้ (${response.status})`);
-    const rows=parseProjectCsv(await response.text()),headers=(rows.shift()||[]).map(value=>value.trim().toLowerCase()),timestampIndex=headers.findIndex(value=>value.includes('timestamp')),amountIndex=headers.findIndex(value=>value.includes('donation amount')||value.includes('จำนวนเงิน'));
-    if(timestampIndex<0||amountIndex<0)throw new Error('ไม่พบคอลัมน์ Timestamp หรือ Donation Amount');
-    const donations=rows.map(row=>{const amount=Number(String(row[amountIndex]||'').replace(/[^0-9.-]/g,'')),date=new Date(row[timestampIndex]);return{amount,date}}).filter(item=>Number.isFinite(item.amount)&&item.amount>0&&!Number.isNaN(item.date.getTime()));
+    const donations=projectDonationsFromTable(await loadGoogleSheetTable(project.sheetUrl));
     const total=donations.reduce((sum,item)=>sum+item.amount,0),goal=Number(project.goal)||1,progress=Math.min(total/goal*100,100),remaining=Math.max(goal-total,0),money=value=>new Intl.NumberFormat('th-TH',{maximumFractionDigits:2}).format(value);
     document.querySelector('[data-donation-total]').textContent=`฿${money(total)}`;document.querySelector('[data-donation-percent]').textContent=`${progress.toFixed(2)}%`;document.querySelector('[data-donation-remaining]').textContent=`฿${money(remaining)}`;document.querySelector('[data-donation-progress]').style.width=`${progress}%`;
     document.querySelector('[data-donation-list]').innerHTML=donations.slice(-20).reverse().map(item=>`<div><span>${new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric'}).format(item.date)}</span><time>${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(item.date)}</time><strong>฿${money(item.amount)}</strong></div>`).join('')||'<div class="empty">ยังไม่มีรายการ</div>';
@@ -3274,7 +3323,7 @@ function toggleProjectVisibility(projectId,visible){
 function projectsAdmin(){
   ensureProjectSettings();const projects=db.siteSettings.projects.items;
   const items=[['dashboard','⌂','Dashboard'],['pagecontent','▤','Homepage Content'],['artists','◉','Profiles'],['events','▦','Schedule'],['timeline','◷','Timeline'],['presenters','✦','Presenters'],['awards','◇','Awards'],['projects','◆','Projects'],['master','⚙','Master Data']];
-  app.innerHTML=`<div class="admin"><div class="admin-shell"><aside class="sidebar"><div class="brand"><i></i>AUAUSAVE HOUSE</div><div class="side-nav">${items.map(([id,icon,label])=>`<button data-icon="${icon}" class="${id==='projects'?'active':''}" onclick="adminTab='${id}';admin()">${icon} &nbsp; ${label}</button>`).join('')}</div><a class="back" href="#projects">← ดูหน้าโปรเจกต์</a></aside><main class="admin-main"><div class="admin-top"><div><small style="color:var(--muted)">PROJECT MANAGEMENT</small><h1>โปรเจกต์ทั้งหมด</h1></div><button class="btn" onclick="openProjectForm()">+ เพิ่มโปรเจกต์</button></div><section class="project-admin-list">${projects.map(project=>`<article class="panel project-admin-item ${project.visible===false?'is-hidden':''}"><div class="project-admin-thumb">${project.cardImage?`<img src="${escapePageText(project.cardImage)}" alt="">`:`<span>${escapePageText(project.title.slice(0,2).toUpperCase())}</span>`}</div><div class="project-admin-copy"><small>${escapePageText(project.round||'PROJECT')}</small><h2>${escapePageText(project.title)}</h2><p>${escapePageText(project.description||'ไม่มีคำอธิบาย')}</p><div><span class="artist-publish-state ${project.visible!==false?'is-live':''}">${project.visible!==false?'กำลังแสดง':'ซ่อนอยู่'}</span><span>${escapePageText(project.status||'draft')}</span><span>เป้าหมาย ฿${new Intl.NumberFormat('th-TH').format(Number(project.goal)||0)}</span></div></div><div class="project-admin-actions"><label class="timeline-visibility-switch"><input type="checkbox" ${project.visible!==false?'checked':''} onchange="toggleProjectVisibility('${project.id}',this.checked)"><span>${project.visible!==false?'● แสดง':'○ ซ่อน'}</span></label><button class="btn outline" onclick="openProjectForm('${project.id}')">แก้ไข</button><a class="btn outline" href="#project/${escapePageText(project.slug)}">ดูหน้าเว็บ</a><button class="icon-btn project-delete-btn" onclick="removeProject('${project.id}')">⌫ ลบ</button></div></article>`).join('')||'<div class="empty">ยังไม่มีโปรเจกต์</div>'}</section></main></div></div>`;
+  app.innerHTML=`<div class="admin"><div class="admin-shell"><aside class="sidebar"><div class="brand"><i></i>AUAUSAVE HOUSE</div><div class="side-nav">${items.map(([id,icon,label])=>`<button data-icon="${icon}" class="${id==='projects'?'active':''}" onclick="adminTab='${id}';admin()">${icon} &nbsp; ${label}</button>`).join('')}</div><a class="back" href="#projects">← ดูหน้าโปรเจกต์</a></aside><main class="admin-main"><div class="admin-top"><div><small style="color:var(--muted)">PROJECT MANAGEMENT</small><h1>โปรเจกต์ทั้งหมด</h1></div><button class="btn" onclick="openProjectForm()">+ เพิ่มโปรเจกต์</button></div><section class="project-admin-list">${projects.map(project=>`<article class="panel project-admin-item ${project.visible===false?'is-hidden':''}"><div class="project-admin-thumb">${project.cardImage?`<img src="${escapePageText(project.cardImage)}" alt="">`:`<span>${escapePageText(project.title.slice(0,2).toUpperCase())}</span>`}</div><div class="project-admin-copy"><small>${escapePageText(project.round||'PROJECT')}</small><h2>${escapePageText(project.title)}</h2><p>${escapePageText(project.description||'ไม่มีคำอธิบาย')}</p><div><span class="artist-publish-state ${project.visible!==false?'is-live':''}">${project.visible!==false?'กำลังแสดง':'ซ่อนอยู่'}</span><span>${escapePageText(project.status||'active')}</span><span>เป้าหมาย ฿${new Intl.NumberFormat('th-TH').format(Number(project.goal)||0)}</span></div></div><div class="project-admin-actions"><label class="timeline-visibility-switch"><input type="checkbox" ${project.visible!==false?'checked':''} onchange="toggleProjectVisibility('${project.id}',this.checked)"><span>${project.visible!==false?'● แสดง':'○ ซ่อน'}</span></label><button class="btn outline" onclick="openProjectForm('${project.id}')">แก้ไข</button><a class="btn outline" href="#project/${escapePageText(project.slug)}">ดูหน้าเว็บ</a><button class="icon-btn project-delete-btn" onclick="removeProject('${project.id}')">⌫ ลบ</button></div></article>`).join('')||'<div class="empty">ยังไม่มีโปรเจกต์</div>'}</section></main></div></div>`;
   document.querySelectorAll('.project-admin-copy>small').forEach(node=>node.textContent='PROJECT');
   document.querySelectorAll('.project-admin-copy>p').forEach(node=>node.remove());
 }
@@ -3376,11 +3425,75 @@ calendarPage=function(){
   app.innerHTML=nav('schedule')+`<main><section class="page-hero calendar-hero"><div class="container"><span class="eyebrow">Past · Present · Future</span><h1>Event Calendar</h1><p>Review past events and plan for every upcoming schedule.</p></div></section><section class="section calendar-section"><div class="container"><div class="calendar-toolbar"><button onclick="moveCalendar(-1)">←</button><h2>${label}</h2><button onclick="moveCalendar(1)">→</button></div><div class="calendar-legend dynamic-calendar-legend">${legend}<button onclick="calendarDate=new Date();calendarPage()">Current month</button><select class="public-type-filter" onchange="filterPublicCalendar(this.value)"><option value="all">All types</option>${db.masterData.types.map(t=>`<option value="${t.id}" ${publicTypeFilter===t.id?'selected':''}>${escapePageText(t.label)}</option>`).join('')}</select></div><div class="calendar"><div class="weekday">Monday</div><div class="weekday">Tuesday</div><div class="weekday">Wednesday</div><div class="weekday">Thursday</div><div class="weekday">Friday</div><div class="weekday">Saturday</div><div class="weekday">Sunday</div>${cells.join('')}</div></div></section></main>`+footer();
   filterPublicCalendar(publicTypeFilter);
 };
+let mobileCalendarSelectedDate = "";
+function localDateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+}
+function presenterMediaAspectRatio(){
+  const value=getComputedStyle(document.documentElement).getPropertyValue('--presenter-media-ratio').trim();
+  const parts=value.split('/').map(Number);
+  return parts.length===2&&parts[0]>0&&parts[1]>0?parts[0]/parts[1]:4/3;
+}
+function adjustExistingPresenterImage(button){
+  const field=button.closest('.image-upload-field'),hidden=field?.querySelector('[name="announcementImage"]'),input=field?.querySelector('input[type="file"]');
+  if(!hidden?.value||!input)return;
+  const image=new Image();
+  image.onload=()=>openCropImage(input,'announcementImage',image,imageCropPreset('announcementImage'));
+  image.onerror=()=>toast('ไม่สามารถเปิดรูปเดิมเพื่อปรับตำแหน่งได้');
+  image.src=hidden.value;
+}
+function calendarTypeLabel(event) {
+  const type = db.masterData.types.find(item => eventHasType(event,item.id));
+  return type?.label || event.type || "Schedule";
+}
+function calendarEventColor(event,artistIndex) {
+  const id = calendarEventArtistIds(event)[0] || "";
+  return calendarArtistColor(id,artistIndex.get(id) || 0);
+}
+function selectMobileCalendarDate(date) {
+  mobileCalendarSelectedDate = date;
+  calendarPage();
+}
+function mobileCalendarToday() {
+  const today = new Date();
+  calendarDate = new Date(today.getFullYear(),today.getMonth(),1);
+  mobileCalendarSelectedDate = localDateKey(today);
+  calendarPage();
+}
+function filterMobileCalendar(value) {
+  publicTypeFilter = value;
+  calendarPage();
+}
+const desktopCalendarPage = calendarPage;
+calendarPage = function(){
+  desktopCalendarPage();
+  const calendarArtists=[...db.artists].sort((a,b)=>artistSchedulePriority(a)-artistSchedulePriority(b));
+  const artistIndex=new Map(calendarArtists.map((artist,index)=>[artist.id,index]));
+  const year=calendarDate.getFullYear(),mon=calendarDate.getMonth(),first=new Date(year,mon,1);
+  const todayKey=localDateKey(new Date()),monthKey=`${year}-${String(mon+1).padStart(2,"0")}`;
+  if(!mobileCalendarSelectedDate || !mobileCalendarSelectedDate.startsWith(monthKey)) mobileCalendarSelectedDate=todayKey.startsWith(monthKey)?todayKey:`${monthKey}-01`;
+  const filteredEvents=db.events.filter(event=>publicTypeFilter==="all" || eventHasType(event,publicTypeFilter));
+  const cells=[],gridStart=new Date(year,mon,1-first.getDay());
+  for(let index=0;index<42;index++){
+    const cellDate=new Date(gridStart.getFullYear(),gridStart.getMonth(),gridStart.getDate()+index);
+    const key=localDateKey(cellDate),items=filteredEvents.filter(event=>event.date===key);
+    const dots=items.slice(0,3).map(event=>`<i style="background:${calendarEventColor(event,artistIndex)}"></i>`).join("");
+    cells.push(`<button class="mobile-calendar-day ${cellDate.getMonth()!==mon?"outside":""} ${key===todayKey?"today":""} ${key===mobileCalendarSelectedDate?"selected":""}" onclick="selectMobileCalendarDate('${key}')" aria-label="${key}"><span>${cellDate.getDate()}</span><b>${dots}${items.length>3?'<i class="more"></i>':""}</b></button>`);
+  }
+  const selectedEvents=filteredEvents.filter(event=>event.date===mobileCalendarSelectedDate);
+  const selectedLabel=new Intl.DateTimeFormat("en-US",{weekday:"short",month:"short",day:"numeric"}).format(new Date(`${mobileCalendarSelectedDate}T00:00:00`));
+  const detail=selectedEvents.length?selectedEvents.map(event=>`<button class="mobile-event-row" style="--event-color:${calendarEventColor(event,artistIndex)}" onclick="showEvent('${event.id}')"><time>${escapePageText(event.time||"All day")}</time><span><small>${escapePageText(calendarTypeLabel(event))}</small><strong>${escapePageText(event.title)}</strong></span><b>›</b></button>`).join(""):`<div class="mobile-calendar-empty"><b>○</b><p>No schedule to display.<br>Please select another date.</p></div>`;
+  const nextEvent=filteredEvents.filter(event=>event.date>mobileCalendarSelectedDate).sort((a,b)=>a.date.localeCompare(b.date)||(a.time||"").localeCompare(b.time||""))[0];
+  const nextCard=nextEvent?`<section class="mobile-calendar-detail next"><header><strong>${new Intl.DateTimeFormat("en-US",{weekday:"short",month:"short",day:"numeric"}).format(new Date(`${nextEvent.date}T00:00:00`))}</strong><span>Next schedule</span></header><button class="mobile-next-event" style="--event-color:${calendarEventColor(nextEvent,artistIndex)}" onclick="showEvent('${nextEvent.id}')"><small>${escapePageText(calendarTypeLabel(nextEvent))}</small><strong>${escapePageText(nextEvent.title)}</strong><span>${escapePageText(nextEvent.time||"All day")}</span></button></section>`:"";
+  const typeOptions=db.masterData.types.map(type=>`<option value="${type.id}" ${publicTypeFilter===type.id?"selected":""}>${escapePageText(type.label)}</option>`).join("");
+  const mobile=`<section class="mobile-calendar-view"><header class="mobile-calendar-title"><a href="#home" aria-label="Back">‹</a><h1>Calendar</h1><span></span></header><div class="mobile-calendar-card"><div class="mobile-month-head"><div><h2>${new Intl.DateTimeFormat("en-US",{month:"short"}).format(first)}, <span>${year}</span></h2><button title="Calendar information" aria-label="Calendar information">i</button></div><nav><button onclick="moveCalendar(-1)" aria-label="Previous month">‹</button><button onclick="moveCalendar(1)" aria-label="Next month">›</button></nav></div><div class="mobile-calendar-controls"><select aria-label="Filter schedules by type" onchange="filterMobileCalendar(this.value)"><option value="all">All</option>${typeOptions}</select><button onclick="mobileCalendarToday()">Today</button></div><div class="mobile-calendar-grid">${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day=>`<span class="mobile-weekday">${day}</span>`).join("")}${cells.join("")}</div></div><section class="mobile-calendar-detail"><header><strong>${selectedLabel}</strong>${mobileCalendarSelectedDate===todayKey?"<span>Today</span>":""}</header>${detail}</section>${nextCard}</section>`;
+  document.querySelector(".calendar-section")?.insertAdjacentHTML("afterend",mobile);
+};
 showEvent=function(id){
   const e=db.events.find(x=>x.id===id);if(!e)return;
   const dateLabel=new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric'}).format(new Date(`${e.date}T00:00:00`));
   const rawTime=String(e.time||e.place||'').trim(),timeLabel=rawTime.replace(/^(\d{1,2})[.:](\d{2})/,(_,hour,minute)=>`${String(hour).padStart(2,'0')}:${minute}`);
-  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal event-modal event-modal-detail"><div class="modal-head"><span class="eyebrow">${escapePageText(eventBadge(e))} · ${escapePageText(e.type||'')}</span><button class="close" onclick="closeModal()">×</button></div><h2>${escapePageText(e.title)}</h2><p class="event-date-time"><span>${escapePageText(dateLabel)}</span>${timeLabel?`<b>·</b><time>${escapePageText(timeLabel)}</time>`:''}</p>${e.poster?`<img class="event-poster" src="${escapePageText(e.poster)}" alt="${escapePageText(e.title)}">`:''}${e.source?`<a class="btn" target="_blank" href="${escapePageText(e.source)}">View source ↗</a>`:''}</div></div>`);
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal event-modal event-modal-detail"><div class="modal-head"><span class="eyebrow">${escapePageText(eventBadge(e))} · ${escapePageText(e.type||'')}</span><button class="close" onclick="closeModal()">×</button></div><h2>${escapePageText(e.title)}</h2><p class="event-date-time"><span>${escapePageText(dateLabel)}</span>${timeLabel?`<b>·</b><time>${escapePageText(timeLabel)}</time>`:''}</p>${e.poster?`<img class="event-poster" src="${escapePageText(e.poster)}" alt="${escapePageText(e.title)}">`:''}${e.source?`<a class="btn" target="_blank" href="${escapePageText(e.source)}">View source ➚</a>`:''}</div></div>`);
 };
 function updateDashboardArtistSummary(items=db.events){
   const panel=document.querySelector('.path-panel');if(!panel)return;
@@ -3448,7 +3561,7 @@ function restoreCoupleAwardsCards(){
     return awardMatchesArtist(item,'AT01')||sameArtistId(item?.artistId,'AT01')||label==='AUAUSAVE';
   }).sort((a,b)=>Number(b.year)-Number(a.year));
   const container=section.querySelector('.container');if(!container)return;
-  container.insertAdjacentHTML('beforeend',`<div class="award-grid">${awards.map(item=>`<article class="award">${awardImage(item)?`<img class="award-image" src="${escapePageText(awardImage(item))}" alt="${escapePageText(item.title)}">`:''}<h3>${escapePageText(item.title)}</h3><p>${escapePageText(item.org||'')}</p><time class="award-date">${escapePageText(awardDisplayDate(item))}</time>${item.source?`<a class="source-link" href="${escapePageText(item.source)}" target="_blank" rel="noopener noreferrer">View Source ↗</a>`:''}</article>`).join('')||'<div class="empty">ยังไม่มีข้อมูลรางวัล</div>'}</div>`);
+  container.insertAdjacentHTML('beforeend',`<div class="award-grid">${awards.map(item=>`<article class="award">${awardImage(item)?`<img class="award-image" src="${escapePageText(awardImage(item))}" alt="${escapePageText(item.title)}">`:''}<h3>${escapePageText(item.title)}</h3><p>${escapePageText(item.org||'')}</p><time class="award-date">${escapePageText(awardDisplayDate(item))}</time>${item.source?`<a class="source-link" href="${escapePageText(item.source)}" target="_blank" rel="noopener noreferrer">View Source ➚</a>`:''}</article>`).join('')||'<div class="empty">ยังไม่มีข้อมูลรางวัล</div>'}</div>`);
 }
 const profileBeforeCoupleAwardsRestore=profile;
 profile=function(id){profileBeforeCoupleAwardsRestore(id);if(sameArtistId(id,'duo'))restoreCoupleAwardsCards();};
@@ -3459,7 +3572,7 @@ function renderUnifiedArtistProfile(artist){
   const profileBirth=db.siteSettings?.personalProfiles?.[artist.id]?.birthday;
   const fullName=String(artist.nameEN||artist.fullNameEn||'').trim(),birth=formatArtistBirthEnglish(artist.birthDate||artist.birth||profileBirth),role=String(artist.role||'').trim(),socials=validArtistSocials(artist);
   const facts=[fullName?`<div class="fact"><small>FULL NAME</small><strong>${escapePageText(fullName)}</strong></div>`:'',birth?`<div class="fact"><small>DATE OF BIRTH</small><strong>${escapePageText(birth)}</strong></div>`:'',role?`<div class="fact artist-role-fact"><small>ROLE</small><strong>${escapePageText(role)}</strong></div>`:''].join('');
-  const socialSection=socials.length?`<section class="artist-official-socials"><h2>OFFICIAL SOCIALS</h2><div class="artist-social-grid">${socials.map(item=>`<a class="artist-social-button" href="${escapePageText(item.url)}" target="_blank" rel="noopener noreferrer"><span class="artist-social-platform-label">${escapePageText(artistSocialPlatformName(item.platform))}</span><span class="artist-social-copy">${item.username?`<small>${escapePageText(item.username)}</small>`:''}</span><span class="artist-social-arrow" aria-hidden="true">↗</span></a>`).join('')}</div></section>`:'';
+  const socialSection=socials.length?`<section class="artist-official-socials"><h2>OFFICIAL SOCIALS</h2><div class="artist-social-grid">${socials.map(item=>`<a class="artist-social-button" href="${escapePageText(item.url)}" target="_blank" rel="noopener noreferrer"><span class="artist-social-platform-label">${escapePageText(artistSocialPlatformName(item.platform))}</span><span class="artist-social-copy">${item.username?`<small>${escapePageText(item.username)}</small>`:''}</span><span class="artist-social-arrow" aria-hidden="true">➚</span></a>`).join('')}</div></section>`:'';
   const portrait=artist.image?`<img src="${escapePageText(versionedMediaUrl(artist.image,artist.imageVersion||artist.id))}" alt="${escapePageText(artist.name||'Artist')}">`:`<span>${escapePageText(artist.initial||String(artist.name||'AR').slice(0,2))}</span>`;
   return `<div class="profile-portrait portrait" style="background:${escapePageText(artist.color||'#ddd')}">${portrait}</div><div class="artist-profile-copy"><span class="eyebrow">ARTIST PROFILE</span><h1>${escapePageText(artist.stageNameEn||artist.name||'')}</h1>${artist.bio?`<p class="artist-profile-description">${escapePageText(artist.bio)}</p>`:''}${facts?`<div class="facts artist-profile-facts">${facts}</div>`:''}${socialSection}</div>`
 }
@@ -3519,5 +3632,169 @@ submitForm=function(event,type,id){
   const artist=existing||db.artists[db.artists.length-1];
   if(artist&&!existing){artist.socialLinks=socials;save()}
 };
+const openFormBeforeImageOnlyPresenters=openForm;
+openForm=function(type,id){
+  openFormBeforeImageOnlyPresenters(type,id);
+  if(type!=='presenters')return;
+  const modal=document.querySelector('#modal');
+  modal?.classList.add('presenter-image-only-modal');
+  const preview=modal?.querySelector('#uploadPreview_announcementImage');
+  preview?.classList.add('presenter-image-preview');
+  if(preview?.classList.contains('has-image')&&!modal.querySelector('[data-adjust-presenter-image]')){
+    preview.closest('.image-uploader')?.querySelector(':scope>div:last-child')?.insertAdjacentHTML('beforeend','<button type="button" class="remove-image adjust-presenter-image" data-adjust-presenter-image onclick="adjustExistingPresenterImage(this)">ปรับตำแหน่งรูปอีกครั้ง</button>');
+  }
+};
+const listingBeforeResponsiveGroups=listing;
+listing=function(type){
+  listingBeforeResponsiveGroups(type);
+  if(type!=='awards')return;
+  const container=document.querySelector('main .section .container');
+  if(!container)return;
+  const byYear=new Map();
+  [...db.awards].sort((a,b)=>(Number(b.year)||0)-(Number(a.year)||0)||String(b.date||'').localeCompare(String(a.date||''))).forEach(item=>{
+    const year=String(item.year||item.date?.slice(0,4)||'TBA');
+    if(!byYear.has(year))byYear.set(year,[]);
+    byYear.get(year).push(item);
+  });
+  container.innerHTML=[...byYear].map(([year,items])=>`<section class="award-year-section"><h2>${escapePageText(year)}</h2><div class="award-grid">${items.map(item=>`<article class="award">${awardImage(item)?`<img class="award-image" src="${escapePageText(awardImage(item))}" alt="${escapePageText(item.title)}">`:''}<span class="eyebrow">${escapePageText(artistName(item.artistId))}</span><h3>${escapePageText(item.title)}</h3><p>${escapePageText(item.org||'')}</p><time class="award-date">${escapePageText(awardDisplayDate(item))}</time>${item.source?`<a class="source-link" href="${escapePageText(item.source)}" target="_blank" rel="noopener noreferrer">ดูข้อมูลต้นทาง ➚</a>`:''}</article>`).join('')}</div></section>`).join('');
+};
+
+function enhanceLinkIndicators(root=document.body){
+  if(!root||!root.textContent?.includes('➚'))return;
+  const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+  const nodes=[];
+  while(walker.nextNode()){
+    const node=walker.currentNode;
+    if(node.data.includes('➚')&&!node.parentElement?.classList.contains('link-indicator__icon'))nodes.push(node);
+  }
+  nodes.forEach(node=>{
+    const target=node.parentElement?.closest('a,button,.arrow,.media-link-art'),parts=node.data.split('➚'),fragment=document.createDocumentFragment();
+    parts.forEach((part,index)=>{if(part)fragment.append(document.createTextNode(part));if(index<parts.length-1){const icon=document.createElement('span');icon.className='link-indicator__icon';icon.setAttribute('aria-hidden','true');icon.textContent='➚';fragment.append(icon)}});
+    node.replaceWith(fragment);target?.classList.add('link-indicator');
+  });
+}
+function syncTimelineTrackRules(root=document){
+  root.querySelectorAll?.('.filmography-timeline-track').forEach(track=>{
+    track.style.setProperty('--timeline-rule-width',`${Math.max(track.parentElement?.clientWidth||0,track.scrollWidth)}px`);
+  });
+}
+let responsiveIconObserver=null;
+function applyResponsiveContentStructure(){
+  document.documentElement.classList.add('responsive-ui-ready');
+  enhanceLinkIndicators();
+  syncTimelineTrackRules();
+  if(!responsiveIconObserver){
+    responsiveIconObserver=new MutationObserver(()=>{enhanceLinkIndicators();syncTimelineTrackRules()});
+    responsiveIconObserver.observe(document.body,{childList:true,subtree:true,characterData:true});
+    window.addEventListener('resize',()=>syncTimelineTrackRules(),{passive:true});
+  }
+  document.querySelectorAll('.archive-section-head>p').forEach(copy=>{if(copy.textContent.trim()==='Search couple schedules by date range and event type.')copy.remove()});
+  document.querySelectorAll('.schedule-wrap').forEach(wrap=>{
+    const rows=[...wrap.children].filter(child=>child.classList.contains('schedule-row'));
+    if(rows.length&&!wrap.querySelector(':scope > .responsive-schedule-grid')){
+      const grid=document.createElement('div');grid.className='responsive-schedule-grid';
+      wrap.insertBefore(grid,rows[0]);rows.forEach(row=>grid.appendChild(row));
+    }
+  });
+}
+const routerBeforeResponsiveUI=router;
+router=function(){routerBeforeResponsiveUI();applyResponsiveContentStructure()};
+
+const hydrateBeforeArtistRowCleanup=hydrateFromSupabase;
+hydrateFromSupabase=async function(){
+  await hydrateBeforeArtistRowCleanup();
+  if(db.siteSettings&&Object.prototype.hasOwnProperty.call(db.siteSettings,'artistRowLayouts')){
+    delete db.siteSettings.artistRowLayouts;
+    save();
+  }
+};
+
 router();
 hydrateFromSupabase();
+
+/* Fanbase socials: managed in siteSettings so Supabase syncs them with the rest of the site. */
+const DEFAULT_FANBASES=[
+  {id:'fanbase_auausave',displayName:'AUAUSAVE HOUSE',username:'@AuauSaveHouseTH',description:'',accentColor:'#d86666',displayOrder:1,active:true,socialLinks:[]},
+  {id:'fanbase_auau',displayName:'AUAUTNP OFFICIAL THAILAND',username:'@AUAUTNPOFC',description:'',accentColor:'#5f9272',displayOrder:2,active:true,socialLinks:[]},
+  {id:'fanbase_save',displayName:'SAVEWRG OFFICIAL THAILAND',username:'@SAVEWRG_OFC',description:'',accentColor:'#d58c61',displayOrder:3,active:true,socialLinks:[]}
+];
+function ensureFanbaseSocials(){db.siteSettings||={};if(!Array.isArray(db.siteSettings.fanbases))db.siteSettings.fanbases=structuredClone(DEFAULT_FANBASES);db.siteSettings.fanbases.forEach((x,i)=>{x.socialLinks=Array.isArray(x.socialLinks)?x.socialLinks:[];x.displayOrder=Number(x.displayOrder)||i+1;x.active=x.active!==false})}
+function fanbaseSocialButton(x){const label=escapePageText(x.displayLabel||x.platformName||'Follow');return x.linkType==='copy'?`<button class="fanbase-social-button" type="button" data-copy="${escapePageText(x.copyText||x.username||'')}" onclick="copyFanbaseText(this)"><span>${label}</span><small>${escapePageText(x.username||'')}</small><b>Copy</b></button>`:`<a class="fanbase-social-button" href="${escapePageText(x.url)}" target="_blank" rel="noopener noreferrer"><span>${label}</span>${x.username?`<small>${escapePageText(x.username)}</small>`:''}<b>↗</b></a>`}
+function fanbaseSection(){ensureFanbaseSocials();const cards=[...db.siteSettings.fanbases].filter(x=>x.active!==false).sort((a,b)=>a.displayOrder-b.displayOrder);return `<section class="section fanbase-section"><div class="container"><div class="section-head fanbase-section-head"><div><span class="eyebrow">STAY CONNECTED</span><h2>FOLLOW OUR FANBASES</h2></div><p>Stay updated with AuauSave, Auau and Save.</p></div><div class="fanbase-grid">${cards.map(x=>{const links=[...x.socialLinks].filter(s=>s.active!==false&&((s.linkType==='copy'&&(s.copyText||s.username))||(s.linkType!=='copy'&&/^https?:\/\//i.test(s.url||'')))).sort((a,b)=>(a.displayOrder||999)-(b.displayOrder||999));return `<article class="fanbase-card" style="--fanbase-accent:${escapePageText(x.accentColor||'#d86666')}"><div><h3>${escapePageText(x.displayName)}</h3><p class="fanbase-username">${escapePageText(x.username||'')}</p>${x.description?`<p class="fanbase-description">${escapePageText(x.description)}</p>`:''}</div>${links.length?`<div class="fanbase-socials">${links.map(fanbaseSocialButton).join('')}</div>`:''}</article>`}).join('')}</div></div></section>`}
+async function copyFanbaseText(button){const value=button.dataset.copy||'';if(!value)return;try{await navigator.clipboard.writeText(value)}catch(e){const t=document.createElement('textarea');t.value=value;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}const b=button.querySelector('b'),old=b.textContent;b.textContent='Copied';setTimeout(()=>{if(b.isConnected)b.textContent=old},1400)}
+const listingBeforeFanbases=listing;listing=function(type){listingBeforeFanbases(type);if(type==='artists'&&!document.querySelector('.fanbase-section'))document.querySelector('main')?.insertAdjacentHTML('beforeend',fanbaseSection())};
+const profileBeforeFanbases=profile;profile=function(id){profileBeforeFanbases(id);if(!sameArtistId(id,'AT01'))return;const old=document.querySelector('.couple-hashtag');if(old)old.outerHTML='<div class="couple-profile-links"><a class="couple-profile-link" href="#/AUAU">AUAU PROFILE</a><a class="couple-profile-link" href="#/SAVE">SAVE PROFILE</a></div>'};
+
+function fanbaseAdminSidebar(){const items=[['dashboard','⌂','Dashboard'],['pagecontent','▤','Homepage Content'],['artists','◉','Profiles'],['events','▦','Schedule'],['timeline','◷','Timeline'],['presenters','✦','Presenters'],['awards','◇','Awards'],['projects','◆','Projects'],['fanbases','◎','Fanbase Socials'],['master','⚙','Master Data']];return `<aside class="sidebar"><div class="brand"><i></i>AUAUSAVE HOUSE</div><div class="side-nav">${items.map(([id,icon,label])=>`<button data-icon="${icon}" class="${id==='fanbases'?'active':''}" onclick="adminTab='${id}';admin()">${icon} &nbsp; ${label}</button>`).join('')}</div><a class="back" href="#artists">← ดูหน้าบ้าน</a></aside>`}
+function fanbaseAdmin(){ensureFanbaseSocials();const items=[...db.siteSettings.fanbases].sort((a,b)=>a.displayOrder-b.displayOrder);app.innerHTML=`<div class="admin"><div class="admin-shell">${fanbaseAdminSidebar()}<main class="admin-main"><div class="admin-top"><div><small>FANBASE MANAGEMENT</small><h1>Fanbase Socials</h1><p>จัดการข้อมูลที่แสดงใน “FOLLOW OUR FANBASES”</p></div><button class="btn" onclick="openFanbaseForm()">+ เพิ่ม Fanbase</button></div><section class="fanbase-admin-list">${items.map((x,i)=>`<article class="panel fanbase-admin-card" draggable="true" data-id="${x.id}" ondragstart="fanbaseDragStart(event)" ondragover="fanbaseDragOver(event)" ondrop="fanbaseDrop(event)"><i style="background:${escapePageText(x.accentColor)}"></i><div><small>ลำดับ ${i+1} · ${x.active?'ACTIVE':'INACTIVE'}</small><h2>${escapePageText(x.displayName)}</h2><p>${escapePageText(x.username||'')}</p><span>${x.socialLinks.filter(s=>s.active!==false).length} ช่องทาง</span></div><div class="actions"><button class="btn outline" onclick="openFanbaseForm('${x.id}')">แก้ไข</button><button class="icon-btn" onclick="removeFanbase('${x.id}')">ลบ</button><b class="fanbase-drag-handle">⋮⋮</b></div></article>`).join('')}</section></main></div></div>`}
+function fanbaseLinkEditor(x={},i=0){return `<article class="fanbase-link-editor" draggable="true" ondragstart="fanbaseLinkDragStart(event)" ondragover="fanbaseLinkDragOver(event)" ondrop="fanbaseLinkDrop(event)"><header><b>ช่องทาง ${i+1}</b><button type="button" onclick="this.closest('.fanbase-link-editor').remove();reindexFanbaseLinks()">ลบ</button></header><div class="form-grid"><div class="field"><label>Platform Name</label><input data-platform value="${escapePageText(x.platformName||'')}" placeholder="X, Instagram, WeChat…"></div><div class="field"><label>Display Label</label><input data-label value="${escapePageText(x.displayLabel||'')}" required></div><div class="field"><label>Link Type</label><select data-type onchange="toggleFanbaseLinkFields(this)"><option value="external" ${x.linkType==='copy'?'':'selected'}>External URL</option><option value="copy" ${x.linkType==='copy'?'selected':''}>Copy Text</option></select></div><div class="field"><label>Username / ID</label><input data-username value="${escapePageText(x.username||'')}"></div><div class="field full fanbase-url-field"><label>URL</label><input data-url type="url" value="${escapePageText(x.url||'')}" placeholder="https://..."></div><div class="field full fanbase-copy-field"><label>Copy Text</label><input data-copy value="${escapePageText(x.copyText||'')}"></div><div class="field"><label>สถานะ</label><select data-active><option value="true" ${x.active===false?'':'selected'}>Active</option><option value="false" ${x.active===false?'selected':''}>Inactive</option></select></div><div class="field"><label>Display Order</label><input data-order value="${i+1}" readonly></div></div></article>`}
+function openFanbaseForm(id=''){ensureFanbaseSocials();const x=db.siteSettings.fanbases.find(v=>v.id===id)||{displayName:'',username:'',description:'',accentColor:'#d86666',active:true,socialLinks:[]};document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal fanbase-admin-modal"><div class="modal-head"><div><small>FANBASE DETAILS</small><h2>${id?'แก้ไข':'เพิ่ม'} Fanbase</h2></div><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveFanbaseForm(event,'${id}')"><div class="form-grid"><div class="field"><label>Display Name</label><input name="displayName" value="${escapePageText(x.displayName)}" required></div><div class="field"><label>Username</label><input name="username" value="${escapePageText(x.username||'')}"></div><div class="field full"><label>Description (ไม่บังคับ)</label><textarea name="description">${escapePageText(x.description||'')}</textarea></div><div class="field"><label>Accent Color</label><input name="accentColor" type="color" value="${escapePageText(x.accentColor||'#d86666')}"></div><div class="field"><label>สถานะ</label><select name="active"><option value="true" ${x.active===false?'':'selected'}>Active</option><option value="false" ${x.active===false?'selected':''}>Inactive</option></select></div></div><section class="fanbase-links-editor"><div class="panel-head"><div><h3>Social Links</h3><small>ลากการ์ดเพื่อจัดลำดับ</small></div><button class="btn outline" type="button" onclick="addFanbaseLink()">+ เพิ่มช่องทาง</button></div><div id="fanbaseLinkList">${[...x.socialLinks].sort((a,b)=>(a.displayOrder||999)-(b.displayOrder||999)).map(fanbaseLinkEditor).join('')}</div></section><div class="form-actions"><button class="btn outline" type="button" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึก</button></div></form></div></div>`);document.querySelectorAll('[data-type]').forEach(toggleFanbaseLinkFields)}
+function addFanbaseLink(){const list=document.querySelector('#fanbaseLinkList');list?.insertAdjacentHTML('beforeend',fanbaseLinkEditor({},list.children.length));reindexFanbaseLinks();document.querySelectorAll('[data-type]').forEach(toggleFanbaseLinkFields)}
+function toggleFanbaseLinkFields(select){const card=select.closest('.fanbase-link-editor'),copy=select.value==='copy';card.querySelector('.fanbase-url-field').hidden=copy;card.querySelector('.fanbase-copy-field').hidden=!copy}
+function reindexFanbaseLinks(){document.querySelectorAll('.fanbase-link-editor').forEach((card,i)=>{card.querySelector('header b').textContent=`ช่องทาง ${i+1}`;card.querySelector('[data-order]').value=i+1})}
+let draggedFanbaseLink=null;function fanbaseLinkDragStart(e){draggedFanbaseLink=e.currentTarget}function fanbaseLinkDragOver(e){e.preventDefault();if(!draggedFanbaseLink||draggedFanbaseLink===e.currentTarget)return;const b=e.currentTarget.getBoundingClientRect();e.currentTarget.parentNode.insertBefore(draggedFanbaseLink,e.clientY>b.top+b.height/2?e.currentTarget.nextSibling:e.currentTarget);reindexFanbaseLinks()}function fanbaseLinkDrop(e){e.preventDefault();draggedFanbaseLink=null;reindexFanbaseLinks()}
+function saveFanbaseForm(e,id){e.preventDefault();const f=e.target,links=[...f.querySelectorAll('.fanbase-link-editor')].map((c,i)=>({platformName:c.querySelector('[data-platform]').value.trim(),displayLabel:c.querySelector('[data-label]').value.trim(),url:c.querySelector('[data-url]').value.trim(),username:c.querySelector('[data-username]').value.trim(),copyText:c.querySelector('[data-copy]').value.trim(),linkType:c.querySelector('[data-type]').value,displayOrder:i+1,active:c.querySelector('[data-active]').value==='true'}));if(links.some(x=>x.linkType==='external'&&!/^https?:\/\/[^\s]+$/i.test(x.url)))return alert('External URL ต้องถูกต้องและขึ้นต้นด้วย http:// หรือ https://');if(links.some(x=>x.linkType==='copy'&&!x.copyText&&!x.username))return alert('Copy Text ต้องมีข้อความหรือ Username / ID');const old=db.siteSettings.fanbases.find(x=>x.id===id),item={id:id||`fanbase_${Date.now()}`,displayName:f.displayName.value.trim(),username:f.username.value.trim(),description:f.description.value.trim(),accentColor:f.accentColor.value,active:f.active.value==='true',socialLinks:links,displayOrder:old?.displayOrder||db.siteSettings.fanbases.length+1};old?Object.assign(old,item):db.siteSettings.fanbases.push(item);save();closeModal();fanbaseAdmin();toast('บันทึก Fanbase แล้ว')}
+function removeFanbase(id){const x=db.siteSettings.fanbases.find(v=>v.id===id);if(!x||!confirm(`ลบ ${x.displayName} ใช่หรือไม่?`))return;db.siteSettings.fanbases=db.siteSettings.fanbases.filter(v=>v.id!==id);db.siteSettings.fanbases.forEach((v,i)=>v.displayOrder=i+1);save();fanbaseAdmin()}
+let draggedFanbase=null;function fanbaseDragStart(e){draggedFanbase=e.currentTarget}function fanbaseDragOver(e){e.preventDefault();if(!draggedFanbase||draggedFanbase===e.currentTarget)return;const b=e.currentTarget.getBoundingClientRect();e.currentTarget.parentNode.insertBefore(draggedFanbase,e.clientY>b.top+b.height/2?e.currentTarget.nextSibling:e.currentTarget)}function fanbaseDrop(e){e.preventDefault();[...document.querySelectorAll('.fanbase-admin-card')].forEach((c,i)=>{const x=db.siteSettings.fanbases.find(v=>v.id===c.dataset.id);if(x)x.displayOrder=i+1});draggedFanbase=null;save();fanbaseAdmin()}
+function injectFanbaseAdminMenu(){const nav=document.querySelector('.sidebar .side-nav');if(!nav||nav.querySelector('[data-fanbase-menu]'))return;const master=[...nav.querySelectorAll('button')].find(button=>button.textContent.includes('Master Data'));const button=document.createElement('button');button.dataset.icon='◎';button.dataset.fanbaseMenu='true';button.innerHTML='◎ &nbsp; Fanbase Socials';button.onclick=()=>{adminTab='fanbases';admin()};master?nav.insertBefore(button,master):nav.appendChild(button)}
+const adminBeforeFanbases=admin;admin=function(){if(adminAuthenticated&&adminTab==='fanbases')fanbaseAdmin();else{adminBeforeFanbases();if(adminAuthenticated)injectFanbaseAdminMenu()}};
+ensureFanbaseSocials();
+if(route==='artists'||route.startsWith('/'))router();
+
+/* Artist artwork is square from upload/crop through every public profile. */
+const openFormBeforeSquareArtistImage=openForm;
+openForm=function(type,id){
+  openFormBeforeSquareArtistImage(type,id);
+  if(type!=='artists')return;
+  const field=document.querySelector('#uploadPreview_image')?.closest('.image-upload-field');
+  field?.classList.add('artist-square-upload');
+  const help=field?.querySelector('.image-uploader p');
+  if(help)help.textContent='รองรับ JPG, PNG, WebP · รูปศิลปินจะถูกครอปเป็นสัดส่วน 1:1';
+};
+
+/* Simplified public headings and homepage card order controls. */
+const DEFAULT_MANAGED_PAGE_TITLES={artists:'THE AUAUSAVE UNIVERSE',schedule:'Event Calendar',presenters:'BRAND AMBASSADORS',awards:'AWARDS',projects:'OUR PROJECTS',auausave:'AUAUSAVE',auau:'AUAU',save:'SAVE',mhiipraew:'MHII PRAEW'};
+function ensureManagedPageTitles(){db.siteSettings||={};db.siteSettings.pageTitles={...DEFAULT_MANAGED_PAGE_TITLES,...(db.siteSettings.pageTitles||{})};return db.siteSettings.pageTitles}
+function moveHomepageArtistCard(artistId,direction){ensureHomepageArtistCards();const list=db.siteSettings.homeArtistOrder,index=list.indexOf(artistId),target=index+direction;if(index<0||target<0||target>=list.length)return;[list[index],list[target]]=[list[target],list[index]];save();pageContentAdmin();toast('บันทึกลำดับการ์ดศิลปินแล้ว')}
+function moveHomepageScheduleCard(artistId,direction){ensureHomepageFrontDisplaySettings();const list=db.siteSettings.homeScheduleOrder,index=list.indexOf(artistId),target=index+direction;if(index<0||target<0||target>=list.length)return;[list[index],list[target]]=[list[target],list[index]];save();pageContentAdmin();toast('บันทึกลำดับการ์ดตารางงานแล้ว')}
+renderHomepageArtistOrderEditor=function(){
+  const artists=homepageOrderedArtists();
+  return `<section class="panel homepage-artist-order-editor"><div class="panel-head"><div><small>ARTIST CARDS PREVIEW</small><h2>จัดลำดับการ์ดศิลปิน</h2><p class="master-note">ลากการ์ด หรือใช้ปุ่มขึ้น–ลง เพื่อกำหนดลำดับบนหน้าแรก ข้อมูลรูป ชื่อ รายละเอียด และลิงก์ดึงจาก Artist Profile โดยอัตโนมัติ</p></div></div><div class="home-artist-sort-grid">${artists.map((artist,index)=>`<article draggable="true" ondragstart="homeArtistDragStart(event,'${artist.id}')" ondragover="event.preventDefault()" ondrop="homeArtistDrop(event,'${artist.id}')"><div class="home-artist-sort-order">↕ ${String(index+1).padStart(2,'0')}</div><div class="home-artist-sort-thumb" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="">`:`<span>${escapePageText(artist.initial||artist.name.slice(0,2))}</span>`}</div><div><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div><div class="card-order-buttons"><button type="button" aria-label="เลื่อนขึ้น" onclick="moveHomepageArtistCard('${artist.id}',-1)" ${index===0?'disabled':''}>↑</button><button type="button" aria-label="เลื่อนลง" onclick="moveHomepageArtistCard('${artist.id}',1)" ${index===artists.length-1?'disabled':''}>↓</button></div></article>`).join('')}</div></section>`;
+};
+renderHomepageArtistLiveEditor=function(){return''};
+renderHomepageScheduleOrderEditor=function(){
+  const artists=homepageScheduleArtists();
+  return `<section class="panel homepage-schedule-order-editor"><div class="panel-head"><div><small>SCHEDULE CARD ORDER</small><h2>จัดลำดับกลุ่มตารางงาน</h2><p class="master-note">ลากการ์ด หรือใช้ปุ่มขึ้น–ลง เพื่อกำหนดลำดับบนหน้าแรก ชื่อและรายละเอียดดึงจาก Artist Profile โดยอัตโนมัติ</p></div></div><div class="home-artist-sort-grid home-schedule-sort-grid">${artists.map((artist,index)=>`<article draggable="true" ondragstart="homeScheduleDragStart(event,'${artist.id}')" ondragover="event.preventDefault()" ondrop="homeScheduleDrop(event,'${artist.id}')"><div class="home-artist-sort-order">↕ ${String(index+1).padStart(2,'0')}</div><div class="home-schedule-sort-thumb ${artistScheduleCardClass(artist.id,index)}" style="background:${artistDisplayColor(artist.id,index)};color:#fff"><b>${escapePageText(artist.name)}</b></div><div><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div><div class="card-order-buttons"><button type="button" aria-label="เลื่อนขึ้น" onclick="moveHomepageScheduleCard('${artist.id}',-1)" ${index===0?'disabled':''}>↑</button><button type="button" aria-label="เลื่อนลง" onclick="moveHomepageScheduleCard('${artist.id}',1)" ${index===artists.length-1?'disabled':''}>↓</button></div></article>`).join('')}</div></section>`;
+};
+homeScheduleSection=function(){
+  ensureHomepageFrontDisplaySettings();
+  const now=new Date(),monthKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,monthly=db.events.filter(event=>event.date.startsWith(monthKey)),title=db.siteSettings.homeSections.find(section=>section.id==='schedule')?.title||'This Month Schedule';
+  const cards=homepageScheduleArtists().map((artist,index)=>`<article class="schedule-card ${artistScheduleCardClass(artist.id,index)}"><div class="schedule-card-head" style="background:${artistDisplayColor(artist.id,index)};color:#fff"><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div>${compactSchedule(monthly.filter(event=>itemMatchesArtist(event,artist.id)))}</article>`).join('');
+  return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><h2>${escapePageText(title)}</h2></div><a class="btn outline" href="#schedule">View calendar ➚</a></div><div class="schedule-columns dynamic-schedule-columns">${cards}</div></div></section>`;
+};
+artistCards=function(){
+  const cards=homepageOrderedArtists();
+  return `<div class="artists homepage-artist-grid">${cards.map(artist=>`<article class="artist-card" onclick="location.hash='/${artistPublicSlug(artist.id)}'"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial||artist.name.slice(0,2))}</span>`}</div><div class="artist-meta"><span class="arrow">➚</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div></article>`).join('')}</div>`;
+};
+function renderManagedPageTitleEditor(){
+  const titles=ensureManagedPageTitles(),labels={artists:'Artists',schedule:'Schedule',presenters:'Presenters',awards:'Awards',projects:'Projects',auausave:'AUAUSAVE',auau:'AUAU',save:'SAVE',mhiipraew:'Mhii Praew'};
+  return `<section class="panel managed-page-title-editor"><div class="panel-head"><div><small>PAGE CONTENT</small><h2>หัวข้อหลักของแต่ละหน้า</h2><p class="master-note">รองรับภาษาไทยและอังกฤษ ระบบจะตัดช่องว่างหัวท้ายก่อนบันทึก และใช้ชื่อปัจจุบันเมื่อเว้นว่าง</p></div></div><form onsubmit="saveManagedPageTitles(event)"><div class="form-grid">${Object.entries(labels).map(([key,label])=>`<div class="field"><label>${label}</label><input name="${key}" value="${escapePageText(titles[key])}" placeholder="${escapePageText(DEFAULT_MANAGED_PAGE_TITLES[key])}"><small class="managed-title-preview">${escapePageText(titles[key])}</small></div>`).join('')}</div><div class="form-actions"><button class="btn" type="submit">บันทึกหัวข้อทั้งหมด</button></div></form></section>`;
+}
+function saveManagedPageTitles(event){event.preventDefault();const data=new FormData(event.currentTarget),titles=ensureManagedPageTitles();Object.keys(DEFAULT_MANAGED_PAGE_TITLES).forEach(key=>{titles[key]=String(data.get(key)||'').trim()||DEFAULT_MANAGED_PAGE_TITLES[key]});save();pageContentAdmin();toast('บันทึกหัวข้อหลักแล้ว')}
+const pageContentAdminBeforeManagedTitles=pageContentAdmin;
+pageContentAdmin=function(){pageContentAdminBeforeManagedTitles();if(!adminAuthenticated||adminTab!=='pagecontent')return;document.querySelector('.admin-main')?.insertAdjacentHTML('beforeend',renderManagedPageTitleEditor());document.querySelectorAll('.managed-page-title-editor input').forEach(input=>input.addEventListener('input',()=>{input.parentElement.querySelector('.managed-title-preview').textContent=input.value.trim()||input.placeholder}))};
+const openPageTextEditorBeforeNoEyebrow=openPageTextEditor;
+openPageTextEditor=function(page,language){openPageTextEditorBeforeNoEyebrow(page,language);document.querySelector('#modal [name="eyebrow"]')?.closest('.field')?.remove()};
+const editHomeSectionBeforeNoEyebrow=editHomeSection;
+editHomeSection=function(id){editHomeSectionBeforeNoEyebrow(id);document.querySelector('#modal [name="eyebrow"]')?.closest('.field')?.remove()};
+function applySimplifiedPublicContent(){
+  ensureManagedPageTitles();
+  document.querySelectorAll('.artist-card .tag,.schedule-card-head>span,.page-hero .eyebrow,.hero .hero-grid .eyebrow,.section-head .eyebrow,.filmography-head>small,.couple-profile .eyebrow,.artist-profile-copy>.eyebrow,.project-detail-hero>.container>.eyebrow').forEach(element=>element.remove());
+  const pageKey=route.startsWith('/')?({AT01:'auausave',AT02:'auau',AT03:'save',AT04:'mhiipraew'}[artistIdFromPublicRoute(route)]):route,title=db.siteSettings.pageTitles[pageKey],heading=document.querySelector('.page-hero h1,.project-hub-hero h1');
+  if(title&&heading)heading.textContent=title;
+  if(route.startsWith('/')){const profileTitle=document.querySelector('.couple-profile h1,.artist-profile-copy h1,.profile-head h1');if(title&&profileTitle)profileTitle.textContent=title}
+}
+const routerBeforeSimplifiedContent=router;
+router=function(){routerBeforeSimplifiedContent();applySimplifiedPublicContent()};
+ensureManagedPageTitles();
+router();
