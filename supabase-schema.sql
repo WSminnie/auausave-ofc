@@ -62,6 +62,16 @@ insert into public.award_sections(id,name,slug,parent_id,display_order,active) v
  ('award-section-save','SAVE','save',null,3,true)
 on conflict (id) do nothing;
 
+create table if not exists public.award_section_assignments (
+  id text primary key,
+  award_id text not null references public.awards(id) on delete cascade,
+  main_section_id text not null references public.award_sections(id) on delete cascade,
+  subsection_id text references public.award_sections(id) on delete cascade,
+  display_order integer not null default 0,
+  created_at timestamptz default now(),
+  unique (award_id, main_section_id, subsection_id)
+);
+
 insert into public.award_sections(id,name,slug,parent_id,display_order,active) values
  ('award-section-solo-artist','SOLO ARTIST','solo-artist','award-section-auau',1,true),
  ('award-section-dexx','DEXX','dexx','award-section-auau',2,true)
@@ -74,6 +84,13 @@ update public.awards set main_section_id = case
   when artist_id in ('AT03','save') then 'award-section-save'
   else main_section_id end
 where main_section_id is null;
+
+insert into public.award_section_assignments(id,award_id,main_section_id,subsection_id,display_order)
+select concat('asa-',md5(concat_ws('|',id,main_section_id,coalesce(subsection_id,'')))),
+       id,main_section_id,subsection_id,display_order
+from public.awards
+where main_section_id is not null
+on conflict do nothing;
 
 create table if not exists public.presenters (
   id text primary key, artist_id text references public.artists(id) on delete cascade,
@@ -110,12 +127,13 @@ alter table public.series enable row level security;
 alter table public.events enable row level security;
 alter table public.awards enable row level security;
 alter table public.award_sections enable row level security;
+alter table public.award_section_assignments enable row level security;
 alter table public.presenters enable row level security;
 alter table public.videos enable row level security;
 alter table public.site_settings enable row level security;
 
 do $$ declare t text; begin
-  foreach t in array array['artists','event_types','series','events','awards','award_sections','presenters','videos','site_settings'] loop
+  foreach t in array array['artists','event_types','series','events','awards','award_sections','award_section_assignments','presenters','videos','site_settings'] loop
     execute format('drop policy if exists "Public read" on public.%I',t);
     execute format('create policy "Public read" on public.%I for select using (true)',t);
     execute format('drop policy if exists "Authenticated insert" on public.%I',t);

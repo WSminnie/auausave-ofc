@@ -12,7 +12,7 @@
     },
   });
 
-  const tables = ['artists', 'events', 'award_sections', 'awards', 'presenters', 'videos'];
+  const tables = ['artists', 'events', 'award_sections', 'awards', 'award_section_assignments', 'presenters', 'videos'];
   const knownIds = {};
   const storageTimestamp = () => {
     const now = new Date(), pad = (value,size=2) => String(value).padStart(size,'0');
@@ -90,6 +90,7 @@
     events: r => ({ id:r.id,artistId:r.artist_id,date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'',poster:r.poster_url||'' }),
     award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parentId:r.parent_id||'',displayOrder:Number(r.display_order)||0,active:r.active!==false }),
     awards: r => ({ id:r.id,artistId:r.artist_id,year:String(r.award_year||''),day:String(r.award_day||''),month:String(r.award_month||''),title:r.title,org:r.organization,source:r.source_url||'',image:r.image_url||'',mainSectionId:r.main_section_id||'',subsectionId:r.subsection_id||'',displayOrder:Number(r.display_order)||0 }),
+    award_section_assignments: r => ({ id:r.id,awardId:r.award_id,mainSectionId:r.main_section_id,subsectionId:r.subsection_id||'',displayOrder:Number(r.display_order)||0 }),
     presenters: r => ({ id:r.id,artistId:r.artist_id,brand:r.brand,role:r.role,year:String(r.presenter_year),color:r.color,url:r.source_url||'',logo:r.logo_url||'',announcementImage:r.announcement_image_url||'',announcementVideo:r.announcement_video_url||'',mediaFit:r.media_fit||'contain',mediaPosition:r.media_position||'center' }),
     videos: r => ({ id:r.id,artistId:r.artist_id,title:r.title,views:r.views_label,url:r.youtube_url,embedUrl:r.embed_url||'',category:r.category,featured:r.featured?'yes':'no',color:r.color,thumbnail:r.thumbnail_url||'' })
   };
@@ -98,6 +99,7 @@
     events: r => ({ id:r.id,artist_id:r.artistId,event_date:r.date,title:r.title,place:r.place,event_type:r.type,series_id:r.seriesId||null,source_url:r.source||null,poster_url:r.poster||null }),
     award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parent_id:r.parentId||null,display_order:Number(r.displayOrder)||0,active:r.active!==false }),
     awards: r => ({ id:r.id,artist_id:r.artistId,award_year:Number(r.year)||null,award_day:Number(r.day)||null,award_month:Number(r.month)||null,title:r.title,organization:r.org,source_url:r.source||null,image_url:r.image||null,main_section_id:r.mainSectionId||null,subsection_id:r.subsectionId||null,display_order:Number(r.displayOrder)||0 }),
+    award_section_assignments: r => ({ id:r.id,award_id:r.awardId,main_section_id:r.mainSectionId,subsection_id:r.subsectionId||null,display_order:Number(r.displayOrder)||0 }),
     presenters: r => ({ id:r.id,artist_id:r.artistId,brand:r.brand,role:r.role,presenter_year:Number(r.year)||null,color:r.color,source_url:r.url||null,logo_url:r.logo||null,announcement_image_url:r.announcementImage||null,announcement_video_url:r.announcementVideo||null,media_fit:r.mediaFit||'contain',media_position:r.mediaPosition||'center' }),
     videos: r => ({ id:r.id,artist_id:r.artistId,title:r.title,views_label:r.views,youtube_url:r.url,embed_url:r.embedUrl||null,category:r.category||'variety',featured:r.featured==='yes',color:r.color,thumbnail_url:r.thumbnail||null })
   };
@@ -108,7 +110,7 @@
       const { data, error } = await client.from(table).select('*');
       // Public pages must keep loading legacy awards while the additive
       // award_sections migration is being rolled out.
-      if (error && table === 'award_sections') {
+      if (error && (table === 'award_sections' || table === 'award_section_assignments')) {
         result[table] = [];
         knownIds[table] = new Set();
         continue;
@@ -117,6 +119,9 @@
       result[table] = data.map(mapFromDb[table]);
       knownIds[table] = new Set(data.map(row => row.id));
     }
+    (result.awards||[]).forEach(award=>{
+      award.sectionAssignments=(result.award_section_assignments||[]).filter(item=>item.awardId===award.id).map(item=>({mainSectionId:item.mainSectionId,subsectionId:item.subsectionId||'',displayOrder:item.displayOrder||0}));
+    });
     const [{data:types,error:typeError},{data:series,error:seriesError}] = await Promise.all([
       client.from('event_types').select('*').order('sort_order'),
       client.from('series').select('*').order('name')
@@ -132,6 +137,10 @@
   }
 
   async function save(database) {
+    database.award_section_assignments=(database.awards||[]).flatMap(award=>(award.sectionAssignments||[]).map((assignment,index)=>{
+      const safe=value=>String(value||'none').replace(/[^a-zA-Z0-9_-]/g,'_');
+      return {id:`asa_${safe(award.id)}_${safe(assignment.mainSectionId)}_${safe(assignment.subsectionId)}`,awardId:award.id,mainSectionId:assignment.mainSectionId,subsectionId:assignment.subsectionId||'',displayOrder:Number(assignment.displayOrder)||index+1};
+    }));
     for (const table of tables) {
       const mediaFields = {artists:['image'],events:['poster'],awards:['image'],presenters:['logo','announcementImage'],videos:['thumbnail']}[table] || [];
       const { data:existing, error:readError } = await client.from(table).select('*');
