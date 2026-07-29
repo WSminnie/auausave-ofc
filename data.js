@@ -161,7 +161,7 @@ window.AUAUSAVE_DATA = {
     videos: { th:{eyebrow:'ดู · ฟัง · จดจำ',title:'YouTube',description:'วิดีโอหลักและคลังรายการของ AUAUSAVE HOUSE'}, en:{eyebrow:'WATCH · LISTEN · REMEMBER',title:'YouTube',description:'Featured videos and the AUAUSAVE HOUSE video archive.'} }
   },
   DEFAULT_HOME_CARDS: {
-    couplePath:{label:'การ์ดพาสคู่',eyebrow:'01 · COUPLE PATH',title:'AuauSave',description:'#AuauSave · Couple · Awards · Our moments',cta:'Explore couple path ↗'},
+    couplePath:{label:'การ์ดพาสคู่',eyebrow:'01 · COUPLE PATH',title:'AuauSave',description:'#AuauSave · Couple · Awards · Our moments',cta:'Explore couple path '},
     soloPath:{label:'การ์ดพาสเดี่ยว',eyebrow:'02 · SOLO PATH',title:'Solo journeys',description:'Follow each artist’s solo events and awards separately',cta:''},
     scheduleDuo:{label:'การ์ดตารางงานคู่',eyebrow:'COUPLE PATH',title:'Couple Schedule',description:'#AuauSave',cta:''},
     scheduleAuau:{label:'การ์ดตารางงาน AUAU',eyebrow:'SOLO PATH',title:'Schedule AUAU',description:'Auau · DEXX',cta:''},
@@ -169,7 +169,7 @@ window.AUAUSAVE_DATA = {
   },
   DEFAULT_YOUTUBE_CATEGORIES: [
     {id:'auau', title:'AUAU', description:'Solo work and behind-the-scenes moments from Auau', linkLabel:'', linkUrl:''},
-    {id:'dexx', title:'AUAU · DEXX', description:'Auau’s music and performances as a member of DEXX', linkLabel:'DEXX Official TH ↗', linkUrl:'https://www.youtube.com/@DEXXOfficialTH'},
+    {id:'dexx', title:'AUAU · DEXX', description:'Auau’s music and performances as a member of DEXX', linkLabel:'DEXX Official TH ', linkUrl:'https://www.youtube.com/@DEXXOfficialTH'},
     {id:'variety', title:'AUAUSAVE', description:'Series, variety shows and interviews', linkLabel:'', linkUrl:''},
   ],
 };
