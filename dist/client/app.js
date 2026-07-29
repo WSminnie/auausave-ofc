@@ -2275,7 +2275,6 @@ function router() {
   )
     listing(route);
   else if (route.startsWith("artist/")) profile(artistIdFromPublicRoute(route.slice(7)));
-  else if (route === "/projects") projectHubPage();
   else if (route.startsWith("/")) profile(artistIdFromPublicRoute(route));
   else if (route === "projects") projectHubPage();
   else if (route.startsWith("project/")) projectDetailPage(route.slice(8));
