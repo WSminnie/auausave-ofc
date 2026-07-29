@@ -4314,7 +4314,11 @@ function ensureAwardSections(){
     if(!hasAssignmentData){
       award.sectionAssignments=award.mainSectionId?[{mainSectionId:award.mainSectionId,subsectionId:award.subsectionId||'',displayOrder:Number(award.displayOrder)||index+1}]:[];
     }
-    award.sectionAssignments=award.sectionAssignments.filter((assignment,assignmentIndex,self)=>assignment?.mainSectionId&&self.findIndex(item=>item.mainSectionId===assignment.mainSectionId&&(item.subsectionId||'')===(assignment.subsectionId||''))===assignmentIndex).map((assignment,assignmentIndex)=>({mainSectionId:assignment.mainSectionId,subsectionId:assignment.subsectionId||'',displayOrder:Number(assignment.displayOrder)||assignmentIndex+1}));
+    award.sectionAssignments=award.sectionAssignments.filter((assignment,assignmentIndex,self)=>assignment?.mainSectionId&&self.findIndex(item=>item.mainSectionId===assignment.mainSectionId&&(item.subsectionId||'')===(assignment.subsectionId||''))===assignmentIndex);
+    award.sectionAssignments.forEach((assignment,assignmentIndex)=>{
+      assignment.subsectionId=assignment.subsectionId||'';
+      assignment.displayOrder=Number(assignment.displayOrder)||assignmentIndex+1;
+    });
     award.displayOrder=Number(award.displayOrder)||index+1;
   });
   if(db.siteSettings)db.siteSettings.awardSectionMigrationVersion=2;
@@ -4441,7 +4445,13 @@ ensureAwardSections();
 let awardAdminView='manage';
 const awardAdminExpandedSections=new Set(['award-section-auausave']);
 const awardAdminExpandedYears=new Set();
+const reorderingAwardIds=new Set();
+let isAddingAwards=false;
 let draggedAwardSectionId='',draggedAwardId='',draggedAwardPlacementKey='';
+function persistAwardLocalState(){
+  try{localStorage.setItem("auausave-house-db-v9",JSON.stringify(db))}
+  catch(error){console.warn('Award local cache:',error)}
+}
 function toggleAwardAdminFolder(key,kind='section'){
   const set=kind==='year'?awardAdminExpandedYears:awardAdminExpandedSections;
   set.has(key)?set.delete(key):set.add(key);admin();
@@ -4461,7 +4471,7 @@ function awardAdminAwardRows(mainId,subsectionId){
   return groups.map(([year,items],groupIndex)=>{
     const groupKey=`${mainId}|${subsectionId||'main'}|${year}`,open=awardAdminExpandedYears.has(groupKey)||groupIndex===0;
     if(groupIndex===0)awardAdminExpandedYears.add(groupKey);
-    return `<section class="award-admin-year ${open?'is-open':''}"><button type="button" class="award-admin-year-head" onclick="toggleAwardAdminFolder('${groupKey}','year')"><span class="folder-chevron">${open?'▾':'▸'}</span><strong>ปี ${escapePageText(year)}</strong><small>${items.length} รางวัล</small></button>${open?`<div class="award-admin-records">${items.map((item,index)=>{const placement=awardPlacement(item,mainId,subsectionId||'');return `<article class="award-admin-record" draggable="true" ondragstart="awardAdminAwardDragStart(event,'${item.id}','${mainId}','${subsectionId||''}','${year}')" ondragover="event.preventDefault()" ondrop="awardAdminAwardDrop(event,'${item.id}','${mainId}','${subsectionId||''}','${year}')"><span class="drag-handle" title="ลากจัดลำดับ">⋮⋮</span><div class="award-admin-thumb">${awardImage(item)?`<img src="${escapePageText(awardImage(item))}" alt="">`:'<span>◇</span>'}</div><div class="award-admin-record-copy"><strong>${escapePageText(item.title||'')}</strong><small>${escapePageText(item.org||'—')}</small></div><time>${escapePageText(awardDisplayDate(item))}</time><span class="award-display-order">ลำดับ ${Number(placement?.displayOrder)||0}</span><div class="actions"><button class="icon-btn" onclick="moveAwardInFolder('${item.id}','${mainId}','${subsectionId||''}','${year}',-1)" ${index===0?'disabled':''}>↑</button><button class="icon-btn" onclick="moveAwardInFolder('${item.id}','${mainId}','${subsectionId||''}','${year}',1)" ${index===items.length-1?'disabled':''}>↓</button><button class="icon-btn" onclick="openForm('awards','${item.id}')">✎</button><button class="icon-btn" onclick="openAwardAssignments('${item.id}')">Sections</button><button class="icon-btn award-remove-placement" onclick="removeAwardFromSection('${item.id}','${mainId}','${subsectionId||''}')">นำออกจาก Section</button></div></article>`}).join('')}</div>`:''}</section>`;
+    return `<section class="award-admin-year ${open?'is-open':''}"><button type="button" class="award-admin-year-head" onclick="toggleAwardAdminFolder('${groupKey}','year')"><span class="folder-chevron">${open?'▾':'▸'}</span><strong>ปี ${escapePageText(year)}</strong><small>${items.length} รางวัล</small></button>${open?`<div class="award-admin-records">${items.map((item,index)=>{const placement=awardPlacement(item,mainId,subsectionId||''),busy=reorderingAwardIds.has(item.id);return `<article class="award-admin-record ${busy?'is-reordering':''}" draggable="${busy?'false':'true'}" ondragstart="awardAdminAwardDragStart(event,'${item.id}','${mainId}','${subsectionId||''}','${year}')" ondragover="event.preventDefault()" ondrop="awardAdminAwardDrop(event,'${item.id}','${mainId}','${subsectionId||''}','${year}')"><span class="drag-handle" title="ลากจัดลำดับ">⋮⋮</span><div class="award-admin-thumb">${awardImage(item)?`<img src="${escapePageText(awardImage(item))}" alt="">`:'<span>◇</span>'}</div><div class="award-admin-record-copy"><strong>${escapePageText(item.title||'')}</strong><small>${escapePageText(item.org||'—')}</small></div><time>${escapePageText(awardDisplayDate(item))}</time><span class="award-display-order">${busy?'กำลังบันทึก...':`ลำดับ ${Number(placement?.displayOrder)||0}`}</span><div class="actions"><button class="icon-btn" onclick="moveAwardInFolder('${item.id}','${mainId}','${subsectionId||''}','${year}',-1)" ${busy||index===0?'disabled':''}>↑</button><button class="icon-btn" onclick="moveAwardInFolder('${item.id}','${mainId}','${subsectionId||''}','${year}',1)" ${busy||index===items.length-1?'disabled':''}>↓</button><button class="icon-btn" onclick="openForm('awards','${item.id}')">✎</button><button class="icon-btn" onclick="openAwardAssignments('${item.id}')">Sections</button><button class="icon-btn award-remove-placement" onclick="removeAwardFromSection('${item.id}','${mainId}','${subsectionId||''}')">นำออกจาก Section</button></div></article>`}).join('')}</div>`:''}</section>`;
   }).join('')||'<div class="award-admin-empty">ยังไม่มีรางวัลใน Section นี้</div>';
 }
 function awardAdminSubsection(main,sub,index,total){
@@ -4481,12 +4491,32 @@ function openAwardPickerForSection(mainId,subsectionId=''){
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal award-picker-modal"><div class="modal-head"><div><small>SELECT FROM ALL AWARDS</small><h2>เลือกรางวัลเข้า ${escapePageText(sub?.name||main?.name||'Section')}</h2><p>เลือกจากข้อมูลที่มีอยู่ ระบบจะไม่สร้างรางวัลใหม่หรือข้อมูลซ้ำ</p></div><button class="close" onclick="closeModal()">×</button></div><form onsubmit="insertAwardsIntoSection(event,'${mainId}','${subsectionId}')"><div class="award-picker-list">${candidates.map(item=>`<label><input type="checkbox" name="awardId" value="${item.id}"><div class="award-admin-thumb">${awardImage(item)?`<img src="${escapePageText(awardImage(item))}" alt="">`:'<span>◇</span>'}</div><span><strong>${escapePageText(item.title||'')}</strong><small>${escapePageText(item.org||'—')} · ${escapePageText(awardDisplayDate(item))}</small></span></label>`).join('')||'<div class="award-admin-empty">รางวัลทั้งหมดถูกเลือกเข้า Section นี้แล้ว</div>'}</div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit" ${candidates.length?'':'disabled'}>เพิ่มรายการที่เลือกเข้า Section</button></div></form></div></div>`);
 }
 async function insertAwardsIntoSection(event,mainId,subsectionId=''){
-  event.preventDefault();const ids=new FormData(event.currentTarget).getAll('awardId');if(!ids.length){toast('กรุณาเลือกรางวัลอย่างน้อย 1 รายการ');return}
-  const startOrder=awardAdminItems(mainId,subsectionId||null).length,changed=[];
-  ids.forEach((id,index)=>{const award=db.awards.find(item=>item.id===id);if(!award||awardHasPlacement(award,mainId,subsectionId))return;const assignment={mainSectionId:mainId,subsectionId:subsectionId||'',displayOrder:startOrder+index+1};award.sectionAssignments.push(assignment);changed.push({award,assignment})});
-  save(false);
-  try{if(window.auausaveDB?.upsertAwardAssignments)await Promise.all(changed.map(item=>window.auausaveDB.upsertAwardAssignments(item.award.id,[item.assignment])))}catch(error){changed.forEach(({award,assignment})=>award.sectionAssignments=award.sectionAssignments.filter(item=>item!==assignment));save(false);toast(`เพิ่มเข้า Section ในฐานข้อมูลไม่สำเร็จ: ${error.message}`);return}
-  await syncDatabaseInBackground();closeModal();admin();toast(`เลือกรางวัล ${changed.length} รายการเข้า Section แล้ว`);
+  event.preventDefault();
+  if(isAddingAwards)return;
+  const form=event.currentTarget,ids=new FormData(form).getAll('awardId');
+  if(!ids.length){toast('กรุณาเลือกรางวัลอย่างน้อย 1 รายการ');return}
+  const startOrder=Math.max(0,...awardAdminItems(mainId,subsectionId||null).map(item=>Number(awardPlacement(item,mainId,subsectionId)?.displayOrder)||0));
+  const pending=ids.map((id,index)=>{const award=db.awards.find(item=>item.id===id);if(!award||awardHasPlacement(award,mainId,subsectionId))return null;return {award,assignment:{awardId:id,mainSectionId:mainId,subsectionId:subsectionId||'',displayOrder:startOrder+index+1}}}).filter(Boolean);
+  if(!pending.length){toast('รายการที่เลือกอยู่ใน Section นี้แล้ว');return}
+  const submit=form.querySelector('button[type="submit"]'),checkboxes=[...form.querySelectorAll('input[name="awardId"]')],originalText=submit?.textContent||'เพิ่มรายการที่เลือกเข้า Section';
+  isAddingAwards=true;if(submit){submit.disabled=true;submit.textContent='กำลังเพิ่มรายการ...'}checkboxes.forEach(input=>input.disabled=true);
+  try{
+    const saved=[];
+    for(let index=0;index<pending.length;index+=100){
+      const batch=pending.slice(index,index+100).map(item=>item.assignment);
+      const rows=window.auausaveDB?.upsertAwardSectionAssignments?await window.auausaveDB.upsertAwardSectionAssignments(batch):batch;
+      saved.push(...rows);
+    }
+    const savedByAward=new Map(saved.map(item=>[item.awardId,item]));
+    pending.forEach(({award,assignment})=>{const stored=savedByAward.get(assignment.awardId)||assignment;award.sectionAssignments.push({id:stored.id,mainSectionId:assignment.mainSectionId,subsectionId:assignment.subsectionId,displayOrder:Number(stored.displayOrder)||assignment.displayOrder})});
+    persistAwardLocalState();closeModal();admin();toast(`เพิ่ม ${pending.length} รายการเข้า Section แล้ว`);
+  }catch(error){
+    console.error('Failed to add awards to section:',error);
+    toast('ไม่สามารถเพิ่มรายการเข้า Section ได้');
+  }finally{
+    isAddingAwards=false;
+    if(document.body.contains(form)){if(submit){submit.disabled=false;submit.textContent=originalText}checkboxes.forEach(input=>input.disabled=false)}
+  }
 }
 async function removeAwardFromSection(awardId,mainId,subsectionId=''){
   const award=db.awards.find(item=>item.id===awardId);if(!award)return;
@@ -4518,20 +4548,44 @@ async function saveAwardAssignments(event,awardId){
   const synced=await syncDatabaseInBackground();if(synced===false&&!removed.length){award.sectionAssignments=previousAssignments;award.mainSectionId=previousMain;award.subsectionId=previousSub;save(false);toast('ฐานข้อมูลยังไม่ยืนยันการปรับ Section');return}
   closeModal();admin();toast(`บันทึก ${award.sectionAssignments.length} Section โดยไม่สร้างรางวัลซ้ำแล้ว`);
 }
-function moveAwardInFolder(id,mainId,subsectionId,year,direction){
-  const item=db.awards.find(entry=>entry.id===id);if(!item)return;
-  const siblings=awardAdminItems(mainId,subsectionId||null).filter(entry=>String(entry.year||'ไม่ระบุปี')===String(year));
-  siblings.forEach((entry,index)=>awardPlacement(entry,mainId,subsectionId).displayOrder=index+1);
-  const index=siblings.findIndex(entry=>entry.id===id),target=index+direction;if(target<0||target>=siblings.length)return;
-  const first=awardPlacement(siblings[index],mainId,subsectionId),second=awardPlacement(siblings[target],mainId,subsectionId);
-  [first.displayOrder,second.displayOrder]=[second.displayOrder,first.displayOrder];save();admin();
+async function persistAwardOrderGroup(mainId,subsectionId,year,orderedItems){
+  const group=orderedItems.filter(item=>awardHasPlacement(item,mainId,subsectionId)&&String(item.year||'ไม่ระบุปี')===String(year));
+  const snapshots=group.map(item=>({item,placement:awardPlacement(item,mainId,subsectionId),displayOrder:Number(awardPlacement(item,mainId,subsectionId)?.displayOrder)||0}));
+  group.forEach((item,index)=>{awardPlacement(item,mainId,subsectionId).displayOrder=index+1});
+  const changed=snapshots.filter(({placement,displayOrder})=>placement&&placement.displayOrder!==displayOrder);
+  if(!changed.length){admin();return}
+  const lockedItems=group.map(item=>item.id);
+  lockedItems.forEach(id=>reorderingAwardIds.add(id));persistAwardLocalState();admin();
+  try{
+    if(!window.auausaveDB?.upsertAwardSectionAssignments)throw new Error('Targeted assignment API is unavailable');
+    const rows=await window.auausaveDB.upsertAwardSectionAssignments(changed.map(({item,placement})=>({id:placement.id,awardId:item.id,mainSectionId:mainId,subsectionId:subsectionId||'',displayOrder:placement.displayOrder})));
+    const byAward=new Map(rows.map(row=>[row.awardId,row]));
+    changed.forEach(({item,placement})=>{const stored=byAward.get(item.id);if(stored){placement.id=stored.id;placement.displayOrder=stored.displayOrder}});
+    persistAwardLocalState();
+  }catch(error){
+    snapshots.forEach(({placement,displayOrder})=>{if(placement)placement.displayOrder=displayOrder});
+    persistAwardLocalState();
+    console.error('Failed to reorder award assignments:',{mainSectionId:mainId,subsectionId,year,error});
+    toast('ไม่สามารถบันทึกลำดับได้');
+  }finally{
+    lockedItems.forEach(id=>reorderingAwardIds.delete(id));admin();
+  }
 }
-function awardAdminAwardDragStart(event,id,mainId,subsectionId,year){event.stopPropagation();draggedAwardId=id;draggedAwardPlacementKey=`${mainId}|${subsectionId}|${year}`;event.dataTransfer.effectAllowed='move'}
-function awardAdminAwardDrop(event,targetId,mainId,subsectionId,year){
+async function moveAwardInFolder(id,mainId,subsectionId,year,direction){
+  if(reorderingAwardIds.has(id))return;
+  const siblings=awardAdminItems(mainId,subsectionId||null).filter(entry=>String(entry.year||'ไม่ระบุปี')===String(year));
+  const index=siblings.findIndex(entry=>entry.id===id),target=index+direction;if(index<0||target<0||target>=siblings.length)return;
+  if(reorderingAwardIds.has(siblings[target].id))return;
+  siblings.splice(target,0,siblings.splice(index,1)[0]);
+  await persistAwardOrderGroup(mainId,subsectionId||'',year,siblings);
+}
+function awardAdminAwardDragStart(event,id,mainId,subsectionId,year){event.stopPropagation();if(reorderingAwardIds.has(id)){event.preventDefault();return}draggedAwardId=id;draggedAwardPlacementKey=`${mainId}|${subsectionId}|${year}`;event.dataTransfer.effectAllowed='move'}
+async function awardAdminAwardDrop(event,targetId,mainId,subsectionId,year){
   event.preventDefault();event.stopPropagation();const source=db.awards.find(item=>item.id===draggedAwardId),target=db.awards.find(item=>item.id===targetId);draggedAwardId='';
-  const targetKey=`${mainId}|${subsectionId}|${year}`;if(!source||!target||draggedAwardPlacementKey!==targetKey){toast('ลากจัดลำดับได้เฉพาะ Section, Subsection และปีเดียวกัน');return}
+  const targetKey=`${mainId}|${subsectionId}|${year}`;if(!source||!target||draggedAwardPlacementKey!==targetKey||reorderingAwardIds.has(source.id)||reorderingAwardIds.has(target.id)){toast('ลากจัดลำดับได้เฉพาะ Section, Subsection และปีเดียวกัน');return}
   const siblings=awardAdminItems(mainId,subsectionId||null).filter(item=>String(item.year||'ไม่ระบุปี')===String(year)),from=siblings.findIndex(item=>item.id===source.id),to=siblings.findIndex(item=>item.id===target.id);
-  siblings.splice(to,0,siblings.splice(from,1)[0]);siblings.forEach((item,index)=>awardPlacement(item,mainId,subsectionId).displayOrder=index+1);save();admin();
+  if(from<0||to<0||from===to)return;
+  siblings.splice(to,0,siblings.splice(from,1)[0]);await persistAwardOrderGroup(mainId,subsectionId||'',year,siblings);
 }
 function awardAdminSectionDragStart(event,id){event.stopPropagation();draggedAwardSectionId=id;event.dataTransfer.effectAllowed='move'}
 function awardAdminSectionDrop(event,targetId){

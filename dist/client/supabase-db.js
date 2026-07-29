@@ -120,7 +120,7 @@
       knownIds[table] = new Set(data.map(row => row.id));
     }
     (result.awards||[]).forEach(award=>{
-      award.sectionAssignments=(result.award_section_assignments||[]).filter(item=>item.awardId===award.id).map(item=>({mainSectionId:item.mainSectionId,subsectionId:item.subsectionId||'',displayOrder:item.displayOrder||0}));
+      award.sectionAssignments=(result.award_section_assignments||[]).filter(item=>item.awardId===award.id).map(item=>({id:item.id,mainSectionId:item.mainSectionId,subsectionId:item.subsectionId||'',displayOrder:item.displayOrder||0}));
     });
     const [{data:types,error:typeError},{data:series,error:seriesError}] = await Promise.all([
       client.from('event_types').select('*').order('sort_order'),
@@ -219,6 +219,21 @@
     if(error)throw error;
     return true;
   }
+  async function upsertAwardSectionAssignments(assignments=[]){
+    if(!assignments.length)return [];
+    const safe=value=>String(value||'none').replace(/[^a-zA-Z0-9_-]/g,'_');
+    const rows=assignments.map((assignment,index)=>({
+      id:assignment.id||`asa_${safe(assignment.awardId)}_${safe(assignment.mainSectionId)}_${safe(assignment.subsectionId)}`,
+      award_id:assignment.awardId,
+      main_section_id:assignment.mainSectionId,
+      subsection_id:assignment.subsectionId||null,
+      display_order:Number(assignment.displayOrder)||index+1
+    }));
+    const {data,error}=await client.from('award_section_assignments').upsert(rows,{onConflict:'id'}).select();
+    if(error)throw error;
+    (data||[]).forEach(row=>knownIds.award_section_assignments.add(row.id));
+    return (data||[]).map(mapFromDb.award_section_assignments);
+  }
 
-  window.auausaveDB = { client, load, save, signIn, signOut, session, removeAwardAssignment, upsertAwardAssignments };
+  window.auausaveDB = { client, load, save, signIn, signOut, session, removeAwardAssignment, upsertAwardAssignments, upsertAwardSectionAssignments };
 })();

@@ -72,6 +72,13 @@ create table if not exists public.award_section_assignments (
   unique (award_id, main_section_id, subsection_id)
 );
 
+create index if not exists award_section_assignments_section_order_idx
+  on public.award_section_assignments(main_section_id, subsection_id, display_order);
+create index if not exists award_section_assignments_award_idx
+  on public.award_section_assignments(award_id);
+create index if not exists awards_year_order_idx
+  on public.awards(award_year, display_order);
+
 insert into public.award_sections(id,name,slug,parent_id,display_order,active) values
  ('award-section-solo-artist','SOLO ARTIST','solo-artist','award-section-auau',1,true),
  ('award-section-dexx','DEXX','dexx','award-section-auau',2,true)
