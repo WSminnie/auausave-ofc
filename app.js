@@ -140,6 +140,23 @@ db.siteSettings.homeSections ||= [
   {id:'presenters',label:'พรีเซนเตอร์',eyebrow:'Brand & Partnership',title:'Our Presenters',description:'',visible:true}
 ];
 const DEFAULT_HOME_SECTIONS = db.siteSettings.homeSections.map(section => ({...section}));
+function normalizeHomepageSections(sections){
+  const seen=new Set();
+  const normalized=(Array.isArray(sections)?sections:[]).filter(section=>{
+    const id=String(section?.id||'').trim();
+    if(!id||seen.has(id))return false;
+    section.id=id;
+    seen.add(id);
+    return true;
+  });
+  if(!seen.has('fanbaseSocials')){
+    const item={id:'fanbaseSocials',label:'Fanbase Socials',title:'Fanbase Socials',description:'',visible:true};
+    const timelineIndex=normalized.findIndex(section=>section.id==='timeline');
+    normalized.splice(timelineIndex>=0?timelineIndex+1:normalized.length,0,item);
+  }
+  normalized.forEach((section,index)=>{section.displayOrder=index+1});
+  return normalized;
+}
 function ensureHomePageSettings() {
   db.siteSettings ||= { heroImage: "", heroFit: "cover", heroPosition: "center" };
   db.siteSettings.personalProfiles ||= {};
@@ -168,6 +185,7 @@ function ensureHomePageSettings() {
     ...DEFAULT_HOME_SECTIONS.filter(section => !known.has(section.id)).map(section => ({...section})),
   ].filter(section => !['paths','youtube'].includes(section.id));
   if (!db.siteSettings.homeSections.some(section=>section.id==='timeline')) db.siteSettings.homeSections.push({id:'timeline',label:'Timeline AUAUSAVE',eyebrow:'AUAUSAVE TIMELINE',title:'Our Timeline',description:'Series, variety shows and music videos featuring AUAUSAVE.',visible:true});
+  db.siteSettings.homeSections=normalizeHomepageSections(db.siteSettings.homeSections);
   db.siteSettings.timelineCategoryContent ||= {
     series:{title:'Series',description:''},
     variety:{title:'Variety Show',description:''},
@@ -1735,6 +1753,7 @@ function getHomeSectionElement(id) {
   if (id === 'presenters') return document.querySelector('.presenter-home');
   if (id === 'youtube') return [...document.querySelectorAll('.section')].find(s => s.querySelector('h2')?.textContent.includes('YouTube'));
   if (id === 'timeline') return document.querySelector('.home-timeline');
+  if (id === 'fanbaseSocials') return document.querySelector('.fanbase-section--home');
 }
 function applyHomePageBuilder() {
   ensureHomePageSettings();
@@ -2257,10 +2276,12 @@ async function hydrateFromSupabase() {
     const remote = await window.auausaveDB.load();
     db = remote;
     ensureDexxEventType();
+    const homepageOrderNeedsMigration=!Array.isArray(db.siteSettings?.homeSections)||!db.siteSettings.homeSections.some(section=>section?.id==='fanbaseSocials')||db.siteSettings.homeSections.filter(section=>section?.id==='fanbaseSocials').length>1;
     ensureHomePageSettings();
     ensureLocalizationSettings();
     restoreNewerLocalPageCopy(localPageCopy);
     localStorage.setItem('auausave-house-db-v9', JSON.stringify(db));
+    if(homepageOrderNeedsMigration)save();
     router();
   } catch (error) {
     console.info('Supabase ยังไม่พร้อม:', error.message);
@@ -2640,20 +2661,55 @@ const renderPageContentWithAccurateHeroPreview=pageContentAdmin;
 pageContentAdmin=function(){renderPageContentWithAccurateHeroPreview();applyHeroOverlaySettings();};
 
 function homeSectionDragStart(event,index){
+  if(homepageOrderSaving){event.preventDefault();return}
   event.dataTransfer.setData('text/plain',String(index));
   event.dataTransfer.effectAllowed='move';
 }
-function homeSectionDrop(event,index){
+let homepageOrderSaving=false;
+async function persistHomepageSectionOrder(previous){
+  if(homepageOrderSaving)return false;
+  homepageOrderSaving=true;
+  db.siteSettings.homeSections=normalizeHomepageSections(db.siteSettings.homeSections);
+  save(false);
+  pageContentAdmin();
+  const synced=await syncDatabaseInBackground();
+  if(synced===false){
+    db.siteSettings.homeSections=normalizeHomepageSections(previous);
+    save(false);
+    homepageOrderSaving=false;
+    pageContentAdmin();
+    toast('บันทึกลำดับไปยัง Supabase ไม่สำเร็จ ลำดับเดิมถูกนำกลับมาแล้ว');
+    return false;
+  }
+  db.siteSettings.homeSections=normalizeHomepageSections(db.siteSettings.homeSections);
+  save(false);
+  homepageOrderSaving=false;
+  pageContentAdmin();
+  toast('บันทึกลำดับหน้าแรกแล้ว');
+  return true;
+}
+async function homeSectionDrop(event,index){
   event.preventDefault();
+  if(homepageOrderSaving)return;
   const from=Number(event.dataTransfer.getData('text/plain'));
   const list=db.siteSettings.homeSections;
   if(Number.isNaN(from)||from===index||from<0||index<0||from>=list.length||index>=list.length)return;
+  const previous=structuredClone(list);
   const [item]=list.splice(from,1);
   list.splice(index,0,item);
-  save(); pageContentAdmin(); toast('บันทึกลำดับหน้าแรกแล้ว');
+  await persistHomepageSectionOrder(previous);
 }
 function homeSectionLabel(id){
-  return ({hero:'Hero / Main visual',artists:'Artist cards',schedule:'Schedule',timeline:'Timeline',presenters:'Presenters'}[id]||id);
+  return ({hero:'Hero / Main visual',artists:'Artist Profiles',schedule:'Schedule',timeline:'Timeline',presenters:'Presenters',fanbaseSocials:'Fanbase Socials'}[id]||id);
+}
+async function moveHomepageSection(index,direction){
+  if(homepageOrderSaving)return;
+  ensureHomePageSettings();
+  const list=db.siteSettings.homeSections,target=index+direction;
+  if(index<0||target<0||index>=list.length||target>=list.length)return;
+  const previous=structuredClone(list);
+  [list[index],list[target]]=[list[target],list[index]];
+  await persistHomepageSectionOrder(previous);
 }
 function renderHomepageLiveEditor(){
   ensureHomePageSettings(); ensureLocalizationSettings();
@@ -2665,7 +2721,7 @@ function renderHomepageLiveEditor(){
 function renderHomepageOrderEditor(){
   ensureHomePageSettings();
   const sections=db.siteSettings.homeSections;
-  return `<section class="panel homepage-order-editor"><div class="panel-head"><div><small>HOMEPAGE ORDER</small><h2>จัดลำดับหน้าแรก</h2><p class="master-note">ลากกล่องเพื่อเรียงลำดับการแสดงผลบนหน้าบ้าน หรือเปิด/ปิด section ได้จากตรงนี้</p></div></div><div class="section-builder-list draggable-home-sections">${sections.map((s,i)=>`<article draggable="true" ondragstart="homeSectionDragStart(event,${i})" ondragover="event.preventDefault()" ondrop="homeSectionDrop(event,${i})" class="builder-item ${s.visible===false?'is-hidden':''}"><div class="builder-order"><b>↕</b><span>${String(i+1).padStart(2,'0')}</span></div><div class="builder-content"><small>${escapePageText(homeSectionLabel(s.id))}</small><h3>${escapePageText(String(s.title||'').replace(/\n/g,' / '))}</h3><p>${escapePageText(s.description||'ไม่มีคำอธิบาย')}</p></div><div class="builder-actions"><button class="visibility-btn" onclick="toggleHomeSection('${s.id}')">${s.visible===false?'○ ซ่อนอยู่':'● แสดงอยู่'}</button><button class="btn outline" onclick="editHomeSection('${s.id}')">แก้ไขข้อความ</button></div></article>`).join('')}</div></section>`;
+  return `<section class="panel homepage-order-editor"><div class="panel-head"><div><small>HOMEPAGE ORDER</small><h2>จัดลำดับหน้าแรก</h2><p class="master-note">ลากกล่องหรือใช้ปุ่มขึ้น–ลงเพื่อเรียงลำดับการแสดงผลบนหน้าบ้าน</p></div></div><div class="section-builder-list draggable-home-sections">${sections.map((s,i)=>`<article draggable="${homepageOrderSaving?'false':'true'}" ondragstart="homeSectionDragStart(event,${i})" ondragover="event.preventDefault()" ondrop="homeSectionDrop(event,${i})" class="builder-item ${s.visible===false?'is-hidden':''}"><div class="builder-order"><button type="button" aria-label="เลื่อน ${escapePageText(homeSectionLabel(s.id))} ขึ้น" onclick="moveHomepageSection(${i},-1)" ${homepageOrderSaving||i===0?'disabled':''}>↑</button><span>${String(i+1).padStart(2,'0')}</span><button type="button" aria-label="เลื่อน ${escapePageText(homeSectionLabel(s.id))} ลง" onclick="moveHomepageSection(${i},1)" ${homepageOrderSaving||i===sections.length-1?'disabled':''}>↓</button></div><div class="builder-content"><small>${escapePageText(homeSectionLabel(s.id))}</small><h3>${escapePageText(s.id==='fanbaseSocials'?'Fanbase Socials':String(s.title||'').replace(/\n/g,' / '))}</h3><p>${escapePageText(s.id==='fanbaseSocials'?'จัดการเนื้อหาและลิงก์จากเมนู Fanbase Socials':s.description||'ไม่มีคำอธิบาย')}</p></div><div class="builder-actions"><button class="visibility-btn" onclick="toggleHomeSection('${s.id}')">${s.visible===false?'○ ซ่อนอยู่':'● แสดงอยู่'}</button>${s.id==='fanbaseSocials'?'':`<button class="btn outline" onclick="editHomeSection('${s.id}')">แก้ไขข้อความ</button>`}</div></article>`).join('')}</div></section>`;
 }
 const pageContentAdminBeforeHomepageRefresh=pageContentAdmin;
 pageContentAdmin=function(){
@@ -3955,15 +4011,44 @@ hydrateFromSupabase();
 
 /* Fanbase socials: managed in siteSettings so Supabase syncs them with the rest of the site. */
 const DEFAULT_FANBASES=[
-  {id:'fanbase_auausave',displayName:'AUAUSAVE HOUSE',username:'@AuauSaveHouseTH',description:'',accentColor:'#d86666',displayOrder:1,active:true,socialLinks:[]},
+  {id:'fanbase_auausave',displayName:'AUAUSAVE HOUSE',username:'@AuauSaveHouseTH',description:'',accentColor:'#4e8994',displayOrder:1,active:true,socialLinks:[]},
   {id:'fanbase_auau',displayName:'AUAUTNP OFFICIAL THAILAND',username:'@AUAUTNPOFC',description:'',accentColor:'#5f9272',displayOrder:2,active:true,socialLinks:[]},
-  {id:'fanbase_save',displayName:'SAVEWRG OFFICIAL THAILAND',username:'@SAVEWRG_OFC',description:'',accentColor:'#d58c61',displayOrder:3,active:true,socialLinks:[]}
+  {id:'fanbase_save',displayName:'SAVEWRG OFFICIAL THAILAND',username:'@SAVEWRG_OFC',description:'',accentColor:'#d65e64',displayOrder:3,active:true,socialLinks:[]}
 ];
 function ensureFanbaseSocials(){db.siteSettings||={};if(!Array.isArray(db.siteSettings.fanbases))db.siteSettings.fanbases=structuredClone(DEFAULT_FANBASES);db.siteSettings.fanbases.forEach((x,i)=>{x.socialLinks=Array.isArray(x.socialLinks)?x.socialLinks:[];x.displayOrder=Number(x.displayOrder)||i+1;x.active=x.active!==false})}
-function fanbaseSocialButton(x){const label=escapePageText(x.displayLabel||x.platformName||'Follow');return x.linkType==='copy'?`<button class="fanbase-social-button" type="button" data-copy="${escapePageText(x.copyText||x.username||'')}" onclick="copyFanbaseText(this)"><span>${label}</span><small>${escapePageText(x.username||'')}</small><b>Copy</b></button>`:`<a class="fanbase-social-button" href="${escapePageText(x.url)}" target="_blank" rel="noopener noreferrer"><span>${label}</span>${x.username?`<small>${escapePageText(x.username)}</small>`:''}<b>↗</b></a>`}
-function fanbaseSection(){ensureFanbaseSocials();const cards=[...db.siteSettings.fanbases].filter(x=>x.active!==false).sort((a,b)=>a.displayOrder-b.displayOrder);return `<section class="section fanbase-section"><div class="container"><div class="section-head fanbase-section-head"><div><span class="eyebrow">STAY CONNECTED</span><h2>FOLLOW OUR FANBASES</h2></div><p>Stay updated with AuauSave, Auau and Save.</p></div><div class="fanbase-grid">${cards.map(x=>{const links=[...x.socialLinks].filter(s=>s.active!==false&&((s.linkType==='copy'&&(s.copyText||s.username))||(s.linkType!=='copy'&&/^https?:\/\//i.test(s.url||'')))).sort((a,b)=>(a.displayOrder||999)-(b.displayOrder||999));return `<article class="fanbase-card" style="--fanbase-accent:${escapePageText(x.accentColor||'#d86666')}"><div><h3>${escapePageText(x.displayName)}</h3><p class="fanbase-username">${escapePageText(x.username||'')}</p>${x.description?`<p class="fanbase-description">${escapePageText(x.description)}</p>`:''}</div>${links.length?`<div class="fanbase-socials">${links.map(fanbaseSocialButton).join('')}</div>`:''}</article>`}).join('')}</div></div></section>`}
+function validFanbaseUrl(value){try{const url=new URL(String(value||''));return ['http:','https:'].includes(url.protocol)?url.href:''}catch{return''}}
+function fanbaseCardAccent(x){return ({fanbase_auausave:'#4e8994',fanbase_auau:'#5f9272',fanbase_save:'#d65e64'})[x.id]||x.accentColor||'#d86666'}
+function fanbaseSocialButton(x){
+  const url=validFanbaseUrl(x.url);
+  if(!url)return'';
+  const platform=escapePageText(x.platformName||x.displayLabel||'Social');
+  const account=escapePageText(x.username||fanbaseAccountLabel({...x,url}));
+  return `<a class="fanbase-social-button" href="${escapePageText(url)}" target="_blank" rel="noopener noreferrer"><strong>${platform}</strong>${account?`<small>${account}</small>`:''}</a>`;
+}
+function renderFanbaseSocials({variant='artists'}={}){
+  ensureFanbaseSocials();
+  const cards=[...db.siteSettings.fanbases].filter(x=>x&&x.active!==false).sort((a,b)=>(Number(a.displayOrder)||999)-(Number(b.displayOrder)||999));
+  return `<section class="section fanbase-section fanbase-section--${variant==='home'?'home':'artists'}"><div class="container"><header class="fanbase-section-head"><h2>FOLLOW OUR FANBASES</h2></header>${cards.length?`<div class="fanbase-grid">${cards.map(x=>{const links=[...(x.socialLinks||[])].filter(link=>link&&link.active!==false&&link.linkType!=='copy'&&validFanbaseUrl(link.url)).sort((a,b)=>(Number(a.displayOrder)||999)-(Number(b.displayOrder)||999));return `<article class="fanbase-card" style="--fanbase-accent:${escapePageText(fanbaseCardAccent(x))}"><div class="fanbase-card-head"><h3>${escapePageText(x.displayName||'Fanbase')}</h3>${x.username?`<p class="fanbase-username">${escapePageText(x.username)}</p>`:''}</div>${links.length?`<div class="fanbase-socials">${links.map(fanbaseSocialButton).join('')}</div>`:''}</article>`}).join('')}</div>`:''}</div></section>`;
+}
 async function copyFanbaseText(button){const value=button.dataset.copy||'';if(!value)return;try{await navigator.clipboard.writeText(value)}catch(e){const t=document.createElement('textarea');t.value=value;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}const b=button.querySelector('b'),old=b.textContent;b.textContent='Copied';setTimeout(()=>{if(b.isConnected)b.textContent=old},1400)}
-const listingBeforeFanbases=listing;listing=function(type){listingBeforeFanbases(type);if(type==='artists'&&!document.querySelector('.fanbase-section'))document.querySelector('main')?.insertAdjacentHTML('beforeend',fanbaseSection())};
+const listingBeforeFanbases=listing;listing=function(type){listingBeforeFanbases(type);if(type==='artists'&&!document.querySelector('.fanbase-section'))document.querySelector('main')?.insertAdjacentHTML('beforeend',renderFanbaseSocials({variant:'artists'}))};
+function applyHomepageSectionOrder(){
+  ensureHomePageSettings();
+  const main=document.querySelector('#app main');
+  if(!main)return;
+  db.siteSettings.homeSections.forEach(section=>{
+    const element=getHomeSectionElement(section.id);
+    if(!element)return;
+    element.dataset.homeSection=section.id;
+    element.style.display=section.visible===false?'none':'';
+    main.appendChild(element);
+  });
+}
+const homeBeforeFanbases=home;home=function(){
+  homeBeforeFanbases();
+  if(!document.querySelector('.fanbase-section--home'))document.querySelector('#app main')?.insertAdjacentHTML('beforeend',renderFanbaseSocials({variant:'home'}));
+  applyHomepageSectionOrder();
+};
 const profileBeforeFanbases=profile;profile=function(id){profileBeforeFanbases(id);if(!sameArtistId(id,'AT01'))return;const old=document.querySelector('.couple-hashtag');if(old)old.outerHTML='<div class="couple-profile-links"><a class="couple-profile-link" href="#/AUAU">AUAU PROFILE</a><a class="couple-profile-link" href="#/SAVE">SAVE PROFILE</a></div>'};
 
 function fanbaseAdminSidebar(){const items=[['dashboard','⌂','Dashboard'],['pagecontent','▤','Homepage Content'],['artists','◉','Profiles'],['events','▦','Schedule'],['timeline','◷','Timeline'],['presenters','✦','Presenters'],['awards','◇','Awards'],['projects','◆','Projects'],['fanbases','◎','Fanbase Socials'],['master','⚙','Master Data']];return `<aside class="sidebar"><div class="brand"><i></i>AUAUSAVE HOUSE</div><div class="side-nav">${items.map(([id,icon,label])=>`<button data-icon="${icon}" class="${id==='fanbases'?'active':''}" onclick="adminTab='${id}';admin()">${icon} &nbsp; ${label}</button>`).join('')}</div><a class="back" href="#artists">← ดูหน้าบ้าน</a></aside>`}
@@ -3980,7 +4065,7 @@ let draggedFanbase=null;function fanbaseDragStart(e){draggedFanbase=e.currentTar
 function injectFanbaseAdminMenu(){const nav=document.querySelector('.sidebar .side-nav');if(!nav||nav.querySelector('[data-fanbase-menu]'))return;const master=[...nav.querySelectorAll('button')].find(button=>button.textContent.includes('Master Data'));const button=document.createElement('button');button.dataset.icon='◎';button.dataset.fanbaseMenu='true';button.innerHTML='◎ &nbsp; Fanbase Socials';button.onclick=()=>{adminTab='fanbases';admin()};master?nav.insertBefore(button,master):nav.appendChild(button)}
 const adminBeforeFanbases=admin;admin=function(){if(adminAuthenticated&&adminTab==='fanbases')fanbaseAdmin();else{adminBeforeFanbases();if(adminAuthenticated)injectFanbaseAdminMenu()}};
 ensureFanbaseSocials();
-if(route==='artists'||route.startsWith('/'))router();
+if(route==='home'||route==='artists'||route.startsWith('/'))router();
 
 /* Artist artwork is square from upload/crop through every public profile. */
 const openFormBeforeSquareArtistImage=openForm;
@@ -4143,10 +4228,6 @@ function fanbaseAccountLabel(link){
     return value.startsWith('@')?value:`@${value}`;
   }catch{return''}
 }
-fanbaseSocialButton=function(link){
-  const platform=escapePageText(link.platformName||link.displayLabel||'Social'),account=escapePageText(fanbaseAccountLabel(link));
-  return `<a class="fanbase-social-button fanbase-social-square" href="${escapePageText(link.url)}" target="_blank" rel="noopener noreferrer"><span>${platform}</span>${account?`<small>${account}</small>`:''}<b>↗</b></a>`;
-};
 fanbaseLinkEditor=function(link={},index=0){
   return `<article class="fanbase-link-editor" draggable="true" ondragstart="fanbaseLinkDragStart(event)" ondragover="fanbaseLinkDragOver(event)" ondrop="fanbaseLinkDrop(event)"><header><b>ช่องทาง ${index+1}</b><button type="button" onclick="this.closest('.fanbase-link-editor').remove();reindexFanbaseLinks()">ลบ</button></header><div class="form-grid fanbase-simple-fields"><div class="field"><label>ชื่อแพลตฟอร์ม</label><input data-platform value="${escapePageText(link.platformName||link.displayLabel||'')}" placeholder="X, Instagram, TikTok…" required></div><div class="field"><label>ลิงก์</label><input data-url type="url" value="${escapePageText(link.url||'')}" placeholder="https://..." required></div><input data-order type="hidden" value="${index+1}"></div></article>`;
 };
