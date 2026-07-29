@@ -204,6 +204,21 @@
   async function signIn(email,password){return client.auth.signInWithPassword({email,password});}
   async function signOut(){return client.auth.signOut();}
   async function session(){return client.auth.getSession();}
+  async function removeAwardAssignment(awardId,mainSectionId,subsectionId=''){
+    let query=client.from('award_section_assignments').delete().eq('award_id',awardId).eq('main_section_id',mainSectionId);
+    query=subsectionId?query.eq('subsection_id',subsectionId):query.is('subsection_id',null);
+    const {error}=await query;
+    if(error)throw error;
+    return true;
+  }
+  async function upsertAwardAssignments(awardId,assignments=[]){
+    if(!assignments.length)return true;
+    const safe=value=>String(value||'none').replace(/[^a-zA-Z0-9_-]/g,'_');
+    const rows=assignments.map((assignment,index)=>({id:`asa_${safe(awardId)}_${safe(assignment.mainSectionId)}_${safe(assignment.subsectionId)}`,award_id:awardId,main_section_id:assignment.mainSectionId,subsection_id:assignment.subsectionId||null,display_order:Number(assignment.displayOrder)||index+1}));
+    const {error}=await client.from('award_section_assignments').upsert(rows,{onConflict:'id'});
+    if(error)throw error;
+    return true;
+  }
 
-  window.auausaveDB = { client, load, save, signIn, signOut, session };
+  window.auausaveDB = { client, load, save, signIn, signOut, session, removeAwardAssignment, upsertAwardAssignments };
 })();

@@ -4300,17 +4300,18 @@ function ensureAwardSections(){
   });
   const shouldMigrateLegacyAwardSubsections=Number(db.siteSettings?.awardSectionMigrationVersion||0)<2;
   (db.awards||[]).forEach((award,index)=>{
-    if(!award.mainSectionId){
+    const hasAssignmentData=Array.isArray(award.sectionAssignments);
+    if(!award.mainSectionId&&!hasAssignmentData){
       const artistId=canonicalArtistId(award.artistId);
       award.mainSectionId=artistId==='AT01'?'award-section-auausave':artistId==='AT02'?'award-section-auau':artistId==='AT03'?'award-section-save':'';
     }
     award.subsectionId=award.subsectionId||'';
-    if(shouldMigrateLegacyAwardSubsections&&award.mainSectionId==='award-section-auau'&&!award.subsectionId){
+    if(!hasAssignmentData&&shouldMigrateLegacyAwardSubsections&&award.mainSectionId==='award-section-auau'&&!award.subsectionId){
       const legacyLabel=`${award.title||''} ${award.org||''}`.toLowerCase();
       if(/\bdexx\b/.test(legacyLabel))award.subsectionId='award-section-dexx';
       else if(/solo artist|solo award|ศิลปินเดี่ยว/.test(legacyLabel))award.subsectionId='award-section-solo-artist';
     }
-    if(!Array.isArray(award.sectionAssignments)||!award.sectionAssignments.length){
+    if(!hasAssignmentData){
       award.sectionAssignments=award.mainSectionId?[{mainSectionId:award.mainSectionId,subsectionId:award.subsectionId||'',displayOrder:Number(award.displayOrder)||index+1}]:[];
     }
     award.sectionAssignments=award.sectionAssignments.filter((assignment,assignmentIndex,self)=>assignment?.mainSectionId&&self.findIndex(item=>item.mainSectionId===assignment.mainSectionId&&(item.subsectionId||'')===(assignment.subsectionId||''))===assignmentIndex).map((assignment,assignmentIndex)=>({mainSectionId:assignment.mainSectionId,subsectionId:assignment.subsectionId||'',displayOrder:Number(assignment.displayOrder)||assignmentIndex+1}));
@@ -4405,7 +4406,7 @@ function removeAwardSection(id){
 }
 function updateAwardSubsectionOptions(mainId,selected=''){
   const field=document.querySelector('#modal [data-award-subsection-field]'),select=field?.querySelector('select');if(!field||!select)return;
-  const children=awardSubsections(mainId,false);field.hidden=!children.length;select.disabled=!children.length;
+  const children=mainId?awardSubsections(mainId,false):[];field.hidden=!children.length;select.disabled=!children.length;
   select.innerHTML=`<option value="">— ไม่เลือก (รางวัลทั่วไป) —</option>${children.map(item=>`<option value="${item.id}" ${item.id===selected?'selected':''}>${escapePageText(item.name)}${item.active?'':' (Inactive)'}</option>`).join('')}`;
 }
 const openFormBeforeAwardSectionFields=openForm;
@@ -4413,8 +4414,8 @@ openForm=function(type,id){
   openFormBeforeAwardSectionFields(type,id);
   if(type!=='awards')return;
   ensureAwardSections();
-  const item=id?db.awards.find(award=>award.id===id):{},mainId=resolvedAwardMainId(item||{})||awardMainSections(false)[0]?.id||'',actions=document.querySelector('#modal .form-actions');
-  actions?.insertAdjacentHTML('beforebegin',`<div class="form-grid award-section-form-fields"><div class="field"><label>Main Section</label><select name="mainSectionId" required onchange="updateAwardSubsectionOptions(this.value)">${awardMainSections(false).map(section=>`<option value="${section.id}" ${section.id===mainId?'selected':''}>${escapePageText(section.name)}${section.active?'':' (Inactive)'}</option>`).join('')}</select></div><div class="field" data-award-subsection-field><label>Subsection</label><select name="subsectionId"></select><small>ไม่เลือกได้ สำหรับรางวัลทั่วไปของ Main Section</small></div><div class="field"><label>Display Order</label><input name="displayOrder" type="number" min="0" value="${Number(item?.displayOrder)||0}"></div></div>`);
+  const item=id?db.awards.find(award=>award.id===id):{},mainId=awardPlacements(item||{})[0]?.mainSectionId||item?.mainSectionId||'',actions=document.querySelector('#modal .form-actions');
+  actions?.insertAdjacentHTML('beforebegin',`<div class="form-grid award-section-form-fields"><div class="field"><label>Main Section</label><select name="mainSectionId" onchange="updateAwardSubsectionOptions(this.value)"><option value="">— ยังไม่กำหนด Section —</option>${awardMainSections(false).map(section=>`<option value="${section.id}" ${section.id===mainId?'selected':''}>${escapePageText(section.name)}${section.active?'':' (Inactive)'}</option>`).join('')}</select></div><div class="field" data-award-subsection-field><label>Subsection</label><select name="subsectionId"></select><small>ไม่เลือกได้ สำหรับรางวัลทั่วไปของ Main Section</small></div><div class="field"><label>Display Order</label><input name="displayOrder" type="number" min="0" value="${Number(item?.displayOrder)||0}"></div></div>`);
   updateAwardSubsectionOptions(mainId,item?.subsectionId||'');
 }
 const submitFormBeforeAwardSections=submitForm;
@@ -4479,17 +4480,24 @@ function openAwardPickerForSection(mainId,subsectionId=''){
   const main=awardSectionById(mainId),sub=subsectionId?awardSectionById(subsectionId):null,candidates=sortedSectionAwards((db.awards||[]).filter(item=>!awardHasPlacement(item,mainId,subsectionId)));
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal award-picker-modal"><div class="modal-head"><div><small>SELECT FROM ALL AWARDS</small><h2>เลือกรางวัลเข้า ${escapePageText(sub?.name||main?.name||'Section')}</h2><p>เลือกจากข้อมูลที่มีอยู่ ระบบจะไม่สร้างรางวัลใหม่หรือข้อมูลซ้ำ</p></div><button class="close" onclick="closeModal()">×</button></div><form onsubmit="insertAwardsIntoSection(event,'${mainId}','${subsectionId}')"><div class="award-picker-list">${candidates.map(item=>`<label><input type="checkbox" name="awardId" value="${item.id}"><div class="award-admin-thumb">${awardImage(item)?`<img src="${escapePageText(awardImage(item))}" alt="">`:'<span>◇</span>'}</div><span><strong>${escapePageText(item.title||'')}</strong><small>${escapePageText(item.org||'—')} · ${escapePageText(awardDisplayDate(item))}</small></span></label>`).join('')||'<div class="award-admin-empty">รางวัลทั้งหมดถูกเลือกเข้า Section นี้แล้ว</div>'}</div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit" ${candidates.length?'':'disabled'}>เพิ่มรายการที่เลือกเข้า Section</button></div></form></div></div>`);
 }
-function insertAwardsIntoSection(event,mainId,subsectionId=''){
+async function insertAwardsIntoSection(event,mainId,subsectionId=''){
   event.preventDefault();const ids=new FormData(event.currentTarget).getAll('awardId');if(!ids.length){toast('กรุณาเลือกรางวัลอย่างน้อย 1 รายการ');return}
-  const startOrder=awardAdminItems(mainId,subsectionId||null).length;
-  ids.forEach((id,index)=>{const award=db.awards.find(item=>item.id===id);if(!award||awardHasPlacement(award,mainId,subsectionId))return;award.sectionAssignments.push({mainSectionId:mainId,subsectionId:subsectionId||'',displayOrder:startOrder+index+1})});
-  save();closeModal();admin();toast(`เลือกรางวัล ${ids.length} รายการเข้า Section แล้ว`);
+  const startOrder=awardAdminItems(mainId,subsectionId||null).length,changed=[];
+  ids.forEach((id,index)=>{const award=db.awards.find(item=>item.id===id);if(!award||awardHasPlacement(award,mainId,subsectionId))return;const assignment={mainSectionId:mainId,subsectionId:subsectionId||'',displayOrder:startOrder+index+1};award.sectionAssignments.push(assignment);changed.push({award,assignment})});
+  save(false);
+  try{if(window.auausaveDB?.upsertAwardAssignments)await Promise.all(changed.map(item=>window.auausaveDB.upsertAwardAssignments(item.award.id,[item.assignment])))}catch(error){changed.forEach(({award,assignment})=>award.sectionAssignments=award.sectionAssignments.filter(item=>item!==assignment));save(false);toast(`เพิ่มเข้า Section ในฐานข้อมูลไม่สำเร็จ: ${error.message}`);return}
+  await syncDatabaseInBackground();closeModal();admin();toast(`เลือกรางวัล ${changed.length} รายการเข้า Section แล้ว`);
 }
-function removeAwardFromSection(awardId,mainId,subsectionId=''){
+async function removeAwardFromSection(awardId,mainId,subsectionId=''){
   const award=db.awards.find(item=>item.id===awardId);if(!award)return;
+  const previousAssignments=structuredClone(award.sectionAssignments||[]),previousMain=award.mainSectionId||'',previousSub=award.subsectionId||'';
   award.sectionAssignments=(award.sectionAssignments||[]).filter(assignment=>!(assignment.mainSectionId===mainId&&(assignment.subsectionId||'')===(subsectionId||'')));
   if(award.mainSectionId===mainId&&(award.subsectionId||'')===(subsectionId||'')){const primary=award.sectionAssignments[0]||{};award.mainSectionId=primary.mainSectionId||'';award.subsectionId=primary.subsectionId||''}
-  save();admin();toast('นำรางวัลออกจาก Section แล้ว ข้อมูลต้นฉบับยังอยู่ในข้อมูลทั้งหมด');
+  save(false);admin();let assignmentDeletedFromDatabase=false;
+  try{if(window.auausaveDB?.removeAwardAssignment){await window.auausaveDB.removeAwardAssignment(awardId,mainId,subsectionId);assignmentDeletedFromDatabase=true}}catch(error){award.sectionAssignments=previousAssignments;award.mainSectionId=previousMain;award.subsectionId=previousSub;save(false);admin();toast(`นำออกจากฐานข้อมูลไม่สำเร็จ: ${error.message}`);return}
+  const synced=await syncDatabaseInBackground();
+  if(synced===false&&!assignmentDeletedFromDatabase){award.sectionAssignments=previousAssignments;award.mainSectionId=previousMain;award.subsectionId=previousSub;save(false);admin();toast('ฐานข้อมูลยังไม่ยืนยันการนำออก จึงคืนรายการไว้ใน Section เดิม');return}
+  toast('นำรางวัลออกจาก Section และฐานข้อมูลแล้ว ข้อมูลต้นฉบับยังอยู่ในข้อมูลทั้งหมด');
 }
 function openAwardSubsectionForMain(mainId){
   openAwardSectionForm();const parent=document.querySelector('#modal [name="parentId"]');if(parent)parent.value=mainId;
@@ -4499,12 +4507,16 @@ function openAwardAssignments(awardId){
   const selected=new Set(awardPlacements(award).map(item=>`${item.mainSectionId}|${item.subsectionId||''}`));
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal award-assignment-modal"><div class="modal-head"><div><small>INSERT FROM ALL AWARDS</small><h2>เลือก Section ที่จะแสดงรางวัล</h2><p>${escapePageText(award.title||'')}</p></div><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveAwardAssignments(event,'${award.id}')"><div class="award-assignment-list">${awardMainSections(false).map(main=>`<fieldset><legend>${escapePageText(main.name)} ${main.active?'':'· Inactive'}</legend><label><input type="checkbox" name="placement" value="${main.id}|" ${selected.has(`${main.id}|`)?'checked':''}><span>รางวัลทั่วไปของ ${escapePageText(main.name)}</span></label>${awardSubsections(main.id,false).map(sub=>`<label class="assignment-sub"><input type="checkbox" name="placement" value="${main.id}|${sub.id}" ${selected.has(`${main.id}|${sub.id}`)?'checked':''}><span>${escapePageText(main.name)} › ${escapePageText(sub.name)} ${sub.active?'':'· Inactive'}</span></label>`).join('')}</fieldset>`).join('')}</div><p class="master-note">เลือกรางวัลเดียวกันได้หลาย Section โดยระบบจะไม่สร้างข้อมูลรางวัลซ้ำ</p><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึก Section ที่เลือก</button></div></form></div></div>`);
 }
-function saveAwardAssignments(event,awardId){
+async function saveAwardAssignments(event,awardId){
   event.preventDefault();const award=db.awards.find(item=>item.id===awardId);if(!award)return;
-  const existing=new Map(awardPlacements(award).map(item=>[`${item.mainSectionId}|${item.subsectionId||''}`,item]));
-  award.sectionAssignments=new FormData(event.currentTarget).getAll('placement').map((value,index)=>{const [mainSectionId,subsectionId='']=value.split('|'),old=existing.get(value);return {mainSectionId,subsectionId,displayOrder:Number(old?.displayOrder)||index+1}});
+  const previousAssignments=structuredClone(award.sectionAssignments||[]),previousMain=award.mainSectionId||'',previousSub=award.subsectionId||'',existing=new Map(awardPlacements(award).map(item=>[`${item.mainSectionId}|${item.subsectionId||''}`,item]));
+  const selectedValues=new FormData(event.currentTarget).getAll('placement'),selected=new Set(selectedValues),removed=[...existing].filter(([key])=>!selected.has(key)).map(([,assignment])=>assignment);
+  award.sectionAssignments=selectedValues.map((value,index)=>{const [mainSectionId,subsectionId='']=value.split('|'),old=existing.get(value);return {mainSectionId,subsectionId,displayOrder:Number(old?.displayOrder)||index+1}});
   const primary=award.sectionAssignments[0]||{};award.mainSectionId=primary.mainSectionId||'';award.subsectionId=primary.subsectionId||'';
-  save();closeModal();admin();toast(`บันทึก ${award.sectionAssignments.length} Section โดยไม่สร้างรางวัลซ้ำแล้ว`);
+  save(false);
+  try{if(window.auausaveDB?.removeAwardAssignment)await Promise.all(removed.map(assignment=>window.auausaveDB.removeAwardAssignment(awardId,assignment.mainSectionId,assignment.subsectionId||'')));if(window.auausaveDB?.upsertAwardAssignments)await window.auausaveDB.upsertAwardAssignments(awardId,award.sectionAssignments)}catch(error){award.sectionAssignments=previousAssignments;award.mainSectionId=previousMain;award.subsectionId=previousSub;save(false);toast(`ปรับ Section ในฐานข้อมูลไม่สำเร็จ: ${error.message}`);return}
+  const synced=await syncDatabaseInBackground();if(synced===false&&!removed.length){award.sectionAssignments=previousAssignments;award.mainSectionId=previousMain;award.subsectionId=previousSub;save(false);toast('ฐานข้อมูลยังไม่ยืนยันการปรับ Section');return}
+  closeModal();admin();toast(`บันทึก ${award.sectionAssignments.length} Section โดยไม่สร้างรางวัลซ้ำแล้ว`);
 }
 function moveAwardInFolder(id,mainId,subsectionId,year,direction){
   const item=db.awards.find(entry=>entry.id===id);if(!item)return;

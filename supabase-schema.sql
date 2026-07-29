@@ -77,20 +77,37 @@ insert into public.award_sections(id,name,slug,parent_id,display_order,active) v
  ('award-section-dexx','DEXX','dexx','award-section-auau',2,true)
 on conflict (id) do nothing;
 
--- Preserve every legacy award while assigning the requested initial main section.
-update public.awards set main_section_id = case
-  when artist_id in ('AT01','duo') then 'award-section-auausave'
-  when artist_id in ('AT02','auau') then 'award-section-auau'
-  when artist_id in ('AT03','save') then 'award-section-save'
-  else main_section_id end
-where main_section_id is null;
+create table if not exists public.award_data_migrations (
+  migration_key text primary key,
+  applied_at timestamptz not null default now()
+);
 
-insert into public.award_section_assignments(id,award_id,main_section_id,subsection_id,display_order)
-select concat('asa-',md5(concat_ws('|',id,main_section_id,coalesce(subsection_id,'')))),
-       id,main_section_id,subsection_id,display_order
-from public.awards
-where main_section_id is not null
-on conflict do nothing;
+-- Run legacy placement only once. Re-running this schema must never restore an
+-- assignment that an admin intentionally removed later.
+do $$
+begin
+  if not exists (
+    select 1 from public.award_data_migrations
+    where migration_key = 'award-section-assignments-v1'
+  ) then
+    update public.awards set main_section_id = case
+      when artist_id in ('AT01','duo') then 'award-section-auausave'
+      when artist_id in ('AT02','auau') then 'award-section-auau'
+      when artist_id in ('AT03','save') then 'award-section-save'
+      else main_section_id end
+    where main_section_id is null;
+
+    insert into public.award_section_assignments(id,award_id,main_section_id,subsection_id,display_order)
+    select concat('asa-',md5(concat_ws('|',id,main_section_id,coalesce(subsection_id,'')))),
+           id,main_section_id,subsection_id,display_order
+    from public.awards
+    where main_section_id is not null
+    on conflict do nothing;
+
+    insert into public.award_data_migrations(migration_key)
+    values ('award-section-assignments-v1');
+  end if;
+end $$;
 
 create table if not exists public.presenters (
   id text primary key, artist_id text references public.artists(id) on delete cascade,
