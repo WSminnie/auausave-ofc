@@ -37,6 +37,44 @@ create table if not exists public.awards (
   created_at timestamptz default now()
 );
 
+create table if not exists public.award_sections (
+  id text primary key,
+  name text not null,
+  slug text not null unique,
+  parent_id text references public.award_sections(id) on delete restrict,
+  display_order integer not null default 0,
+  active boolean not null default true,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  check (parent_id is null or parent_id <> id)
+);
+
+alter table public.awards add column if not exists main_section_id text references public.award_sections(id) on delete set null;
+alter table public.awards add column if not exists subsection_id text references public.award_sections(id) on delete set null;
+alter table public.awards add column if not exists award_day integer check (award_day between 1 and 31);
+alter table public.awards add column if not exists award_month integer check (award_month between 1 and 12);
+alter table public.awards add column if not exists display_order integer not null default 0;
+alter table public.awards add column if not exists image_url text;
+
+insert into public.award_sections(id,name,slug,parent_id,display_order,active) values
+ ('award-section-auausave','AUAUSAVE','auausave',null,1,true),
+ ('award-section-auau','AUAU','auau',null,2,true),
+ ('award-section-save','SAVE','save',null,3,true)
+on conflict (id) do nothing;
+
+insert into public.award_sections(id,name,slug,parent_id,display_order,active) values
+ ('award-section-solo-artist','SOLO ARTIST','solo-artist','award-section-auau',1,true),
+ ('award-section-dexx','DEXX','dexx','award-section-auau',2,true)
+on conflict (id) do nothing;
+
+-- Preserve every legacy award while assigning the requested initial main section.
+update public.awards set main_section_id = case
+  when artist_id in ('AT01','duo') then 'award-section-auausave'
+  when artist_id in ('AT02','auau') then 'award-section-auau'
+  when artist_id in ('AT03','save') then 'award-section-save'
+  else main_section_id end
+where main_section_id is null;
+
 create table if not exists public.presenters (
   id text primary key, artist_id text references public.artists(id) on delete cascade,
   brand text not null, role text, presenter_year integer, color text, source_url text,
@@ -71,12 +109,13 @@ alter table public.event_types enable row level security;
 alter table public.series enable row level security;
 alter table public.events enable row level security;
 alter table public.awards enable row level security;
+alter table public.award_sections enable row level security;
 alter table public.presenters enable row level security;
 alter table public.videos enable row level security;
 alter table public.site_settings enable row level security;
 
 do $$ declare t text; begin
-  foreach t in array array['artists','event_types','series','events','awards','presenters','videos','site_settings'] loop
+  foreach t in array array['artists','event_types','series','events','awards','award_sections','presenters','videos','site_settings'] loop
     execute format('drop policy if exists "Public read" on public.%I',t);
     execute format('create policy "Public read" on public.%I for select using (true)',t);
     execute format('drop policy if exists "Authenticated insert" on public.%I',t);

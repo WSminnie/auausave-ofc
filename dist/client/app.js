@@ -4274,6 +4274,146 @@ renderHomepageScheduleOrderEditor=function(){
 };
 
 /* Fanbase social entries mirror artist socials: platform + URL only. */
+/* AWARD SECTIONS: two-level section management, legacy migration and public filters. */
+const DEFAULT_AWARD_SECTIONS = [
+  {id:'award-section-auausave',name:'AUAUSAVE',slug:'auausave',parentId:'',displayOrder:1,active:true},
+  {id:'award-section-auau',name:'AUAU',slug:'auau',parentId:'',displayOrder:2,active:true},
+  {id:'award-section-solo-artist',name:'SOLO ARTIST',slug:'solo-artist',parentId:'award-section-auau',displayOrder:1,active:true},
+  {id:'award-section-dexx',name:'DEXX',slug:'dexx',parentId:'award-section-auau',displayOrder:2,active:true},
+  {id:'award-section-save',name:'SAVE',slug:'save',parentId:'',displayOrder:3,active:true},
+];
+function awardSectionSlug(name,exceptId=''){
+  const base=String(name||'').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'section';
+  let slug=base,suffix=2;
+  while((db.award_sections||[]).some(item=>item.id!==exceptId&&item.slug===slug))slug=`${base}-${suffix++}`;
+  return slug;
+}
+function ensureAwardSections(){
+  db.award_sections=Array.isArray(db.award_sections)?db.award_sections:[];
+  if(!db.award_sections.length)db.award_sections=DEFAULT_AWARD_SECTIONS.map(item=>({...item}));
+  db.award_sections.forEach((section,index)=>{
+    section.name=String(section.name||section.slug||'Untitled Section').trim();
+    section.slug=String(section.slug||awardSectionSlug(section.name)).trim();
+    section.parentId=section.parentId||'';
+    section.displayOrder=Number(section.displayOrder)||index+1;
+    section.active=section.active!==false;
+  });
+  (db.awards||[]).forEach((award,index)=>{
+    if(!award.mainSectionId){
+      const artistId=canonicalArtistId(award.artistId);
+      award.mainSectionId=artistId==='AT01'?'award-section-auausave':artistId==='AT02'?'award-section-auau':artistId==='AT03'?'award-section-save':'';
+    }
+    award.subsectionId=award.subsectionId||'';
+    award.displayOrder=Number(award.displayOrder)||index+1;
+  });
+}
+function awardMainSections(activeOnly=false){ensureAwardSections();return db.award_sections.filter(item=>!item.parentId&&(!activeOnly||item.active)).sort((a,b)=>a.displayOrder-b.displayOrder||a.name.localeCompare(b.name))}
+function awardSubsections(parentId,activeOnly=false){ensureAwardSections();return db.award_sections.filter(item=>item.parentId===parentId&&(!activeOnly||item.active)).sort((a,b)=>a.displayOrder-b.displayOrder||a.name.localeCompare(b.name))}
+function awardSectionById(id){ensureAwardSections();return db.award_sections.find(item=>item.id===id)}
+function resolvedAwardMainId(award){
+  const selected=awardSectionById(award?.mainSectionId);
+  if(selected&&!selected.parentId)return selected.id;
+  const artistId=canonicalArtistId(award?.artistId);
+  return artistId==='AT01'?'award-section-auausave':artistId==='AT02'?'award-section-auau':artistId==='AT03'?'award-section-save':'';
+}
+function sortedSectionAwards(items){
+  const value=item=>(Number(item.year)||0)*10000+(Number(item.month)||0)*100+(Number(item.day)||0);
+  return [...items].sort((a,b)=>value(b)-value(a)||(Number(a.displayOrder)||999999)-(Number(b.displayOrder)||999999)||String(a.title||'').localeCompare(String(b.title||'')));
+}
+function awardTags(item){
+  const main=awardSectionById(resolvedAwardMainId(item)),sub=awardSectionById(item.subsectionId);
+  return [main,sub].filter(section=>section&&section.active).map(section=>`<span class="award-section-tag">${escapePageText(section.name)}</span>`).join('');
+}
+function awardPublicCard(item){
+  return `<article class="award">${awardImage(item)?`<img class="award-image" src="${escapePageText(awardImage(item))}" alt="${escapePageText(item.title||'')}">`:''}<div class="award-section-tags">${awardTags(item)}</div><h3>${escapePageText(item.title||'')}</h3><p>${escapePageText(item.org||'')}</p><time class="award-date">${escapePageText(awardDisplayDate(item))}</time>${item.source?`<a class="source-link" href="${escapePageText(item.source)}" target="_blank" rel="noopener noreferrer">View Details </a>`:''}</article>`;
+}
+let activeAwardMain='award-section-auausave',activeAwardSub='all';
+function renderAwardBrowser(){
+  ensureAwardSections();
+  const host=document.querySelector('[data-award-browser]');if(!host)return;
+  const mains=awardMainSections(true);
+  if(!mains.some(item=>item.id===activeAwardMain))activeAwardMain=mains.find(item=>item.slug==='auausave')?.id||mains[0]?.id||'';
+  const subs=awardSubsections(activeAwardMain,true);
+  if(activeAwardSub!=='all'&&!subs.some(item=>item.id===activeAwardSub))activeAwardSub='all';
+  const awards=sortedSectionAwards((db.awards||[]).filter(item=>resolvedAwardMainId(item)===activeAwardMain&&(activeAwardSub==='all'||item.subsectionId===activeAwardSub)));
+  host.innerHTML=`<nav class="award-main-filters" aria-label="Award sections">${mains.map(item=>`<button class="chip ${item.id===activeAwardMain?'active':''}" onclick="selectAwardMain('${item.id}')">${escapePageText(item.name)}</button>`).join('')}</nav>${subs.length?`<nav class="award-sub-filters" aria-label="Award subsections"><button class="chip ${activeAwardSub==='all'?'active':''}" onclick="selectAwardSub('all')">ALL</button>${subs.map(item=>`<button class="chip ${item.id===activeAwardSub?'active':''}" onclick="selectAwardSub('${item.id}')">${escapePageText(item.name)}</button>`).join('')}</nav>`:''}<div class="award-grid">${awards.map(awardPublicCard).join('')||'<div class="empty">ยังไม่มีข้อมูลรางวัลใน Section นี้</div>'}</div>`;
+}
+function selectAwardMain(id){activeAwardMain=id;activeAwardSub='all';renderAwardBrowser()}
+function selectAwardSub(id){activeAwardSub=id;renderAwardBrowser()}
+const listingBeforeAwardSections=listing;
+listing=function(type){
+  listingBeforeAwardSections(type);
+  if(type!=='awards')return;
+  activeAwardMain='award-section-auausave';activeAwardSub='all';
+  const container=document.querySelector('main .page-hero + .section .container');
+  if(container){container.innerHTML='<div data-award-browser></div>';renderAwardBrowser()}
+};
+function awardSectionAdminPanel(){
+  ensureAwardSections();
+  const rows=awardMainSections(false).flatMap(main=>[main,...awardSubsections(main.id,false)]);
+  return `<section class="panel award-sections-admin"><div class="panel-head"><div><small>AWARD SECTIONS</small><h2>จัดการ Section รางวัล</h2><p class="master-note">รองรับ Section หลักและ Section ย่อยรวมไม่เกิน 2 ระดับ ระบบสร้าง Slug ที่ไม่ซ้ำให้อัตโนมัติ</p></div><button class="btn" onclick="openAwardSectionForm()">+ เพิ่ม Section</button></div><div class="award-section-admin-list">${rows.map(section=>{const child=Boolean(section.parentId);return `<article class="${child?'is-child':''}"><div><small>${child?'SUBSECTION':'MAIN SECTION'} · /${escapePageText(section.slug)}</small><strong>${escapePageText(section.name)}</strong></div><span class="section-status ${section.active?'active':''}">${section.active?'Active':'Inactive'}</span><span>ลำดับ ${section.displayOrder}</span><div class="actions"><button class="icon-btn" onclick="moveAwardSection('${section.id}',-1)">↑</button><button class="icon-btn" onclick="moveAwardSection('${section.id}',1)">↓</button><button class="icon-btn" onclick="toggleAwardSection('${section.id}')">${section.active?'ปิด':'เปิด'}</button><button class="icon-btn" onclick="openAwardSectionForm('${section.id}')">✎</button><button class="icon-btn" onclick="removeAwardSection('${section.id}')">⌫</button></div></article>`}).join('')}</div></section>`;
+}
+function openAwardSectionForm(id=''){
+  ensureAwardSections();
+  const item=awardSectionById(id)||{},parents=awardMainSections(false).filter(section=>section.id!==id);
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal"><div class="modal-head"><div><small>AWARD SECTIONS</small><h2>${id?'แก้ไข':'เพิ่ม'} Section</h2></div><button class="close" onclick="closeModal()">×</button></div><form onsubmit="saveAwardSection(event,'${id}')"><div class="form-grid"><div class="field"><label>Section Name</label><input name="name" value="${escapePageText(item.name||'')}" required></div><div class="field"><label>Parent Section</label><select name="parentId"><option value="">— Section หลัก —</option>${parents.map(parent=>`<option value="${parent.id}" ${item.parentId===parent.id?'selected':''}>${escapePageText(parent.name)}</option>`).join('')}</select><small>เลือก Parent ได้เฉพาะ Section หลัก</small></div><div class="field"><label>Display Order</label><input name="displayOrder" type="number" min="0" value="${Number(item.displayOrder)||1}" required></div><div class="field"><label>การแสดงผล</label><select name="active"><option value="true" ${item.active!==false?'selected':''}>Active</option><option value="false" ${item.active===false?'selected':''}>Inactive</option></select></div></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal()">ยกเลิก</button><button class="btn" type="submit">บันทึก Section</button></div></form></div></div>`);
+}
+function saveAwardSection(event,id=''){
+  event.preventDefault();ensureAwardSections();
+  const values=Object.fromEntries(new FormData(event.currentTarget)),name=values.name.trim(),parent=values.parentId?awardSectionById(values.parentId):null;
+  if(parent?.parentId){toast('Section ย่อยต้องเลือก Parent จาก Section หลักเท่านั้น');return}
+  if(id&&awardSubsections(id,false).length&&values.parentId){toast('Section ที่มี Section ย่อยอยู่แล้วไม่สามารถเปลี่ยนเป็น Section ย่อยได้');return}
+  const data={name,slug:awardSectionSlug(name,id),parentId:values.parentId||'',displayOrder:Number(values.displayOrder)||0,active:values.active==='true'};
+  if(id)Object.assign(awardSectionById(id),data);else db.award_sections.push({id:`award-section-${data.slug}-${Date.now()}`,...data});
+  save();closeModal();admin();toast('บันทึก Award Section แล้ว');
+}
+function toggleAwardSection(id){const item=awardSectionById(id);if(!item)return;item.active=!item.active;save();admin()}
+function moveAwardSection(id,direction){
+  const item=awardSectionById(id);if(!item)return;
+  const siblings=item.parentId?awardSubsections(item.parentId,false):awardMainSections(false),index=siblings.findIndex(section=>section.id===id),target=index+direction;
+  if(target<0||target>=siblings.length)return;
+  [siblings[index].displayOrder,siblings[target].displayOrder]=[siblings[target].displayOrder,siblings[index].displayOrder];save();admin();
+}
+function removeAwardSection(id){
+  const item=awardSectionById(id);if(!item)return;
+  if(awardSubsections(id,false).length){toast('กรุณาลบหรือย้าย Section ย่อยก่อน');return}
+  if(!confirm(`ยืนยันการลบ Section “${item.name}”? รางวัลเดิมจะยังคงอยู่และใช้ fallback`))return;
+  db.awards.forEach(award=>{if(award.mainSectionId===id)award.mainSectionId='';if(award.subsectionId===id)award.subsectionId=''});
+  db.award_sections=db.award_sections.filter(section=>section.id!==id);save();admin();
+}
+function updateAwardSubsectionOptions(mainId,selected=''){
+  const field=document.querySelector('#modal [data-award-subsection-field]'),select=field?.querySelector('select');if(!field||!select)return;
+  const children=awardSubsections(mainId,false);field.hidden=!children.length;select.disabled=!children.length;
+  select.innerHTML=`<option value="">— ไม่เลือก (รางวัลทั่วไป) —</option>${children.map(item=>`<option value="${item.id}" ${item.id===selected?'selected':''}>${escapePageText(item.name)}${item.active?'':' (Inactive)'}</option>`).join('')}`;
+}
+const openFormBeforeAwardSectionFields=openForm;
+openForm=function(type,id){
+  openFormBeforeAwardSectionFields(type,id);
+  if(type!=='awards')return;
+  ensureAwardSections();
+  const item=id?db.awards.find(award=>award.id===id):{},mainId=resolvedAwardMainId(item||{})||awardMainSections(false)[0]?.id||'',actions=document.querySelector('#modal .form-actions');
+  actions?.insertAdjacentHTML('beforebegin',`<div class="form-grid award-section-form-fields"><div class="field"><label>Main Section</label><select name="mainSectionId" required onchange="updateAwardSubsectionOptions(this.value)">${awardMainSections(false).map(section=>`<option value="${section.id}" ${section.id===mainId?'selected':''}>${escapePageText(section.name)}${section.active?'':' (Inactive)'}</option>`).join('')}</select></div><div class="field" data-award-subsection-field><label>Subsection</label><select name="subsectionId"></select><small>ไม่เลือกได้ สำหรับรางวัลทั่วไปของ Main Section</small></div><div class="field"><label>Display Order</label><input name="displayOrder" type="number" min="0" value="${Number(item?.displayOrder)||0}"></div></div>`);
+  updateAwardSubsectionOptions(mainId,item?.subsectionId||'');
+}
+const submitFormBeforeAwardSections=submitForm;
+submitForm=function(event,type,id){
+  if(type==='awards'){
+    const main=event.currentTarget.querySelector('[name="mainSectionId"]'),sub=event.currentTarget.querySelector('[name="subsectionId"]');
+    if(sub&&!sub.disabled&&sub.value&&awardSectionById(sub.value)?.parentId!==main?.value){event.preventDefault();toast('Subsection ไม่ตรงกับ Main Section');return}
+    if(sub?.disabled){const hidden=document.createElement('input');hidden.type='hidden';hidden.name='subsectionId';hidden.value='';event.currentTarget.appendChild(hidden)}
+  }
+  submitFormBeforeAwardSections(event,type,id);
+};
+const ensureHomePageSettingsBeforeAwardSections=ensureHomePageSettings;
+ensureHomePageSettings=function(){ensureHomePageSettingsBeforeAwardSections();ensureAwardSections()};
+const adminBeforeAwardSections=admin;
+admin=function(){
+  adminBeforeAwardSections();
+  if(!adminAuthenticated||adminTab!=='awards')return;
+  document.querySelector('.admin-main .admin-top')?.insertAdjacentHTML('afterend',awardSectionAdminPanel());
+};
+ensureAwardSections();
+
 function fanbaseAccountLabel(link){
   if(String(link.username||'').trim())return String(link.username).trim();
   try{

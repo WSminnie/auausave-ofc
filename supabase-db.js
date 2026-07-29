@@ -12,7 +12,7 @@
     },
   });
 
-  const tables = ['artists', 'events', 'awards', 'presenters', 'videos'];
+  const tables = ['artists', 'events', 'award_sections', 'awards', 'presenters', 'videos'];
   const knownIds = {};
   const storageTimestamp = () => {
     const now = new Date(), pad = (value,size=2) => String(value).padStart(size,'0');
@@ -88,14 +88,16 @@
   const mapFromDb = {
     artists: r => ({ id:r.id,name:r.nickname ?? r.name,realName:r.name_TH ?? r.real_name,nameEN:r.name_EN||'',role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image:r.image_url,socialLinks:Array.isArray(r.social_links)?r.social_links:[] }),
     events: r => ({ id:r.id,artistId:r.artist_id,date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'',poster:r.poster_url||'' }),
-    awards: r => ({ id:r.id,artistId:r.artist_id,year:String(r.award_year),title:r.title,org:r.organization,source:r.source_url||'' }),
+    award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parentId:r.parent_id||'',displayOrder:Number(r.display_order)||0,active:r.active!==false }),
+    awards: r => ({ id:r.id,artistId:r.artist_id,year:String(r.award_year||''),day:String(r.award_day||''),month:String(r.award_month||''),title:r.title,org:r.organization,source:r.source_url||'',image:r.image_url||'',mainSectionId:r.main_section_id||'',subsectionId:r.subsection_id||'',displayOrder:Number(r.display_order)||0 }),
     presenters: r => ({ id:r.id,artistId:r.artist_id,brand:r.brand,role:r.role,year:String(r.presenter_year),color:r.color,url:r.source_url||'',logo:r.logo_url||'',announcementImage:r.announcement_image_url||'',announcementVideo:r.announcement_video_url||'',mediaFit:r.media_fit||'contain',mediaPosition:r.media_position||'center' }),
     videos: r => ({ id:r.id,artistId:r.artist_id,title:r.title,views:r.views_label,url:r.youtube_url,embedUrl:r.embed_url||'',category:r.category,featured:r.featured?'yes':'no',color:r.color,thumbnail:r.thumbnail_url||'' })
   };
   const mapToDb = {
     artists: r => ({ id:r.id,nickname:r.name,name_TH:r.realName||null,name_EN:r.nameEN||null,role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image_url:r.image||null,social_links:Array.isArray(r.socialLinks)?r.socialLinks:[] }),
     events: r => ({ id:r.id,artist_id:r.artistId,event_date:r.date,title:r.title,place:r.place,event_type:r.type,series_id:r.seriesId||null,source_url:r.source||null,poster_url:r.poster||null }),
-    awards: r => ({ id:r.id,artist_id:r.artistId,award_year:Number(r.year)||null,title:r.title,organization:r.org,source_url:r.source||null }),
+    award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parent_id:r.parentId||null,display_order:Number(r.displayOrder)||0,active:r.active!==false }),
+    awards: r => ({ id:r.id,artist_id:r.artistId,award_year:Number(r.year)||null,award_day:Number(r.day)||null,award_month:Number(r.month)||null,title:r.title,organization:r.org,source_url:r.source||null,image_url:r.image||null,main_section_id:r.mainSectionId||null,subsection_id:r.subsectionId||null,display_order:Number(r.displayOrder)||0 }),
     presenters: r => ({ id:r.id,artist_id:r.artistId,brand:r.brand,role:r.role,presenter_year:Number(r.year)||null,color:r.color,source_url:r.url||null,logo_url:r.logo||null,announcement_image_url:r.announcementImage||null,announcement_video_url:r.announcementVideo||null,media_fit:r.mediaFit||'contain',media_position:r.mediaPosition||'center' }),
     videos: r => ({ id:r.id,artist_id:r.artistId,title:r.title,views_label:r.views,youtube_url:r.url,embed_url:r.embedUrl||null,category:r.category||'variety',featured:r.featured==='yes',color:r.color,thumbnail_url:r.thumbnail||null })
   };
@@ -104,6 +106,13 @@
     const result = { masterData:{types:[],series:[]} };
     for (const table of tables) {
       const { data, error } = await client.from(table).select('*');
+      // Public pages must keep loading legacy awards while the additive
+      // award_sections migration is being rolled out.
+      if (error && table === 'award_sections') {
+        result[table] = [];
+        knownIds[table] = new Set();
+        continue;
+      }
       if (error) throw error;
       result[table] = data.map(mapFromDb[table]);
       knownIds[table] = new Set(data.map(row => row.id));
@@ -124,7 +133,7 @@
 
   async function save(database) {
     for (const table of tables) {
-      const mediaFields = {artists:['image'],events:['poster'],presenters:['logo','announcementImage'],videos:['thumbnail']}[table] || [];
+      const mediaFields = {artists:['image'],events:['poster'],awards:['image'],presenters:['logo','announcementImage'],videos:['thumbnail']}[table] || [];
       const { data:existing, error:readError } = await client.from(table).select('*');
       if (readError) throw readError;
       const knownBeforeSave = knownIds[table] || new Set();

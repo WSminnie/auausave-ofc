@@ -998,3 +998,11 @@ html{
 @media(max-width:900px){.food-project-hub-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.food-project-hub-grid{grid-template-columns:1fr}.project-type-groups{gap:38px}}
 @media(max-width:360px){.combined-card-summary{grid-template-columns:1fr}.combined-card-total{justify-items:start;text-align:left}}
+.award-main-filters,.award-sub-filters{display:flex;flex-wrap:wrap;gap:10px}.award-main-filters{margin-bottom:12px}.award-sub-filters{margin-bottom:28px;padding-top:12px;border-top:1px solid var(--line)}
+.award-main-filters .chip,.award-sub-filters .chip{cursor:pointer;font-weight:750;letter-spacing:.04em}.award-section-tags{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 12px}
+.award-section-tag{display:inline-flex;align-items:center;min-height:22px;padding:4px 8px;border-radius:999px;background:#eee9e1;color:#685f56;font-size:9px;font-weight:800;letter-spacing:.08em}
+.award-sections-admin{margin-top:18px}.award-section-admin-list{display:grid;gap:8px}.award-section-admin-list article{display:grid;grid-template-columns:minmax(180px,1fr) auto auto auto;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.award-section-admin-list article.is-child{margin-left:34px;background:#f8f6f2}.award-section-admin-list article>div:first-child{display:grid;gap:3px}.award-section-admin-list small{color:var(--muted);font-size:9px;letter-spacing:.08em}
+.section-status{padding:5px 9px;border-radius:999px;background:#eee;color:#777;font-size:9px;font-weight:800}.section-status.active{background:#dcebdc;color:#28622c}.award-section-form-fields{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}[data-award-subsection-field][hidden]{display:none}
+@media(max-width:850px){.award-section-admin-list article{grid-template-columns:1fr auto}.award-section-admin-list article .actions{grid-column:1/-1}.award-section-admin-list article.is-child{margin-left:18px}}
+@media(max-width:560px){.award-main-filters,.award-sub-filters{gap:7px}.award-main-filters .chip,.award-sub-filters .chip{flex:1 1 auto;padding:8px 10px;font-size:10px}.award-section-admin-list article{grid-template-columns:1fr}.award-section-admin-list article.is-child{margin-left:9px}.award-section-admin-list article .actions{grid-column:auto;display:flex;flex-wrap:wrap}}

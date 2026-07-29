@@ -43,6 +43,13 @@ window.AUAUSAVE_DATA = {
         source: "https://x.com/search?q=%23LoveMomentAwards2026xDMD",
       },
     ],
+    award_sections: [
+      { id:"award-section-auausave", name:"AUAUSAVE", slug:"auausave", parentId:"", displayOrder:1, active:true },
+      { id:"award-section-auau", name:"AUAU", slug:"auau", parentId:"", displayOrder:2, active:true },
+      { id:"award-section-solo-artist", name:"SOLO ARTIST", slug:"solo-artist", parentId:"award-section-auau", displayOrder:1, active:true },
+      { id:"award-section-dexx", name:"DEXX", slug:"dexx", parentId:"award-section-auau", displayOrder:2, active:true },
+      { id:"award-section-save", name:"SAVE", slug:"save", parentId:"", displayOrder:3, active:true },
+    ],
     videos: [
       {
         id: "v1",
