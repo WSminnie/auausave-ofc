@@ -163,6 +163,7 @@ function ensureHomePageSettings() {
   db.siteSettings.presenterDates ||= {};
   db.siteSettings.presenterOrderByYear ||= {};
   db.siteSettings.awardDates ||= {};
+  db.siteSettings.awardOrderByYear ||= {};
   db.siteSettings.awardImages ||= {};
   (db.awards||[]).forEach(item=>{ if (!item.image && db.siteSettings.awardImages[item.id]) item.image=db.siteSettings.awardImages[item.id]; });
   ['AT02','AT03'].forEach(id => {
@@ -807,6 +808,11 @@ function presenterDateValue(item) {
   const year=Number(item.year)||0, month=Number(item.month||saved.month)||0, day=Number(item.day||saved.day)||0;
   return year*10000+month*100+day;
 }
+function awardDateValue(item) {
+  const saved=db.siteSettings?.awardDates?.[item.id]||{};
+  const year=Number(item.year)||0, month=Number(item.month||saved.month)||0, day=Number(item.day||saved.day)||0;
+  return year*10000+month*100+day;
+}
 function presenterYears(items=db.presenters) {
   return [...new Set(items.map(presenterYear))].sort((a,b)=>(Number(b)||-1)-(Number(a)||-1));
 }
@@ -826,6 +832,20 @@ function orderedPresentersForYear(items,year) {
 }
 function orderedPresenters(items=db.presenters) {
   return presenterYears(items).flatMap(year=>orderedPresentersForYear(items,year));
+}
+function orderedAwardsForYear(items,year) {
+  ensureHomePageSettings();
+  const yearItems=items.filter(item=>String(item.year||'ไม่ระบุปี')===String(year));
+  const savedOrder=db.siteSettings.awardOrderByYear[String(year)];
+  if (!Array.isArray(savedOrder)) {
+    return [...yearItems].sort((a,b)=>awardDateValue(b)-awardDateValue(a)||String(a.title||'').localeCompare(String(b.title||'')));
+  }
+  const position=new Map(savedOrder.map((id,index)=>[id,index]));
+  return [...yearItems].sort((a,b)=>{
+    const ai=position.has(a.id)?position.get(a.id):Number.MAX_SAFE_INTEGER;
+    const bi=position.has(b.id)?position.get(b.id):Number.MAX_SAFE_INTEGER;
+    return ai-bi || awardDateValue(b)-awardDateValue(a) || String(a.title||'').localeCompare(String(b.title||''));
+  });
 }
 function presenterCards(items = db.presenters) {
   const years=presenterYears(items);
@@ -2096,9 +2116,9 @@ function yearlyOrderPanel(type) {
   const items = db[type], years = type === 'presenters' ? presenterYears(items) : [...new Set(items.map(item => String(item.year || 'ไม่ระบุปี'))) ].sort((a,b) => Number(b) - Number(a));
   const label = type === 'presenters' ? 'พรีเซนเตอร์' : 'รางวัล';
   return `<section class="panel yearly-order-admin"><div class="panel-head"><div><small>YEAR & DISPLAY ORDER</small><h2>จัด${label}ตามปีและลำดับ</h2><p class="master-note">รายการจะแยกตามปี และเลื่อนขึ้น–ลงได้ภายในปีเดียวกัน</p></div><button class="btn" onclick="openForm('${type}')">+ เพิ่ม${label}</button></div><div class="youtube-admin-sections">${years.map(year => {
-    const yearItems = type === 'presenters' ? orderedPresentersForYear(items,year) : items.filter(item => String(item.year || 'ไม่ระบุปี') === year);
+    const yearItems = type === 'presenters' ? orderedPresentersForYear(items,year) : orderedAwardsForYear(items,year);
     const saving=type==='presenters'&&presenterOrderSaving;
-    return `<article class="youtube-admin-section"><div class="yearly-admin-year"><div><small>YEAR</small><h3>${year}</h3></div><span>${yearItems.length} รายการ</span></div><div class="youtube-admin-video-list">${yearItems.map((item,index)=>`<div><div><strong>${type==='presenters' ? item.brand : item.title}</strong><small>${type==='presenters'?`${presenterAdminDate(item)} · `:''}${artistName(item.artistId)}${type==='awards' && item.org ? ` · ${item.org}` : ''}</small></div><div class="actions"><button class="icon-btn" onclick="moveYearlyItem('${type}','${item.id}',-1)" ${saving||index===0?'disabled':''}>↑</button><button class="icon-btn" onclick="moveYearlyItem('${type}','${item.id}',1)" ${saving||index===yearItems.length-1?'disabled':''}>↓</button><button class="icon-btn" onclick="openForm('${type}','${item.id}')" ${saving?'disabled':''}>✎</button></div></div>`).join('')}</div></article>`;
+    return `<article class="youtube-admin-section"><div class="yearly-admin-year"><div><small>YEAR</small><h3>${year}</h3></div><span>${yearItems.length} รายการ</span></div><div class="youtube-admin-video-list">${yearItems.map((item,index)=>`<div><div><strong>${type==='presenters' ? item.brand : item.title}</strong><small>${type==='presenters'?presenterAdminDate(item):awardDisplayDate(item)} · ${artistName(item.artistId)}${type==='awards' && item.org ? ` · ${item.org}` : ''}</small></div><div class="actions"><button class="icon-btn" onclick="moveYearlyItem('${type}','${item.id}',-1)" ${saving||index===0?'disabled':''}>↑</button><button class="icon-btn" onclick="moveYearlyItem('${type}','${item.id}',1)" ${saving||index===yearItems.length-1?'disabled':''}>↓</button><button class="icon-btn" onclick="openForm('${type}','${item.id}')" ${saving?'disabled':''}>✎</button></div></div>`).join('')}</div></article>`;
   }).join('') || '<div class="empty">ยังไม่มีข้อมูล</div>'}</div></section>`;
 }
 
@@ -2106,7 +2126,7 @@ async function moveYearlyItem(type, id, direction) {
   if (type==='presenters'&&presenterOrderSaving) return;
   const item = db[type].find(entry => entry.id === id);
   if (!item) return;
-  const sameYear = type==='presenters' ? orderedPresentersForYear(db.presenters,presenterYear(item)) : db[type].filter(entry => String(entry.year) === String(item.year));
+  const sameYear = type==='presenters' ? orderedPresentersForYear(db.presenters,presenterYear(item)) : orderedAwardsForYear(db.awards,String(item.year||'ไม่ระบุปี'));
   const index = sameYear.findIndex(entry => entry.id === id), target = index + direction;
   if (target < 0 || target >= sameYear.length) return;
   if (type==='presenters') {
@@ -2121,9 +2141,19 @@ async function moveYearlyItem(type, id, direction) {
     if (saved!==false) toast('บันทึกลำดับเรียบร้อยแล้ว');
     return;
   }
-  const firstIndex = db[type].indexOf(sameYear[index]), secondIndex = db[type].indexOf(sameYear[target]);
-  [db[type][firstIndex], db[type][secondIndex]] = [db[type][secondIndex], db[type][firstIndex]];
+  [sameYear[index],sameYear[target]]=[sameYear[target],sameYear[index]];
+  db.siteSettings.awardOrderByYear[String(item.year||'ไม่ระบุปี')]=sameYear.map(entry=>entry.id);
   save(); admin();
+}
+
+function sortYearlyRecordsByDate(type) {
+  const tbody=document.querySelector('.data-table tbody');
+  if (!tbody) return;
+  const values=new Map(db[type].map(item=>[item.id,type==='presenters'?presenterDateValue(item):awardDateValue(item)]));
+  [...tbody.rows].sort((a,b)=>{
+    const getId=row=>(row.querySelector('button[onclick*="openForm"]')?.getAttribute('onclick')||'').match(/openForm\('[^']+','([^']+)'\)/)?.[1]||'';
+    return (values.get(getId(b))||0)-(values.get(getId(a))||0);
+  }).forEach(row=>tbody.appendChild(row));
 }
 
 const renderAdminWithYearlyManagers = admin;
@@ -2134,6 +2164,7 @@ admin = function () {
   previousYearlyAdminTab = adminTab;
   if (!adminAuthenticated || !isYearlyPage) return;
   const type = adminTab, page = type === 'presenters' ? 'presenters' : 'awards';
+  sortYearlyRecordsByDate(type);
   document.querySelector('.admin-main .admin-top')?.insertAdjacentHTML('afterend', yearlyOrderPanel(type));
   const selected = yearlyAdminTabs[type];
   document.querySelector('.admin-main .admin-top')?.insertAdjacentHTML('afterend', `<nav class="home-builder-tabs yearly-admin-tabs" aria-label="เมนูจัดการ${type==='presenters'?'พรีเซนเตอร์':'รางวัล'}"><button class="${selected==='content'?'active':''}" onclick="yearlyAdminTabs.${type}='content';admin()">หัวข้อและคำอธิบาย</button><button class="${selected==='order'?'active':''}" onclick="yearlyAdminTabs.${type}='order';admin()">จัดตามปีและลำดับ</button><button class="${selected==='records'?'active':''}" onclick="yearlyAdminTabs.${type}='records';admin()">ข้อมูลทั้งหมด</button></nav>`);
@@ -4216,7 +4247,15 @@ admin=function(){
   if(!adminAuthenticated)return;
   const pageByTab={artists:'artists',events:'schedule',presenters:'presenters',awards:'awards'},page=pageByTab[adminTab],main=document.querySelector('.admin-main'),top=main?.querySelector('.admin-top');
   document.querySelectorAll('[data-page-content-settings]').forEach(panel=>panel.remove());
-  if(page&&top)top.insertAdjacentHTML('afterend',renderPageLanguageSettings(page));
+  if(page&&top){
+    const tabs=top.nextElementSibling?.matches('.home-builder-tabs')?top.nextElementSibling:null;
+    (tabs||top).insertAdjacentHTML('afterend',renderPageLanguageSettings(page));
+    if(adminTab==='presenters'||adminTab==='awards'){
+      const selected=yearlyAdminTabs[adminTab];
+      const content=document.querySelector(`[data-page-content-settings="${page}"]`);
+      if(content)content.style.display=selected==='content'?'':'none';
+    }
+  }
   document.querySelectorAll('.sidebar .side-nav button').forEach(button=>{
     const action=button.getAttribute('onclick')||'',text=button.textContent.trim();
     if(action.includes("adminTab='pagecontent'")||text==='Homepage Content')button.innerHTML='▤ &nbsp; Homepage';
