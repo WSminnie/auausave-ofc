@@ -9,7 +9,7 @@ export default {
     const url = new URL(request.url);
     const pathname = url.pathname.replace(/\/+$/, "").toLowerCase();
 
-    if (cleanRoutes.has(pathname) || /^\/projects\/[^/]+$/.test(pathname)) {
+    if (cleanRoutes.has(pathname)) {
       const indexRequest = new Request(new URL("/", url), request);
       return env.ASSETS.fetch(indexRequest);
     }

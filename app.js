@@ -298,19 +298,10 @@ function normalizePublicRoute(value) {
 function getCurrentRoute() {
   const pathname =
     window.location.pathname.replace(/\/+$/, "").toLowerCase() || "/";
-  const cleanProjectMatch = pathname.match(/^\/projects\/([^/]+)$/);
-  if (cleanProjectMatch) {
-    try {
-      return `project/${decodeURIComponent(cleanProjectMatch[1])}`;
-    } catch {
-      return "projects";
-    }
-  }
+  if (pathnameRouteMap[pathname]) return pathnameRouteMap[pathname];
 
   const hashRoute = window.location.hash.replace(/^#\/?/, "");
-  if (hashRoute) return normalizePublicRoute(hashRoute);
-  if (pathnameRouteMap[pathname]) return pathnameRouteMap[pathname];
-  return "home";
+  return normalizePublicRoute(hashRoute || "home");
 }
 function navigateTo(routeName, options = {}) {
   const normalizedRoute = normalizePublicRoute(routeName);
@@ -323,50 +314,6 @@ function navigateTo(routeName, options = {}) {
   const updateHistory = options.replace ? "replaceState" : "pushState";
   window.history[updateHistory]({ route: normalizedRoute }, "", cleanPath);
   router();
-}
-function navigateToProject(slug, options = {}) {
-  const normalizedSlug = String(slug || "").trim();
-  if (!normalizedSlug) return;
-
-  const encodedSlug = encodeURIComponent(normalizedSlug);
-  const updateHistory = options.replace ? "replaceState" : "pushState";
-  window.history[updateHistory](
-    { route: "project-detail", slug: normalizedSlug },
-    "",
-    `/projects/${encodedSlug}`,
-  );
-  router();
-}
-function navigateInternalHref(href) {
-  const targetUrl = new URL(String(href || ""), window.location.href);
-  if (targetUrl.origin !== window.location.origin) return false;
-
-  const cleanProjectMatch = targetUrl.pathname
-    .replace(/\/+$/, "")
-    .match(/^\/projects\/([^/]+)$/i);
-  const hashProjectMatch = targetUrl.hash
-    .replace(/^#\/?/, "")
-    .match(/^project\/([^/]+)$/i);
-  const encodedProjectSlug =
-    cleanProjectMatch?.[1] || hashProjectMatch?.[1] || "";
-  if (encodedProjectSlug) {
-    try {
-      navigateToProject(decodeURIComponent(encodedProjectSlug));
-    } catch {
-      navigateToProject(encodedProjectSlug);
-    }
-    return true;
-  }
-
-  const pathname =
-    targetUrl.pathname.replace(/\/+$/, "").toLowerCase() || "/";
-  const hashRoute = normalizePublicRoute(targetUrl.hash.replace(/^#\/?/, ""));
-  const targetRoute =
-    pathnameRouteMap[pathname] ||
-    (cleanPathMap[hashRoute] ? hashRoute : "");
-  if (!targetRoute) return false;
-  navigateTo(targetRoute);
-  return true;
 }
 let route = getCurrentRoute();
 const app = document.querySelector("#app");
@@ -528,7 +475,7 @@ footer=function(){
   return `<footer class="footer footer-compact"><div class="container"><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a class="creator-link creator-auausave" href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH</a><a class="creator-link creator-auau" href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC</a><a class="creator-link creator-save" href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC</a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE TH</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
 };
 function artistCards() {
-  return `<div class="artists">${sortedArtists().map((a) => `<article class="artist-card" data-public-route="${artistPublicSlug(a.id)}" role="link" tabindex="0"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<span>${a.initial}</span>`}<small class="tag">${sameArtistId(a.id,"duo") ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><span class="arrow">➚</span><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
+  return `<div class="artists">${sortedArtists().map((a) => `<article class="artist-card" onclick="navigateTo('${artistPublicSlug(a.id)}')"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<span>${a.initial}</span>`}<small class="tag">${sameArtistId(a.id,"duo") ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><span class="arrow">➚</span><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
 }
 function scheduleRows(items = db.events) {
   return items.length
@@ -2372,14 +2319,7 @@ function router() {
   else if (route === "/projects") projectHubPage();
   else if (route.startsWith("/")) profile(artistIdFromPublicRoute(route));
   else if (route === "projects") projectHubPage();
-  else if (route.startsWith("project/")) {
-    const encodedSlug = route.slice(8);
-    try {
-      projectDetailPage(decodeURIComponent(encodedSlug));
-    } catch {
-      projectDetailPage(encodedSlug);
-    }
-  }
+  else if (route.startsWith("project/")) projectDetailPage(route.slice(8));
   else if (route === "admin") requestAdminAccess();
   else home();
   document.documentElement.lang = 'th';
@@ -2402,41 +2342,11 @@ document.addEventListener("click", event => {
     event.altKey
   ) return;
 
-  const projectCard = event.target.closest("[data-project-slug]");
-  if (
-    projectCard &&
-    !event.target.closest("a[target], button, input, select, textarea")
-  ) {
-    const slug = projectCard.dataset.projectSlug;
-    if (slug) {
-      event.preventDefault();
-      navigateToProject(slug);
-      return;
-    }
-  }
-  const routeCard = event.target.closest("[data-public-route]");
-  if (
-    routeCard &&
-    !event.target.closest("a, button, input, select, textarea")
-  ) {
-    const cardRoute = routeCard.dataset.publicRoute;
-    if (cardRoute) {
-      event.preventDefault();
-      navigateTo(cardRoute);
-      return;
-    }
-  }
-
   const link = event.target.closest("a[href]");
   if (!link || link.target || link.hasAttribute("download")) return;
 
   const targetUrl = new URL(link.href, window.location.href);
   if (targetUrl.origin !== window.location.origin) return;
-
-  if (navigateInternalHref(targetUrl.href)) {
-    event.preventDefault();
-    return;
-  }
 
   const pathRoute = pathnameRouteMap[
     targetUrl.pathname.replace(/\/+$/, "").toLowerCase() || "/"
@@ -2447,23 +2357,6 @@ document.addEventListener("click", event => {
 
   event.preventDefault();
   navigateTo(targetRoute);
-});
-document.addEventListener("keydown", event => {
-  if (event.key !== "Enter" && event.key !== " ") return;
-  const keyboardProjectCard = event.target.closest(
-    "[data-project-slug]:not(a):not(button)",
-  );
-  if (keyboardProjectCard?.dataset.projectSlug) {
-    event.preventDefault();
-    navigateToProject(keyboardProjectCard.dataset.projectSlug);
-    return;
-  }
-  const routeCard = event.target.closest(
-    "[data-public-route]:not(a):not(button)",
-  );
-  if (!routeCard?.dataset.publicRoute) return;
-  event.preventDefault();
-  navigateTo(routeCard.dataset.publicRoute);
 });
 window.addEventListener("storage", event => {
   if (event.key !== "auausave-house-db-v9" || !event.newValue) return;
@@ -2880,7 +2773,7 @@ function homepageOrderedArtists(){
 const artistCardsBeforeHomepageOrder = artistCards;
 artistCards = function(){
   const cards = homepageOrderedArtists().filter(artist => db.siteSettings.homeArtistCards[artist.id]?.visible !== false);
-  return `<div class="artists homepage-artist-grid">${cards.map(artist => {const settings=db.siteSettings.homeArtistCards[artist.id]||{};return `<article class="artist-card" data-public-route="${artistPublicSlug(artist.id)}" role="link" tabindex="0"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial)}</span>`}<small class="tag">${escapePageText(settings.badge||'')}</small></div><div class="artist-meta"><span class="arrow">➚</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role)}</p></div></article>`;}).join('')}</div>`;
+  return `<div class="artists homepage-artist-grid">${cards.map(artist => {const settings=db.siteSettings.homeArtistCards[artist.id]||{};return `<article class="artist-card" onclick="navigateTo('${artistPublicSlug(artist.id)}')"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial)}</span>`}<small class="tag">${escapePageText(settings.badge||'')}</small></div><div class="artist-meta"><span class="arrow">➚</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role)}</p></div></article>`;}).join('')}</div>`;
 };
 function homeArtistDragStart(event,artistId){event.dataTransfer.setData('text/plain',artistId);event.dataTransfer.effectAllowed='move';}
 function homeArtistDrop(event,targetId){event.preventDefault();ensureHomepageArtistCards();const sourceId=event.dataTransfer.getData('text/plain'),list=db.siteSettings.homeArtistOrder,from=list.indexOf(sourceId),to=list.indexOf(targetId);if(from<0||to<0||from===to)return;const [item]=list.splice(from,1);list.splice(to,0,item);save();pageContentAdmin();toast('บันทึกลำดับการ์ดศิลปินแล้ว');}
@@ -3102,7 +2995,7 @@ function renderHomeBanner(){
   };
   banner.querySelector('.home-banner-arrow.prev')?.addEventListener('click',()=>show(current-1));
   banner.querySelector('.home-banner-arrow.next')?.addEventListener('click',()=>show(current+1));
-  slides.forEach(slide=>slide.addEventListener('click',()=>{const link=slide.dataset.link?.trim();if(!link)return;if(navigateInternalHref(link))return;if(/^https?:\/\//i.test(link))window.open(link,'_blank','noopener,noreferrer');else location.href=link;}));
+  slides.forEach(slide=>slide.addEventListener('click',()=>{const link=slide.dataset.link?.trim();if(!link)return;if(/^https?:\/\//i.test(link))window.open(link,'_blank','noopener,noreferrer');else location.href=link;}));
   const soundButton=banner.querySelector('.home-banner-sound');
   soundButton?.addEventListener('click',()=>{soundOn=!soundOn;banner.querySelectorAll('video').forEach(video=>video.muted=!soundOn);soundButton.textContent=soundOn?'🔊':'🔇';soundButton.setAttribute('aria-label',soundOn?'ปิดเสียงวิดีโอ':'เปิดเสียงวิดีโอ');soundButton.title=soundOn?'ปิดเสียง':'เปิดเสียง';if(items[current]?.type==='video')slides[current].play().catch(()=>{});});
   dots.forEach((dot,index)=>dot.addEventListener('click',()=>show(index)));
@@ -3420,7 +3313,7 @@ function applyDonationLedgerEnglish(){
 function projectHubPage(){
   ensureProjectSettings();const projects=db.siteSettings.projects.items.filter(project=>project.visible!==false);
   const statusLabel={active:'ACTIVE NOW',upcoming:'COMING NEXT',closed:'CLOSED'};
-  app.innerHTML=nav('projects')+`<main><section class="page-hero project-hub-hero"><div class="container"><span class="eyebrow">AUAUSAVE HOUSE · FAN PROJECTS</span><h1>OUR PROJECTS</h1><p>พื้นที่รวมทุกโปรเจกต์จากแฟนคลับ ทั้งรอบปัจจุบัน โปรเจกต์ถัดไป และความทรงจำที่ผ่านมา</p></div></section><section class="section project-hub-section"><div class="container"><div class="project-filter-row"><b>All projects</b><span>${projects.length} Projects</span></div><div class="project-hub-grid">${projects.map(project=>`<a class="project-hub-card ${project.status==='active'?'is-active':'is-next'}" href="/projects/${encodeURIComponent(project.slug||'')}" data-project-slug="${escapePageText(project.slug||'')}" ${project.banner?`style="background-image:linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.55)),url('${escapePageText(project.banner)}');background-size:cover;background-position:center"`:''}><div><span>${statusLabel[project.status]||'PROJECT'}</span><small>${escapePageText(project.round||'FAN PROJECT')}</small></div><h2>${escapePageText(project.title)}</h2><p>${escapePageText(project.description||'')}</p><footer><b>${project.status==='upcoming'?'เร็ว ๆ นี้':`฿${new Intl.NumberFormat('th-TH').format(2705)}`}</b><span>${project.status==='active'?'View Details ➚':'Stay tuned'}</span></footer></a>`).join('')||'<div class="empty">ยังไม่มีโปรเจกต์ที่เปิดแสดง</div>'}</div></div></section></main>`+footer();
+  app.innerHTML=nav('projects')+`<main><section class="page-hero project-hub-hero"><div class="container"><span class="eyebrow">AUAUSAVE HOUSE · FAN PROJECTS</span><h1>OUR PROJECTS</h1><p>พื้นที่รวมทุกโปรเจกต์จากแฟนคลับ ทั้งรอบปัจจุบัน โปรเจกต์ถัดไป และความทรงจำที่ผ่านมา</p></div></section><section class="section project-hub-section"><div class="container"><div class="project-filter-row"><b>All projects</b><span>${projects.length} Projects</span></div><div class="project-hub-grid">${projects.map(project=>`<a class="project-hub-card ${project.status==='active'?'is-active':'is-next'}" href="#project/${escapePageText(project.slug)}" ${project.banner?`style="background-image:linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.55)),url('${escapePageText(project.banner)}');background-size:cover;background-position:center"`:''}><div><span>${statusLabel[project.status]||'PROJECT'}</span><small>${escapePageText(project.round||'FAN PROJECT')}</small></div><h2>${escapePageText(project.title)}</h2><p>${escapePageText(project.description||'')}</p><footer><b>${project.status==='upcoming'?'เร็ว ๆ นี้':`฿${new Intl.NumberFormat('th-TH').format(2705)}`}</b><span>${project.status==='active'?'View Details ➚':'Stay tuned'}</span></footer></a>`).join('')||'<div class="empty">ยังไม่มีโปรเจกต์ที่เปิดแสดง</div>'}</div></div></section></main>`+footer();
   document.querySelectorAll('.project-hub-card').forEach((card,index)=>{const project=projects[index];if(!project)return;card.className='project-hub-card project-simple-card';card.removeAttribute('style');card.innerHTML=`<div class="project-simple-image">${project.cardImage?`<img src="${escapePageText(project.cardImage)}" alt="${escapePageText(project.title)}">`:`<span>${escapePageText(project.title.slice(0,2).toUpperCase())}</span>`}</div><div class="project-simple-copy"><h2>${escapePageText(project.title)}</h2><strong>${project.status==='upcoming'?'เร็ว ๆ นี้':`฿${new Intl.NumberFormat('th-TH').format(2705)}`}</strong></div>`;});
   document.querySelectorAll('.project-simple-card').forEach((card,index)=>{
     const project=projects[index],amount=card.querySelector('.project-simple-copy strong');if(!project||!amount)return;
@@ -3710,8 +3603,7 @@ projectDetailPage=function(slug){
 function projectHubSimpleCard(project,type='donation'){
   const money=value=>new Intl.NumberFormat('th-TH',{maximumFractionDigits:2}).format(Number(value)||0);
   const amount=type==='combined'?`<small>ยอดรวมปัจจุบัน</small><span data-food-project-card-total="${escapePageText(project.id)}">฿${money(project.openingBalance)}</span>`:type==='personal'?`<small>คิวคงเหลือ / คิวทั้งหมด</small><span data-personal-project-card-count="${escapePageText(project.id)}">${project.sheetUrl?'กำลังอัปเดต…':'0 / 0 คิว'}</span>`:`<small>ยอดเรียลไทม์ / เป้า</small><span data-project-card-total="${escapePageText(project.id)}">${project.sheetUrl?'กำลังอัปเดต…':'฿0'}</span><em>/ ฿${money(project.goal)}</em>`;
-  const slug=String(project.slug||'').trim(),encodedSlug=encodeURIComponent(slug);
-  return `<a class="project-hub-card project-simple-card ${type!=='donation'?'food-project-card':''}" href="/projects/${encodedSlug}" data-project-slug="${escapePageText(slug)}"><div class="project-simple-image">${project.cardImage?`<img src="${escapePageText(project.cardImage)}" alt="${escapePageText(project.title)}">`:`<span>${escapePageText(project.title.slice(0,2).toUpperCase())}</span>`}</div><div class="project-simple-copy"><h2>${escapePageText(project.title)}</h2><strong>${amount}</strong></div></a>`;
+  return `<a class="project-hub-card project-simple-card ${type!=='donation'?'food-project-card':''}" href="#project/${escapePageText(project.slug)}"><div class="project-simple-image">${project.cardImage?`<img src="${escapePageText(project.cardImage)}" alt="${escapePageText(project.title)}">`:`<span>${escapePageText(project.title.slice(0,2).toUpperCase())}</span>`}</div><div class="project-simple-copy"><h2>${escapePageText(project.title)}</h2><strong>${amount}</strong></div></a>`;
 }
 projectHubPage=function(){
   ensureProjectSettings();const settings=db.siteSettings.projects,sections=settings.sections,visible=settings.items.filter(project=>project.visible!==false&&sections.some(section=>section.id===project.sectionId));
@@ -4192,7 +4084,7 @@ homeScheduleSection=function(){
 };
 artistCards=function(){
   const cards=homepageOrderedArtists();
-  return `<div class="artists homepage-artist-grid">${cards.map(artist=>`<article class="artist-card" data-public-route="${artistPublicSlug(artist.id)}" role="link" tabindex="0"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial||artist.name.slice(0,2))}</span>`}</div><div class="artist-meta"><span class="arrow">➚</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div></article>`).join('')}</div>`;
+  return `<div class="artists homepage-artist-grid">${cards.map(artist=>`<article class="artist-card" onclick="navigateTo('${artistPublicSlug(artist.id)}')"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial||artist.name.slice(0,2))}</span>`}</div><div class="artist-meta"><span class="arrow">➚</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div></article>`).join('')}</div>`;
 };
 function renderManagedPageTitleEditor(){
   const titles=ensureManagedPageTitles(),labels={artists:'Artists',schedule:'Schedule',presenters:'Presenters',awards:'Awards',projects:'Projects',auausave:'AUAUSAVE',auau:'AUAU',save:'SAVE',mhiipraew:'Mhii Praew'};
