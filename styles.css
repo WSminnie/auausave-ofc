@@ -729,6 +729,8 @@ html,body{max-width:100%;overflow-x:hidden}img,video,iframe{max-width:100%}
 
 /* Shared link indicator. */
 .link-indicator{cursor:pointer}
+[data-project-slug],[data-public-route]{cursor:pointer}
+[data-project-slug]:focus-visible,[data-public-route]:focus-visible{outline:3px solid #d86666;outline-offset:4px}
 .link-indicator__icon{display:inline-block;margin-left:4px;color:inherit;font-family:inherit;font-size:.9em;font-style:normal;font-weight:inherit;line-height:1;vertical-align:baseline;transform:translateY(-.03em)}
 a.link-indicator,.btn.link-indicator{transition:color .2s,border-color .2s,background-color .2s,opacity .2s}
 a.link-indicator:hover,a.link-indicator:focus-visible{color:var(--red);text-decoration:underline;text-underline-offset:3px}
