@@ -3,8 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="AUAUSAVE TH" />
-  <title>AUAUSAVE TH</title>
+  <meta name="description" content="AUAUSAVE HOUSE — พื้นที่รวมทุกเรื่องราวของศิลปินที่คุณรัก" />
+  <title>AUAUSAVE HOUSE — Artist Community</title>
+  <script>
+    (function () {
+      var cleanRouteMap = {
+        "/auausave": "/#/AUAUSAVE",
+        "/auautnp": "/#/AUAU",
+        "/savewrg": "/#/SAVE",
+        "/projects": "/#/projects"
+      };
+      var pathname = window.location.pathname.replace(/\/+$/, "").toLowerCase();
+      var targetRoute = cleanRouteMap[pathname];
+
+      if (targetRoute && !window.location.hash) {
+        window.location.replace(targetRoute + window.location.search);
+      }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -25,8 +41,8 @@
   <div id="toast" class="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="supabase-db.js?v=20260726-9"></script>
+  <script src="supabase-db.js?v=20260726-8"></script>
   <script src="data.js"></script>
-  <script src="app.js?v=20260729-02"></script>
+  <script src="app.js?v=20260729-01"></script>
 </body>
 </html>

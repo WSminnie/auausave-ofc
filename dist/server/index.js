@@ -1,17 +1,19 @@
 export default {
   async fetch(request, env) {
-    const cleanRoutes = new Set([
-      "/auausave",
-      "/auautnp",
-      "/savewrg",
-      "/projects",
-    ]);
+    const cleanRouteMap = {
+      "/auausave": "/#/AUAUSAVE",
+      "/auautnp": "/#/AUAU",
+      "/savewrg": "/#/SAVE",
+      "/projects": "/#/projects",
+    };
     const url = new URL(request.url);
     const pathname = url.pathname.replace(/\/+$/, "").toLowerCase();
+    const targetRoute = cleanRouteMap[pathname];
 
-    if (cleanRoutes.has(pathname)) {
-      const indexRequest = new Request(new URL("/index.html", url), request);
-      return env.ASSETS.fetch(indexRequest);
+    if (targetRoute && !url.hash) {
+      const targetUrl = new URL(targetRoute, url.origin);
+      targetUrl.search = url.search;
+      return Response.redirect(targetUrl.toString(), 302);
     }
 
     return env.ASSETS.fetch(request);

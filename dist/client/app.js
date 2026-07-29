@@ -276,46 +276,7 @@ db.events.forEach((e) => {
           : "";
   }
 });
-const cleanPathMap = {
-  AUAUSAVE: "/auausave",
-  AUAU: "/auautnp",
-  SAVE: "/savewrg",
-  projects: "/projects",
-};
-const pathnameRouteMap = {
-  "/auausave": "AUAUSAVE",
-  "/auautnp": "AUAU",
-  "/savewrg": "SAVE",
-  "/projects": "projects",
-};
-function normalizePublicRoute(value) {
-  const candidate = String(value || "");
-  const knownRoute = Object.keys(cleanPathMap).find(
-    (item) => item.toLowerCase() === candidate.toLowerCase(),
-  );
-  return knownRoute || candidate;
-}
-function getCurrentRoute() {
-  const pathname =
-    window.location.pathname.replace(/\/+$/, "").toLowerCase() || "/";
-  if (pathnameRouteMap[pathname]) return pathnameRouteMap[pathname];
-
-  const hashRoute = window.location.hash.replace(/^#\/?/, "");
-  return normalizePublicRoute(hashRoute || "home");
-}
-function navigateTo(routeName, options = {}) {
-  const normalizedRoute = normalizePublicRoute(routeName);
-  const cleanPath = cleanPathMap[normalizedRoute];
-  if (!cleanPath) {
-    window.location.hash = normalizedRoute;
-    return;
-  }
-
-  const updateHistory = options.replace ? "replaceState" : "pushState";
-  window.history[updateHistory]({ route: normalizedRoute }, "", cleanPath);
-  router();
-}
-let route = getCurrentRoute();
+let route = location.hash.slice(1) || "home";
 const app = document.querySelector("#app");
 let databaseSyncQueue = Promise.resolve();
 function updateDatabaseStatusUi(message, connected) {
@@ -475,7 +436,7 @@ footer=function(){
   return `<footer class="footer footer-compact"><div class="container"><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a class="creator-link creator-auausave" href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH</a><a class="creator-link creator-auau" href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC</a><a class="creator-link creator-save" href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC</a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE TH</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
 };
 function artistCards() {
-  return `<div class="artists">${sortedArtists().map((a) => `<article class="artist-card" onclick="navigateTo('${artistPublicSlug(a.id)}')"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<span>${a.initial}</span>`}<small class="tag">${sameArtistId(a.id,"duo") ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><span class="arrow">➚</span><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
+  return `<div class="artists">${sortedArtists().map((a) => `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(a.id)}'"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<span>${a.initial}</span>`}<small class="tag">${sameArtistId(a.id,"duo") ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><span class="arrow">➚</span><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
 }
 function scheduleRows(items = db.events) {
   return items.length
@@ -2307,10 +2268,8 @@ async function hydrateFromSupabase() {
 }
 
 function router() {
-  route = getCurrentRoute();
+  route = location.hash.slice(1) || "home";
   if (route === "home") home();
-  else if (["AUAUSAVE", "AUAU", "SAVE"].includes(route))
-    profile(artistIdFromPublicRoute(`/${route}`));
   else if (
     ["artists", "schedule", "presenters", "awards"].includes(route)
   )
@@ -2331,33 +2290,6 @@ function scrollPageToTop() {
   });
 }
 window.addEventListener("hashchange", router);
-window.addEventListener("popstate", router);
-document.addEventListener("click", event => {
-  if (
-    event.defaultPrevented ||
-    event.button !== 0 ||
-    event.metaKey ||
-    event.ctrlKey ||
-    event.shiftKey ||
-    event.altKey
-  ) return;
-
-  const link = event.target.closest("a[href]");
-  if (!link || link.target || link.hasAttribute("download")) return;
-
-  const targetUrl = new URL(link.href, window.location.href);
-  if (targetUrl.origin !== window.location.origin) return;
-
-  const pathRoute = pathnameRouteMap[
-    targetUrl.pathname.replace(/\/+$/, "").toLowerCase() || "/"
-  ];
-  const hashRoute = normalizePublicRoute(targetUrl.hash.replace(/^#\/?/, ""));
-  const targetRoute = pathRoute || (cleanPathMap[hashRoute] ? hashRoute : "");
-  if (!targetRoute) return;
-
-  event.preventDefault();
-  navigateTo(targetRoute);
-});
 window.addEventListener("storage", event => {
   if (event.key !== "auausave-house-db-v9" || !event.newValue) return;
   // Never re-render an admin session from another tab's localStorage update.
@@ -2773,7 +2705,7 @@ function homepageOrderedArtists(){
 const artistCardsBeforeHomepageOrder = artistCards;
 artistCards = function(){
   const cards = homepageOrderedArtists().filter(artist => db.siteSettings.homeArtistCards[artist.id]?.visible !== false);
-  return `<div class="artists homepage-artist-grid">${cards.map(artist => {const settings=db.siteSettings.homeArtistCards[artist.id]||{};return `<article class="artist-card" onclick="navigateTo('${artistPublicSlug(artist.id)}')"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial)}</span>`}<small class="tag">${escapePageText(settings.badge||'')}</small></div><div class="artist-meta"><span class="arrow">➚</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role)}</p></div></article>`;}).join('')}</div>`;
+  return `<div class="artists homepage-artist-grid">${cards.map(artist => {const settings=db.siteSettings.homeArtistCards[artist.id]||{};return `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(artist.id)}'"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial)}</span>`}<small class="tag">${escapePageText(settings.badge||'')}</small></div><div class="artist-meta"><span class="arrow">➚</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role)}</p></div></article>`;}).join('')}</div>`;
 };
 function homeArtistDragStart(event,artistId){event.dataTransfer.setData('text/plain',artistId);event.dataTransfer.effectAllowed='move';}
 function homeArtistDrop(event,targetId){event.preventDefault();ensureHomepageArtistCards();const sourceId=event.dataTransfer.getData('text/plain'),list=db.siteSettings.homeArtistOrder,from=list.indexOf(sourceId),to=list.indexOf(targetId);if(from<0||to<0||from===to)return;const [item]=list.splice(from,1);list.splice(to,0,item);save();pageContentAdmin();toast('บันทึกลำดับการ์ดศิลปินแล้ว');}
@@ -4084,7 +4016,7 @@ homeScheduleSection=function(){
 };
 artistCards=function(){
   const cards=homepageOrderedArtists();
-  return `<div class="artists homepage-artist-grid">${cards.map(artist=>`<article class="artist-card" onclick="navigateTo('${artistPublicSlug(artist.id)}')"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial||artist.name.slice(0,2))}</span>`}</div><div class="artist-meta"><span class="arrow">➚</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div></article>`).join('')}</div>`;
+  return `<div class="artists homepage-artist-grid">${cards.map(artist=>`<article class="artist-card" onclick="location.hash='/${artistPublicSlug(artist.id)}'"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial||artist.name.slice(0,2))}</span>`}</div><div class="artist-meta"><span class="arrow">➚</span><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div></article>`).join('')}</div>`;
 };
 function renderManagedPageTitleEditor(){
   const titles=ensureManagedPageTitles(),labels={artists:'Artists',schedule:'Schedule',presenters:'Presenters',awards:'Awards',projects:'Projects',auausave:'AUAUSAVE',auau:'AUAU',save:'SAVE',mhiipraew:'Mhii Praew'};
