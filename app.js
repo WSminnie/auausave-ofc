@@ -339,21 +339,29 @@ function navigateToProject(slug, options = {}) {
 }
 function navigateInternalHref(href) {
   const targetUrl = new URL(String(href || ""), window.location.href);
+
+  const hashProjectMatch = targetUrl.hash
+    .replace(/^#\/?/, "")
+    .match(/^project\/([^/]+)$/i);
+  if (hashProjectMatch?.[1]) {
+    try {
+      navigateToProject(decodeURIComponent(hashProjectMatch[1]));
+    } catch {
+      navigateToProject(hashProjectMatch[1]);
+    }
+    return true;
+  }
+
   if (targetUrl.origin !== window.location.origin) return false;
 
   const cleanProjectMatch = targetUrl.pathname
     .replace(/\/+$/, "")
     .match(/^\/projects\/([^/]+)$/i);
-  const hashProjectMatch = targetUrl.hash
-    .replace(/^#\/?/, "")
-    .match(/^project\/([^/]+)$/i);
-  const encodedProjectSlug =
-    cleanProjectMatch?.[1] || hashProjectMatch?.[1] || "";
-  if (encodedProjectSlug) {
+  if (cleanProjectMatch?.[1]) {
     try {
-      navigateToProject(decodeURIComponent(encodedProjectSlug));
+      navigateToProject(decodeURIComponent(cleanProjectMatch[1]));
     } catch {
-      navigateToProject(encodedProjectSlug);
+      navigateToProject(cleanProjectMatch[1]);
     }
     return true;
   }
