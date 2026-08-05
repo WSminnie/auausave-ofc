@@ -132,12 +132,12 @@ migrateArtistId('auau','AT02');
 migrateArtistId('save','AT03');
 db.siteSettings ||= { heroImage: "", heroFit: "cover", heroPosition: "center" };
 db.siteSettings.homeSections ||= [
-  {id:'hero',label:'Hero หน้าหลัก',eyebrow:'AuauSave fanbase · บ้านของอู่อู๋เซฟ',title:'OUR HOUSE.\nOUR STORY.',description:'บ้านแฟนคลับของอู่อู๋เซฟ พื้นที่เก็บทุกโมเมนต์ของ #AuauSave',visible:true},
-  {id:'paths',label:'เลือกพาส',eyebrow:'Two paths · One house',title:'เลือกพาสที่อยากติดตาม',description:'ทุกเรื่องราวถูกจัดไว้อย่างชัดเจน ทั้งโมเมนต์คู่และเส้นทางเดี่ยวของทั้งสองคน',visible:true},
-  {id:'schedule',label:'ตารางงานเดือนนี้',eyebrow:'This month',title:'ตารางงานเดือนนี้',description:'ติดตามตารางงานคู่และงานเดี่ยว',visible:true},
-  {id:'artists',label:'ศิลปิน',eyebrow:'AuauSave house',title:'EVERY CHAPTER, ALL IN ONE PLACE',description:'',visible:true},
+  {id:'hero',label:'Homepage Hero',eyebrow:'AuauSave fanbase · The home of AuauSave',title:'OUR HOUSE.\nOUR STORY.',description:'The official fanbase home of AuauSave, where every #AuauSave moment is kept',visible:true},
+  {id:'paths',label:'Choose a Path',eyebrow:'Two paths · One house',title:'Choose the path you want to follow',description:'Every story is clearly organized, from shared moments to the individual journeys of both artists',visible:true},
+  {id:'schedule',label:'This Month’s Schedule',eyebrow:'This month',title:'This Month’s Schedule',description:'Follow both joint and solo schedules',visible:true},
+  {id:'artists',label:'Artists',eyebrow:'AuauSave house',title:'EVERY CHAPTER, ALL IN ONE PLACE',description:'',visible:true},
   {id:'youtube',label:'YouTube',eyebrow:'Watch & remember',title:'AuauSave on YouTube',description:'',visible:true},
-  {id:'presenters',label:'พรีเซนเตอร์',eyebrow:'Brand & Partnership',title:'Our Presenters',description:'',visible:true}
+  {id:'presenters',label:'Presenters',eyebrow:'Brand & Partnership',title:'Our Presenters',description:'',visible:true}
 ];
 const DEFAULT_HOME_SECTIONS = db.siteSettings.homeSections.map(section => ({...section}));
 function normalizeHomepageSections(sections){
@@ -603,50 +603,47 @@ function filterCoupleArchiveArtist(artist) {
 function timelineCategoryTabs() {
   return `<div class="timeline-category-filters" aria-label="Timeline categories"><button type="button" data-category="all" onclick="filterTimelineCategory(this,'all')">ALL</button><button type="button" class="active" data-category="series" onclick="filterTimelineCategory(this,'series')">SERIES</button><button type="button" data-category="variety" onclick="filterTimelineCategory(this,'variety')">VARIETY</button><button type="button" data-category="music-video" onclick="filterTimelineCategory(this,'music-video')">MUSIC</button></div>`;
 }
-function selectTimelineCard(card,event) {
-  if(event)event.preventDefault();
-  const section=card?.closest('.artist-filmography'),detail=section?.querySelector('.timeline-selected-detail');
-  if(!section||!detail)return;
-  section.querySelectorAll('.filmography-card').forEach(item=>item.classList.toggle('is-selected',item===card));
-  detail.querySelector('[data-timeline-detail-date]').textContent=card.dataset.timelineDate||'';
-  detail.querySelector('[data-timeline-detail-title]').textContent=card.dataset.timelineTitle||'';
-  detail.querySelector('[data-timeline-detail-description]').textContent=card.dataset.timelineDescription||'';
-  const link=detail.querySelector('[data-timeline-detail-link]'),url=card.dataset.timelineUrl||'';
-  if(link){link.hidden=!url;if(url)link.href=url;}
-}
 function filterTimelineCategory(button,category) {
   const section=button?.closest('.artist-filmography');
   if(!section)return;
   section.querySelectorAll('.timeline-category-filters button').forEach(item=>item.classList.toggle('active',item===button));
   section.dataset.activeTimelineCategory=category;
   applyTimelineFilters(section);
-  const first=[...section.querySelectorAll('.filmography-card')].find(card=>card.style.display!=='none');
-  if(first)selectTimelineCard(first);
 }
 function applyTimelineFilters(section) {
   const category=section.dataset.activeTimelineCategory||'series',artist=section.dataset.activeTimelineArtist||'all';
   section.querySelectorAll('.filmography-card').forEach(card=>{const ids=(card.dataset.timelineArtists||'').split('|').map(canonicalArtistId),categoryMatch=category==='all'||card.dataset.timelineCategory===category,artistMatch=artist==='all'||ids.includes(canonicalArtistId(artist));card.style.display=categoryMatch&&artistMatch?'':'none';});
   section.querySelectorAll('.filmography-year-group,.timeline-content-group,.timeline-subsection').forEach(group=>{group.style.display=[...group.querySelectorAll('.filmography-card')].some(card=>card.style.display!=='none')?'':'none';});
 }
-function timelineSelectedDetail(item) {
-  if(!item)return'';
-  const url=timelineCardUrl(item);
-  return `<div class="timeline-selected-detail"><div><small data-timeline-detail-date>${escapePageText(timelineDateLabel(item))}</small><h3 data-timeline-detail-title>${escapePageText(item.title)}</h3><p data-timeline-detail-description>${escapePageText(item.description||item.note||'')}</p></div><a class="btn light" data-timeline-detail-link href="${escapePageText(url||'#')}" target="_blank" rel="noopener noreferrer" ${url?'':'hidden'}>VIEW DETAILS ↗</a></div>`;
+function timelineCardMarkup(item) {
+  const url=timelineCardUrl(item),imageOrientation=item.imageOrientation==='landscape'?'landscape':'portrait',posterUrl=versionedMediaUrl(item.poster,item.imageVersion||item.id),tag=url?'a':'article',linkAttributes=url?` href="${escapePageText(url)}" target="_blank" rel="noopener noreferrer"`:'';
+  return `<${tag} class="filmography-card timeline-image-${imageOrientation} ${item.upcoming?'is-upcoming-card':''} ${url?'timeline-clickable-card':''}"${linkAttributes} data-timeline-artists="${escapePageText((item.artistIds||[]).join('|'))}" data-timeline-category="${escapePageText(item.category||'series')}"><div class="timeline-card-media">${item.poster?`<img src="${escapePageText(posterUrl)}" alt="${escapePageText(item.title)}">`:`<div class="filmography-placeholder"><span>${escapePageText(item.title.slice(0,2).toUpperCase())}</span></div>`}${url?'<span class="timeline-view-details">View Details</span>':''}</div><small>${escapePageText(timelineDateLabel(item))}</small><h3>${escapePageText(item.title)}</h3>${item.description?`<p>${escapePageText(item.description)}</p>`:''}${item.note?`<div class="timeline-note">${escapePageText(item.note)}</div>`:''}</${tag}>`;
 }
-
+function timelineRowsMarkup(items) {
+  const yearOf=item=>item.upcoming?'UPCOMING':(item.year||'TBA'),years=[...new Set(items.map(yearOf))];
+  return `<div class="filmography-timeline"><div class="filmography-timeline-track">${years.map(year=>`<section class="filmography-year-group ${year==='UPCOMING'?'is-upcoming-group':''}"><header><i></i><b>${escapePageText(year)}</b></header><div class="filmography-year-cards">${items.filter(item=>yearOf(item)===year).map(timelineCardMarkup).join('')}</div></section>`).join('')||'<div class="empty">No items yet.</div>'}</div></div>`;
+}
+function timelineLaneMarkup({title,items,description='',category='series',groups=[]}) {
+  const grouped=groups.map(group=>({group,items:items.filter(item=>item.groupId===group.id)})).filter(entry=>entry.items.length),ungrouped=items.filter(item=>!groups.some(group=>group.id===item.groupId));
+  const ungroupedContent=ungrouped.length?(category==='music-video'?timelineRowsMarkup(ungrouped):`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>Other</h4></div>${timelineRowsMarkup(ungrouped)}</section>`):'';
+  const body=groups.length?[...grouped.map(entry=>`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>${escapePageText(entry.group.title)}</h4>${entry.group.description?`<p>${escapePageText(entry.group.description)}</p>`:''}</div>${timelineRowsMarkup(entry.items)}</section>`),ungroupedContent].join(''):timelineRowsMarkup(items);
+  return `<section class="timeline-subsection"><div class="timeline-subsection-head"><div><h3>${escapePageText(title)}</h3>${description?`<p>${escapePageText(description)}</p>`:''}</div><span>${items.length} items</span></div>${body}</section>`;
+}
+function timelineSectionMarkup({className='',attributes='',eyebrow='OUR JOURNEY',title='Journey',description='',items=[],artistFilters='',groupScopeIds=[],activeArtist='all'}) {
+  const visible=db.siteSettings.timelineVisibility||{},content=db.siteSettings.timelineCategoryContent||{},scope=groupScopeIds.map(canonicalArtistId);
+  const lanes=[['series','Series'],['variety','Variety Show'],['music-video','Music Video']].map(([category,label])=>{const categoryItems=items.filter(item=>(item.category||'series')===category);if(!categoryItems.length||visible[category]===false)return'';const groups=(db.siteSettings.timelineGroups?.[category]||[]).filter(group=>!Array.isArray(group.visibleArtistIds)||!group.visibleArtistIds.length||!scope.length||group.visibleArtistIds.map(canonicalArtistId).some(id=>scope.includes(id)));return timelineLaneMarkup({title:content[category]?.title||label,items:categoryItems,description:content[category]?.description||'',category,groups})}).join('');
+  return `<section class="section artist-filmography timeline-inset ${className}" ${attributes} data-active-timeline-category="series" data-active-timeline-artist="${escapePageText(activeArtist)}"><div class="container"><div class="filmography-head"><small>${escapePageText(eyebrow)}</small><h2>${escapePageText(title)}</h2><p>${escapePageText(description)}</p>${artistFilters}${timelineCategoryTabs()}</div>${lanes}</div></section>`;
+}
 function artistSeriesSection(artistId) {
-  artistId = canonicalArtistId(artistId);
-  const archive = db.siteSettings.artistArchive[artistId];
-  if (!archive || archive.visibility?.series === false) return '';
-  const allowedArtists=sameArtistId(artistId,'duo')?['AT01']:['AT01',artistId],series = db.siteSettings.timeline.filter(item=>(item.artistIds||[]).some(id=>allowedArtists.includes(canonicalArtistId(id)))).sort((a,b)=>(Number(b.year)||0)-(Number(a.year)||0));
-  const card = item => {const url=timelineCardUrl(item),imageOrientation=item.imageOrientation==='landscape'?'landscape':'portrait',posterUrl=versionedMediaUrl(item.poster,item.imageVersion||item.id),tag=url?'a':'article',linkAttributes=url?` href="${escapePageText(url)}" role="button" onclick="selectTimelineCard(this,event)" onkeydown="handleTimelineCardKey(event)"`:'';return `<${tag} class="filmography-card timeline-image-${imageOrientation} ${item.upcoming?'is-upcoming-card':''} ${url?'timeline-clickable-card':''}"${linkAttributes} data-timeline-artists="${escapePageText((item.artistIds||[]).join('|'))}" data-timeline-category="${escapePageText(item.category||'series')}" data-timeline-date="${escapePageText(timelineDateLabel(item))}" data-timeline-title="${escapePageText(item.title)}" data-timeline-description="${escapePageText(item.description||item.note||'')}" data-timeline-url="${escapePageText(url||'')}">${item.poster?`<img src="${escapePageText(posterUrl)}" alt="${escapePageText(item.title)}">`:`<div class="filmography-placeholder"><span>${escapePageText(item.title.slice(0,2).toUpperCase())}</span></div>`}<small>${escapePageText(timelineDateLabel(item))}</small><h3>${escapePageText(item.title)}</h3>${item.description?`<p>${escapePageText(item.description)}</p>`:''}${item.note?`<div class="timeline-note">${escapePageText(item.note)}</div>`:''}</${tag}>`;};
-  const lane = (title,items,className='',description='',category='series') => {const renderRows=list=>{const group=item=>item.upcoming?'UPCOMING':(item.year||'TBA'),years=[...new Set(list.map(group))];return `<div class="filmography-timeline"><div class="filmography-timeline-track">${years.map(year=>`<section class="filmography-year-group ${year==='UPCOMING'?'is-upcoming-group':''}"><header><i></i><b>${escapePageText(year)}</b></header><div class="filmography-year-cards">${list.filter(item=>group(item)===year).map(card).join('')}</div></section>`).join('')||'<div class="empty">No items yet.</div>'}</div></div>`;};const groups=db.siteSettings.timelineGroups?.[category]||[],visibleGroups=groups.filter(group=>!Array.isArray(group.visibleArtistIds)||!group.visibleArtistIds.length||group.visibleArtistIds.map(canonicalArtistId).includes(artistId)),grouped=visibleGroups.map(group=>({group,items:items.filter(item=>item.groupId===group.id)})).filter(entry=>entry.items.length),ungrouped=items.filter(item=>!visibleGroups.some(group=>group.id===item.groupId)),ungroupedContent=ungrouped.length?(category==='music-video'?renderRows(ungrouped):`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>Other</h4></div>${renderRows(ungrouped)}</section>`):'',body=visibleGroups.length?[...grouped.map(entry=>`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>${escapePageText(entry.group.title)}</h4>${entry.group.description?`<p>${escapePageText(entry.group.description)}</p>`:''}</div>${renderRows(entry.items)}</section>`),ungroupedContent].join(''):renderRows(items);return `<section class="timeline-subsection ${className}"><div class="timeline-subsection-head"><div><h3>${escapePageText(title)}</h3>${description?`<p>${escapePageText(description)}</p>`:''}</div><span>${items.length} items</span></div>${body}</section>`;};
-  const visible=db.siteSettings.timelineVisibility, content=db.siteSettings.timelineCategoryContent||{},regular=[...series].sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));
-  const filters=sameArtistId(artistId,'duo')?'':`<div class="timeline-artist-filters"><button class="active" onclick="filterArtistTimeline(this,'all')">All</button><button onclick="filterArtistTimeline(this,'AT01')">AUAUSAVE</button><button onclick="filterArtistTimeline(this,'${artistId}')">${escapePageText(artistName(artistId))}</button></div>`;
-  const firstSeries=regular.find(item=>(item.category||'series')==='series')||regular[0];
-  return `<section class="section artist-filmography timeline-inset" data-artist-timeline="${artistId}" data-active-timeline-category="series" data-active-timeline-artist="all"><div class="container"><div class="filmography-head"><small>OUR TIMELINE</small><h2>Timeline</h2><p>Series, variety shows and music videos of ${escapePageText(artistName(artistId))}</p>${filters}${timelineCategoryTabs()}</div>${visible.series!==false?lane(content.series?.title||'Series',regular.filter(item=>(item.category||'series')==='series'),' ',content.series?.description||'','series'):''}${visible.variety!==false?lane(content.variety?.title||'Variety Show',regular.filter(item=>item.category==='variety'),' ',content.variety?.description||'','variety'):''}${visible['music-video']!==false?lane(content['music-video']?.title||'Music Video',regular.filter(item=>item.category==='music-video'),' ',content['music-video']?.description||'','music-video'):''}${timelineSelectedDetail(firstSeries)}</div></section>`;
+  artistId=canonicalArtistId(artistId);
+  const archive=db.siteSettings.artistArchive[artistId];
+  if(!archive||archive.visibility?.series===false)return'';
+  const allowedArtists=sameArtistId(artistId,'duo')?['AT01']:['AT01',artistId];
+  const items=(db.siteSettings.timeline||[]).filter(item=>(item.artistIds||[]).some(id=>allowedArtists.includes(canonicalArtistId(id)))).sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));
+  const artistFilters=sameArtistId(artistId,'duo')?'':`<div class="timeline-artist-filters"><button onclick="filterArtistTimeline(this,'all')">All</button><button onclick="filterArtistTimeline(this,'AT01')">AUAUSAVE</button><button class="active" onclick="filterArtistTimeline(this,'${artistId}')">${escapePageText(artistName(artistId))}</button></div>`;
+  return timelineSectionMarkup({attributes:`data-artist-timeline="${artistId}"`,description:`Series, variety shows and music videos of ${artistName(artistId)}`,items,artistFilters,groupScopeIds:[artistId],activeArtist:sameArtistId(artistId,'duo')?'all':artistId});
 }
-function filterArtistTimeline(button,artist){const section=button.closest('.artist-filmography');section.dataset.activeTimelineArtist=artist==='all'?'all':canonicalArtistId(artist);section.querySelectorAll('.timeline-artist-filters button').forEach(item=>item.classList.toggle('active',item===button));applyTimelineFilters(section);const first=[...section.querySelectorAll('.filmography-card')].find(card=>card.style.display!=='none');if(first)selectTimelineCard(first);}
+function filterArtistTimeline(button,artist){const section=button.closest('.artist-filmography');section.dataset.activeTimelineArtist=artist==='all'?'all':canonicalArtistId(artist);section.querySelectorAll('.timeline-artist-filters button').forEach(item=>item.classList.toggle('active',item===button));applyTimelineFilters(section);}
 
 function coupleArchivePage() {
   const artist = artistById('duo') || {};
@@ -667,6 +664,7 @@ function coupleArchivePage() {
   <section class="section"><div class="container"><div class="archive-section-head"><span>02</span><div><small>MEET AUAUSAVE</small><h2>Events</h2></div></div><div class="couple-event-search"><label>From<input id="coupleEventFrom" type="date" value="${monthStart}" onchange="filterCoupleArchiveEvents()"></label><label>To<input id="coupleEventTo" type="date" value="${monthEnd}" onchange="filterCoupleArchiveEvents()"></label><span class="couple-event-result"></span></div><div class="couple-event-filters"><button class="active" data-type="all" onclick="filterCoupleArchiveEvents('all')">All</button>${filterTypes.map(type=>`<button data-type="${type.id}" onclick="filterCoupleArchiveEvents('${type.id}')">${type.label}</button>`).join('')}</div><div class="couple-event-list">${events.map(item=>`<article class="couple-event-card" data-date="${item.date}" data-types="${eventTypeValues(item.type).map(type=>type.toLowerCase()).join('|')}"><time><b>${day(item.date)}</b><span>${month(item.date)} ${item.date.slice(0,4)}</span></time><div><small>${eventTypeValues(item.type).join(' · ')}</small><h3>${item.title}</h3><p>${item.place||'TBA'}</p></div>${item.source?`<a href="${item.source}" target="_blank">ดูต้นทาง</a>`:''}</article>`).join('') || '<div class="empty">No couple events yet.</div>'}</div></div></section>
   <section class="section archive-awards"><div class="container"><div class="archive-section-head"><span>04</span><div><small>SHARED ACHIEVEMENTS</small><h2>Awards</h2></div><div class="archive-award-table"><div class="archive-award-row head"><span>Year</span><span>Award</span><span>Organization / Category</span><span>Result</span></div>${awards.map(item=>`<div class="archive-award-row"><strong>${item.year}</strong><span>${awardImage(item)?`<img class="award-image" src="${awardImage(item)}" alt="${item.title}">`:''}${item.title}</span><span>${item.org}<time class="award-date">${awardDisplayDate(item)}</time></span><span>Recipient</span></div>`).join('') || '<div class="empty">No couple awards yet.</div>'}</div></div></section>
   <section class="section"><div class="container"><div class="archive-section-head"><span>04</span><div><small>PHOTO · VIDEO · SOURCE</small><h2>Media Gallery</h2></div><p>Event photos, short clips and original post links.</p></div><div class="couple-media-grid">${media.map(item=>`<article>${item.kind==='video'?`<video src="${item.src}" controls playsinline></video>`:item.kind==='image'?`<img src="${item.src}" alt="${item.title}">`:'<div class="media-link-art">LINK</div>'}<div><h3>${item.title}</h3>${item.url?`<a href="${item.url}" target="_blank">View original post </a>`:''}</div></article>`).join('') || '<div class="empty">No media has been added yet.</div>'}</div></div></section></main>` + footer();
+  document.querySelector('.couple-event-list')?.closest('.section')?.remove();
   document.querySelectorAll('.couple-event-card').forEach((card,index) => card.dataset.artist = canonicalArtistId(events[index]?.artistId || 'AT01'));
   document.querySelector('.couple-event-filters:not(.couple-artist-filters)')?.remove();
   document.querySelector('.couple-event-search')?.insertAdjacentHTML('afterend', `<div class="couple-event-filters couple-artist-filters"><button class="active" data-artist="all" onclick="filterCoupleArchiveArtist('all')">All</button><button data-artist="AT01" onclick="filterCoupleArchiveArtist('AT01')">AUAUSAVE</button><button data-artist="AT02" onclick="filterCoupleArchiveArtist('AT02')">AUAU</button><button data-artist="AT03" onclick="filterCoupleArchiveArtist('AT03')">SAVE</button></div>`);
@@ -731,6 +729,8 @@ profile = function (id) {
   if (scheduleEyebrow) scheduleEyebrow.textContent = monthLabel;
   const visibility = db.siteSettings.artistArchive[id]?.visibility || {};
   document.querySelector('.profile-head')?.closest('.section')?.insertAdjacentHTML('afterend',artistSeriesSection(id));
+  const artistTimelineSection = document.querySelector(`.artist-filmography[data-artist-timeline="${id}"]`);
+  if (artistTimelineSection) applyTimelineFilters(artistTimelineSection);
   if (visibility.events === false) scheduleSection?.remove();
   const awardsSection = [...document.querySelectorAll('main .section')].find(section => section.querySelector('.award-grid'));
   if (visibility.awards === false) awardsSection?.remove();
@@ -1829,7 +1829,7 @@ admin = function () {
 function getHomeSectionElement(id) {
   if (id === 'hero') return document.querySelector('.hero');
   if (id === 'paths') return document.querySelector('.path-section');
-  if (id === 'schedule') return document.querySelector('.home-schedules');
+  if (id === 'schedule') return document.querySelector('.unified-home-schedule, .home-schedules');
   if (id === 'artists') return document.querySelector('#featured');
   if (id === 'presenters') return document.querySelector('.presenter-home');
   if (id === 'youtube') return [...document.querySelectorAll('.section')].find(s => s.querySelector('h2')?.textContent.includes('YouTube'));
@@ -2577,7 +2577,7 @@ home = function(){
   const heroScroll=document.querySelector('.hero .scroll');if(heroScroll)heroScroll.innerHTML='<span>↓</span> EXPLORE AUAUSAVE';
   [...document.querySelectorAll('main .section')].forEach(section=>{if(section.querySelector('.featured-watch')||section.querySelector('h2')?.textContent.includes('YouTube'))section.remove();});
   document.querySelector('.home-timeline')?.remove();
-  const timelineHtml=artistSeriesSection('duo').replace('section artist-filmography timeline-inset','section artist-filmography timeline-inset home-timeline');
+  const timelineHtml=artistSeriesSection('duo').replace('section artist-filmography','section artist-filmography home-timeline');
   const presenter=document.querySelector('.presenter-home'),main=document.querySelector('main');
   if(presenter)presenter.insertAdjacentHTML('beforebegin',timelineHtml);else main?.insertAdjacentHTML('beforeend',timelineHtml);
 };
@@ -3023,11 +3023,9 @@ function homeScopedArtistIds(item){return eventArtistIds(item).length?eventArtis
 function homeTimelineItemMatchesScope(item){ensureHomepageFrontDisplaySettings();const ids=homeScopedArtistIds(item);return db.siteSettings.homeTimelineArtistIds.map(canonicalArtistId).some(id=>ids.includes(id));}
 function homeTimelineSection(){
   ensureHomepageFrontDisplaySettings();
-  const visible=db.siteSettings.timelineVisibility||{},content=db.siteSettings.timelineCategoryContent||{},items=(db.siteSettings.timeline||[]).filter(homeTimelineItemMatchesScope).sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));
-  const card=item=>{const url=timelineCardUrl(item),imageOrientation=item.imageOrientation==='landscape'?'landscape':'portrait',posterUrl=versionedMediaUrl(item.poster,item.imageVersion||item.id),tag=url?'a':'article',linkAttributes=url?` href="${escapePageText(url)}" role="button" onclick="selectTimelineCard(this,event)" onkeydown="handleTimelineCardKey(event)"`:'';return `<${tag} class="filmography-card timeline-image-${imageOrientation} ${url?'timeline-clickable-card':''}"${linkAttributes} data-timeline-artists="${escapePageText((item.artistIds||[]).join('|'))}" data-timeline-category="${escapePageText(item.category||'series')}" data-timeline-date="${escapePageText(timelineDateLabel(item))}" data-timeline-title="${escapePageText(item.title)}" data-timeline-description="${escapePageText(item.description||item.note||'')}" data-timeline-url="${escapePageText(url||'')}">${item.poster?`<img src="${escapePageText(posterUrl)}" alt="${escapePageText(item.title)}">`:`<div class="filmography-placeholder"><span>${escapePageText(item.title.slice(0,2).toUpperCase())}</span></div>`}<small>${escapePageText(timelineDateLabel(item))}</small><h3>${escapePageText(item.title)}</h3>${item.description?`<p>${escapePageText(item.description)}</p>`:''}${item.note?`<div class="timeline-note">${escapePageText(item.note)}</div>`:''}</${tag}>`;};
-  const lane=(category,label)=>{const groupItems=items.filter(item=>(item.category||'series')===category);if(!groupItems.length||visible[category]===false)return'';const group=item=>item.upcoming?'UPCOMING':(item.year||'TBA'),years=[...new Set(groupItems.map(group))];return `<section class="timeline-subsection"><div class="timeline-subsection-head"><div><h3>${escapePageText(content[category]?.title||label)}</h3></div><span>${groupItems.length} items</span></div><div class="filmography-timeline"><div class="filmography-timeline-track">${years.map(year=>`<section class="filmography-year-group ${year==='UPCOMING'?'is-upcoming-group':''}"><header><i></i><b>${escapePageText(year)}</b></header><div class="filmography-year-cards">${groupItems.filter(item=>group(item)===year).map(card).join('')}</div></section>`).join('')}</div></div></section>`;};
-  const firstSeries=items.find(item=>(item.category||'series')==='series')||items[0];
-  return `<section class="section artist-filmography timeline-inset home-timeline" data-active-timeline-category="series" data-active-timeline-artist="all"><div class="container"><div class="filmography-head"><small>AUAUSAVE HOUSE</small><h2>Timeline</h2><p>Selected series, variety shows and music videos.</p>${timelineCategoryTabs()}</div>${lane('series','Series')}${lane('variety','Variety Show')}${lane('music-video','Music Video')}${timelineSelectedDetail(firstSeries)}</div></section>`;
+  const scopeIds=db.siteSettings.homeTimelineArtistIds.map(canonicalArtistId);
+  const items=(db.siteSettings.timeline||[]).filter(homeTimelineItemMatchesScope).sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));
+  return timelineSectionMarkup({className:'home-timeline',eyebrow:'AUAUSAVE HOUSE',description:'Selected series, variety shows and music videos.',items,groupScopeIds:scopeIds});
 }
 const homeTimelineSectionBeforeEditableHeading=homeTimelineSection;
 homeTimelineSection=function(){
@@ -4159,7 +4157,7 @@ const homeBeforeFanbases=home;home=function(){
   if(!document.querySelector('.fanbase-section--home'))document.querySelector('#app main')?.insertAdjacentHTML('beforeend',renderFanbaseSocials({variant:'home'}));
   applyHomepageSectionOrder();
 };
-const profileBeforeFanbases=profile;profile=function(id){profileBeforeFanbases(id);if(!sameArtistId(id,'AT01'))return;const old=document.querySelector('.couple-hashtag');if(old)old.outerHTML='<div class="couple-profile-links"><a class="couple-profile-link" href="#/AUAU">AUAU PROFILE</a><a class="couple-profile-link" href="#/SAVE">SAVE PROFILE</a></div>'};
+const profileBeforeFanbases=profile;profile=function(id){profileBeforeFanbases(id);if(!sameArtistId(id,'AT01'))return;const old=document.querySelector('.couple-hashtag');if(old)old.outerHTML='<div class="couple-profile-links"><a class="couple-profile-link" href="#/AUAU">AUAU PROFILE</a><a class="couple-profile-link" href="#/SAVE">SAVE PROFILE</a><a class="couple-profile-link couple-profile-schedule-link" href="#schedule">SCHEDULE</a></div>'};
 
 function fanbaseAdminSidebar(){const items=[['dashboard','⌂','Dashboard'],['pagecontent','▤','Homepage Content'],['artists','◉','Profiles'],['events','▦','Schedule'],['timeline','◷','Timeline'],['presenters','✦','Presenters'],['awards','◇','Awards'],['projects','◆','Projects'],['fanbases','◎','Fanbase Socials'],['master','⚙','Master Data']];return `<aside class="sidebar"><div class="brand"><i></i>AUAUSAVE HOUSE</div><div class="side-nav">${items.map(([id,icon,label])=>`<button data-icon="${icon}" class="${id==='fanbases'?'active':''}" onclick="adminTab='${id}';admin()">${icon} &nbsp; ${label}</button>`).join('')}</div><a class="back" href="#artists">← ดูหน้าบ้าน</a></aside>`}
 function fanbaseAdmin(){ensureFanbaseSocials();const items=[...db.siteSettings.fanbases].sort((a,b)=>a.displayOrder-b.displayOrder);app.innerHTML=`<div class="admin"><div class="admin-shell">${fanbaseAdminSidebar()}<main class="admin-main"><div class="admin-top"><div><small>FANBASE MANAGEMENT</small><h1>Fanbase Socials</h1><p>จัดการข้อมูลที่แสดงใน “FOLLOW OUR FANBASES”</p></div><button class="btn" onclick="openFanbaseForm()">+ เพิ่ม Fanbase</button></div><section class="fanbase-admin-list">${items.map((x,i)=>`<article class="panel fanbase-admin-card" draggable="true" data-id="${x.id}" ondragstart="fanbaseDragStart(event)" ondragover="fanbaseDragOver(event)" ondrop="fanbaseDrop(event)"><i style="background:${escapePageText(x.accentColor)}"></i><div><small>ลำดับ ${i+1} · ${x.active?'ACTIVE':'INACTIVE'}</small><h2>${escapePageText(x.displayName)}</h2><p>${escapePageText(x.username||'')}</p><span>${x.socialLinks.filter(s=>s.active!==false).length} ช่องทาง</span></div><div class="actions"><button class="btn outline" onclick="openFanbaseForm('${x.id}')">แก้ไข</button><button class="icon-btn" onclick="removeFanbase('${x.id}')">ลบ</button><b class="fanbase-drag-handle">⋮⋮</b></div></article>`).join('')}</section></main></div></div>`}
@@ -4506,11 +4504,22 @@ admin=function(){
 };
 ensureAwardSections();
 
-/* Schedule lives on the artist directory, not on the homepage. */
+/* Keep Schedule in homepage ordering; the Artists page also has its own schedule view. */
 const ensureHomePageSettingsBeforeArtistScheduleMove = ensureHomePageSettings;
 ensureHomePageSettings = function () {
   ensureHomePageSettingsBeforeArtistScheduleMove();
-  db.siteSettings.homeSections = db.siteSettings.homeSections.filter(section => section.id !== 'schedule');
+  if (!db.siteSettings.homeSections.some(section => section.id === 'schedule')) {
+    const scheduleSection = {
+      id: 'schedule',
+      label: 'Homepage Schedule',
+      title: 'This Month Schedule',
+      description: 'ตารางงานประจำเดือนบนหน้าบ้าน',
+      visible: true,
+    };
+    const artistsIndex = db.siteSettings.homeSections.findIndex(section => section.id === 'artists');
+    db.siteSettings.homeSections.splice(artistsIndex >= 0 ? artistsIndex + 1 : db.siteSettings.homeSections.length, 0, scheduleSection);
+    db.siteSettings.homeSections = normalizeHomepageSections(db.siteSettings.homeSections);
+  }
 };
 
 function artistDirectoryScheduleSection() {
@@ -4521,14 +4530,13 @@ function artistDirectoryScheduleSection() {
   section.classList.remove('home-schedules');
   section.classList.add('artists-schedules');
   const heading = section.querySelector('.section-head h2');
-  if (heading) heading.textContent = 'ตารางงานเดือนนี้';
+  if (heading) heading.textContent = 'This Month’s Work Schedule';
   return section.outerHTML;
 }
 
 const homeBeforeArtistScheduleMove = home;
 home = function () {
   homeBeforeArtistScheduleMove();
-  document.querySelectorAll('main .home-schedules').forEach(section => section.remove());
 };
 
 const listingBeforeArtistScheduleMove = listing;
@@ -4589,6 +4597,76 @@ pageContentAdmin = function () {
 };
 
 ensureHomePageSettings();
+
+/* Homepage schedule: one chronological list with artist colour coding.
+   The grouped schedule on the Artists page remains a separate view. */
+function unifiedHomeScheduleSection() {
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthLabel = new Intl.DateTimeFormat('en-US', {month:'long'}).format(now);
+  const events = db.events
+    .filter(event => event.date.startsWith(monthKey))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 12);
+  const artists = homepageScheduleArtists();
+  const artistIndex = new Map(artists.map((artist, index) => [canonicalArtistId(artist.id), index]));
+  const artistBadge = artistId => {
+    const id = canonicalArtistId(artistId);
+    const artist = artistById(id);
+    const index = artistIndex.get(id) ?? 0;
+    const label = sameArtistId(id, 'duo') ? '#AUAUSAVE' : (artist?.name || artistName(id));
+    return `<span class="unified-schedule-artist" style="--artist-color:${artistDisplayColor(id, index)}"><i></i>${escapePageText(label)}</span>`;
+  };
+  const rows = events.map(event => {
+    const ids = calendarEventArtistIds(event);
+    const badges = (ids.length ? ids : [event.artistId]).filter(Boolean).map(artistBadge).join('');
+    const date = new Date(`${event.date}T00:00:00`);
+    const weekday = new Intl.DateTimeFormat('en-US', {weekday:'short'}).format(date);
+    return `<article class="unified-schedule-row">
+      <time datetime="${escapePageText(event.date)}"><b>${day(event.date)}</b><span>${month(event.date)}</span><small>${weekday}</small></time>
+      <div class="unified-schedule-detail"><div class="unified-schedule-badges">${badges}</div><h3>${escapePageText(event.title)}</h3><p>${escapePageText(event.place || 'Location to be announced')}</p></div>
+      <span class="unified-schedule-type">${escapePageText(event.type || 'EVENT')}</span>
+    </article>`;
+  }).join('');
+  return `<section class="section unified-home-schedule"><div class="container">
+    <div class="unified-schedule-shell">
+      <header class="unified-schedule-head"><h2>${escapePageText(monthLabel)} Schedule</h2><a class="btn outline" href="#schedule">View full calendar</a></header>
+      <div class="unified-schedule-list">${rows || `<div class="empty">No events scheduled for ${escapePageText(monthLabel)}.</div>`}</div>
+    </div>
+  </div></section>`;
+}
+
+const homeBeforeUnifiedSchedule = home;
+home = function () {
+  homeBeforeUnifiedSchedule();
+  const artistSection = document.querySelector('main .homepage-artist-grid')?.closest('.section');
+  if (artistSection) {
+    artistSection.classList.add('home-artist-section');
+    artistSection.querySelector('.section-head .btn')?.remove();
+  }
+  const scheduleVisible = db.siteSettings.homeSections?.find(section => section.id === 'schedule')?.visible !== false;
+  if (!scheduleVisible) {
+    document.querySelectorAll('main .home-schedules, main .unified-home-schedule').forEach(section => section.remove());
+    return;
+  }
+  const oldUpcoming = document.querySelector('main .schedule-wrap')?.closest('.section');
+  if (oldUpcoming) {
+    oldUpcoming.outerHTML = unifiedHomeScheduleSection();
+    document.querySelectorAll('main .home-schedules').forEach(section => section.remove());
+    return;
+  }
+  document.querySelectorAll('main .home-schedules').forEach(section => section.remove());
+  if (artistSection && !document.querySelector('main .unified-home-schedule')) {
+    artistSection.insertAdjacentHTML('afterend', unifiedHomeScheduleSection());
+  }
+};
+
+/* Apply the saved homepage order only after every late-rendered section exists. */
+const homeBeforeFinalSectionOrder = home;
+home = function () {
+  homeBeforeFinalSectionOrder();
+  applyHomePageBuilder();
+};
 
 /* Unified AWARDS admin: Section > Subsection > Year > Awards. */
 let awardAdminView='manage';
