@@ -1678,6 +1678,25 @@ main:has(> .home-media-banner) > .presenter-home{
 }
 
 /* Projects index: halve the transition from the page title to the project list. */
+
+/* Public menu visibility settings. */
+.public-menu-settings{grid-column:1/-1}
+.public-menu-settings .panel-head{margin-bottom:14px}
+.public-menu-settings .master-note{max-width:70ch;margin:7px 0 0}
+.public-menu-setting-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.public-menu-setting-row{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--paper);cursor:pointer}
+.public-menu-setting-row>span:first-child{display:grid;gap:3px}
+.public-menu-setting-row strong{font-size:14px}
+.public-menu-setting-row small{color:var(--muted);font-size:10px}
+.public-menu-switch{display:flex;align-items:center;gap:9px;flex:none}
+.public-menu-switch input{position:absolute;inline-size:1px;block-size:1px;opacity:0;pointer-events:none}
+.public-menu-switch>span{position:relative;width:42px;height:24px;border-radius:999px;background:#c9c5bd;transition:background .2s ease}
+.public-menu-switch>span:after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 2px 7px rgba(0,0,0,.2);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.public-menu-switch input:checked+span{background:var(--red)}
+.public-menu-switch input:checked+span:after{transform:translateX(18px)}
+.public-menu-switch input:focus-visible+span{outline:3px solid rgba(221,75,68,.25);outline-offset:2px}
+.public-menu-switch em{min-width:22px;color:var(--muted);font-size:11px;font-style:normal;font-weight:700}
+@media(max-width:700px){.public-menu-setting-list{grid-template-columns:1fr}.public-menu-setting-row{padding:13px 14px}}
 main > .project-hub-hero{
   padding-bottom:15px;
 }

@@ -4873,3 +4873,53 @@ saveFanbaseForm=function(event,id){
   old?Object.assign(old,item):db.siteSettings.fanbases.push(item);
   save();closeModal();fanbaseAdmin();toast('บันทึก Fanbase แล้ว');
 };
+
+/* Public navigation visibility controls. */
+const PUBLIC_MENU_ITEMS = [
+  {id:'artists', label:'AuauSave', href:'#artists'},
+  {id:'schedule', label:'Schedule', href:'#schedule'},
+  {id:'presenters', label:'Presenters', href:'#presenters'},
+  {id:'awards', label:'Awards', href:'#awards'},
+  {id:'projects', label:'Projects', href:'#projects'},
+];
+function ensurePublicMenuSettings(){
+  db.siteSettings ||= {};
+  db.siteSettings.publicMenuVisibility = {
+    ...Object.fromEntries(PUBLIC_MENU_ITEMS.map(item=>[item.id,true])),
+    ...(db.siteSettings.publicMenuVisibility||{}),
+  };
+  return db.siteSettings.publicMenuVisibility;
+}
+function applyPublicMenuVisibility(root=document){
+  const visibility=ensurePublicMenuSettings();
+  PUBLIC_MENU_ITEMS.forEach(item=>{
+    if(visibility[item.id]===false)root.querySelector(`.links a[href="${item.href}"]`)?.remove();
+  });
+}
+const navBeforeVisibilitySettings=nav;
+nav=function(active=''){
+  const template=document.createElement('template');
+  template.innerHTML=navBeforeVisibilitySettings(active).trim();
+  applyPublicMenuVisibility(template.content);
+  return template.innerHTML;
+};
+function renderPublicMenuSettings(){
+  const visibility=ensurePublicMenuSettings();
+  return `<section class="panel public-menu-settings"><div class="panel-head"><div><h2>เมนูหน้าบ้าน</h2><p class="master-note">เลือกเมนูที่ต้องการแสดงบนแถบนำทาง การปิดเมนูจะซ่อนเฉพาะลิงก์และไม่ลบข้อมูลในหน้านั้น</p></div></div><div class="public-menu-setting-list">${PUBLIC_MENU_ITEMS.map(item=>`<label class="public-menu-setting-row"><span><strong>${item.label}</strong><small>${item.href}</small></span><span class="public-menu-switch"><input type="checkbox" ${visibility[item.id]!==false?'checked':''} onchange="setPublicMenuVisibility('${item.id}',this.checked)"><span aria-hidden="true"></span><em>${visibility[item.id]!==false?'เปิด':'ปิด'}</em></span></label>`).join('')}</div></section>`;
+}
+function setPublicMenuVisibility(id,visible){
+  if(!PUBLIC_MENU_ITEMS.some(item=>item.id===id))return;
+  ensurePublicMenuSettings()[id]=visible;
+  save();
+  admin();
+  toast(`${visible?'เปิด':'ปิด'}เมนู ${PUBLIC_MENU_ITEMS.find(item=>item.id===id).label} แล้ว`);
+}
+const adminBeforePublicMenuSettings=admin;
+admin=function(){
+  adminBeforePublicMenuSettings();
+  if(!adminAuthenticated||adminTab!=='master')return;
+  const grid=document.querySelector('.admin-main .master-grid');
+  if(grid&&!grid.querySelector('.public-menu-settings'))grid.insertAdjacentHTML('afterbegin',renderPublicMenuSettings());
+};
+ensurePublicMenuSettings();
+applyPublicMenuVisibility();
