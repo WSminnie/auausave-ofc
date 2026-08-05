@@ -24,12 +24,16 @@ create table if not exists public.series (
 
 create table if not exists public.events (
   id text primary key, artist_id text references public.artists(id) on delete cascade,
+  artist_ids text[] not null default '{}',
   event_date date not null, title text not null, place text, event_type text not null,
   series_id text references public.series(id) on delete set null,
   source_url text, poster_url text, created_at timestamptz default now(), updated_at timestamptz default now()
 );
+alter table public.events add column if not exists artist_ids text[] not null default '{}';
+update public.events set artist_ids = array[artist_id] where cardinality(artist_ids) = 0 and artist_id is not null;
 create index if not exists events_date_idx on public.events(event_date);
 create index if not exists events_artist_idx on public.events(artist_id);
+create index if not exists events_artist_ids_idx on public.events using gin(artist_ids);
 
 create table if not exists public.awards (
   id text primary key, artist_id text references public.artists(id) on delete cascade,

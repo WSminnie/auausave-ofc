@@ -132,12 +132,12 @@ migrateArtistId('auau','AT02');
 migrateArtistId('save','AT03');
 db.siteSettings ||= { heroImage: "", heroFit: "cover", heroPosition: "center" };
 db.siteSettings.homeSections ||= [
-  {id:'hero',label:'Hero หน้าหลัก',eyebrow:'AuauSave fanbase · บ้านของอู่อู๋เซฟ',title:'OUR HOUSE.\nOUR STORY.',description:'บ้านแฟนคลับของอู่อู๋เซฟ พื้นที่เก็บทุกโมเมนต์ของ #AuauSave',visible:true},
-  {id:'paths',label:'เลือกพาส',eyebrow:'Two paths · One house',title:'เลือกพาสที่อยากติดตาม',description:'ทุกเรื่องราวถูกจัดไว้อย่างชัดเจน ทั้งโมเมนต์คู่และเส้นทางเดี่ยวของทั้งสองคน',visible:true},
-  {id:'schedule',label:'ตารางงานเดือนนี้',eyebrow:'This month',title:'ตารางงานเดือนนี้',description:'ติดตามตารางงานคู่และงานเดี่ยว',visible:true},
-  {id:'artists',label:'ศิลปิน',eyebrow:'AuauSave house',title:'EVERY CHAPTER, ALL IN ONE PLACE',description:'',visible:true},
+  {id:'hero',label:'Homepage Hero',eyebrow:'AuauSave fanbase · The home of AuauSave',title:'OUR HOUSE.\nOUR STORY.',description:'The official fanbase home of AuauSave, where every #AuauSave moment is kept',visible:true},
+  {id:'paths',label:'Choose a Path',eyebrow:'Two paths · One house',title:'Choose the path you want to follow',description:'Every story is clearly organized, from shared moments to the individual journeys of both artists',visible:true},
+  {id:'schedule',label:'This Month’s Schedule',eyebrow:'This month',title:'This Month’s Schedule',description:'Follow both joint and solo schedules',visible:true},
+  {id:'artists',label:'Artists',eyebrow:'AuauSave house',title:'EVERY CHAPTER, ALL IN ONE PLACE',description:'',visible:true},
   {id:'youtube',label:'YouTube',eyebrow:'Watch & remember',title:'AuauSave on YouTube',description:'',visible:true},
-  {id:'presenters',label:'พรีเซนเตอร์',eyebrow:'Brand & Partnership',title:'Our Presenters',description:'',visible:true}
+  {id:'presenters',label:'Presenters',eyebrow:'Brand & Partnership',title:'Our Presenters',description:'',visible:true}
 ];
 const DEFAULT_HOME_SECTIONS = db.siteSettings.homeSections.map(section => ({...section}));
 function normalizeHomepageSections(sections){
@@ -296,6 +296,7 @@ db.events.forEach((e) => {
   }
 });
 let route = location.hash.slice(1) || "home";
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 const app = document.querySelector("#app");
 let databaseSyncQueue = Promise.resolve();
 function updateDatabaseStatusUi(message, connected) {
@@ -480,7 +481,7 @@ footer=function(){
   return `<footer class="footer footer-compact"><div class="container"><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a class="creator-link creator-auausave" href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH</a><a class="creator-link creator-auau" href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC</a><a class="creator-link creator-save" href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC</a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE TH</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
 };
 function artistCards() {
-  return `<div class="artists">${sortedArtists().map((a) => `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(a.id)}'"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<span>${a.initial}</span>`}<small class="tag">${sameArtistId(a.id,"duo") ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
+  return `<div class="artists">${sortedArtists().map((a) => `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(a.id)}'"><div class="portrait" style="background:${a.color}">${a.image ? `<img src="${a.image}" alt="${a.name}" loading="lazy" decoding="async">` : `<span>${a.initial}</span>`}<small class="tag">${sameArtistId(a.id,"duo") ? "COUPLE PATH" : "SOLO PATH"}</small></div><div class="artist-meta"><h3>${a.name}</h3><p>${a.role}</p></div></article>`).join("")}</div>`;
 }
 function scheduleRows(items = db.events) {
   return items.length
@@ -599,18 +600,50 @@ function filterCoupleArchiveArtist(artist) {
   filterCoupleArchiveEvents();
 }
 
-function artistSeriesSection(artistId) {
-  artistId = canonicalArtistId(artistId);
-  const archive = db.siteSettings.artistArchive[artistId];
-  if (!archive || archive.visibility?.series === false) return '';
-  const allowedArtists=sameArtistId(artistId,'duo')?['AT01']:['AT01',artistId],series = db.siteSettings.timeline.filter(item=>(item.artistIds||[]).some(id=>allowedArtists.includes(canonicalArtistId(id)))).sort((a,b)=>(Number(b.year)||0)-(Number(a.year)||0));
-  const card = item => {const url=timelineCardUrl(item),imageOrientation=item.imageOrientation==='landscape'?'landscape':'portrait',posterUrl=versionedMediaUrl(item.poster,item.imageVersion||item.id),tag=url?'a':'article',linkAttributes=url?` href="${escapePageText(url)}" target="_blank" rel="noopener noreferrer" onkeydown="handleTimelineCardKey(event)"`:'';return `<${tag} class="filmography-card timeline-image-${imageOrientation} ${item.upcoming?'is-upcoming-card':''} ${url?'timeline-clickable-card':''}"${linkAttributes} data-timeline-artists="${escapePageText((item.artistIds||[]).join('|'))}">${item.poster?`<img src="${escapePageText(posterUrl)}" alt="${escapePageText(item.title)}">`:`<div class="filmography-placeholder"><span>${escapePageText(item.title.slice(0,2).toUpperCase())}</span></div>`}<small>${escapePageText(timelineDateLabel(item))}</small><h3>${escapePageText(item.title)}</h3>${item.description?`<p>${escapePageText(item.description)}</p>`:''}${item.note?`<div class="timeline-note">${escapePageText(item.note)}</div>`:''}</${tag}>`;};
-  const lane = (title,items,className='',description='',category='series') => {const renderRows=list=>{const group=item=>item.upcoming?'UPCOMING':(item.year||'TBA'),years=[...new Set(list.map(group))];return `<div class="filmography-timeline"><div class="filmography-timeline-track">${years.map(year=>`<section class="filmography-year-group ${year==='UPCOMING'?'is-upcoming-group':''}"><header><i></i><b>${escapePageText(year)}</b></header><div class="filmography-year-cards">${list.filter(item=>group(item)===year).map(card).join('')}</div></section>`).join('')||'<div class="empty">No items yet.</div>'}</div></div>`;};const groups=db.siteSettings.timelineGroups?.[category]||[],visibleGroups=groups.filter(group=>!Array.isArray(group.visibleArtistIds)||!group.visibleArtistIds.length||group.visibleArtistIds.map(canonicalArtistId).includes(artistId)),grouped=visibleGroups.map(group=>({group,items:items.filter(item=>item.groupId===group.id)})).filter(entry=>entry.items.length),ungrouped=items.filter(item=>!visibleGroups.some(group=>group.id===item.groupId)),ungroupedContent=ungrouped.length?(category==='music-video'?renderRows(ungrouped):`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>Other</h4></div>${renderRows(ungrouped)}</section>`):'',body=visibleGroups.length?[...grouped.map(entry=>`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>${escapePageText(entry.group.title)}</h4>${entry.group.description?`<p>${escapePageText(entry.group.description)}</p>`:''}</div>${renderRows(entry.items)}</section>`),ungroupedContent].join(''):renderRows(items);return `<section class="timeline-subsection ${className}"><div class="timeline-subsection-head"><div><h3>${escapePageText(title)}</h3>${description?`<p>${escapePageText(description)}</p>`:''}</div><span>${items.length} items</span></div>${body}</section>`;};
-  const visible=db.siteSettings.timelineVisibility, content=db.siteSettings.timelineCategoryContent||{},regular=[...series].sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));
-  const filters=sameArtistId(artistId,'duo')?'':`<div class="timeline-artist-filters"><button class="active" onclick="filterArtistTimeline(this,'all')">All</button><button onclick="filterArtistTimeline(this,'AT01')">AUAUSAVE</button><button onclick="filterArtistTimeline(this,'${artistId}')">${escapePageText(artistName(artistId))}</button></div>`;
-  return `<section class="section artist-filmography" data-artist-timeline="${artistId}"><div class="container"><div class="filmography-head"><small>OUR TIMELINE</small><h2>Timeline</h2><p>Series, variety shows and music videos of ${escapePageText(artistName(artistId))}</p>${filters}</div>${visible.series!==false?lane(content.series?.title||'Series',regular.filter(item=>(item.category||'series')==='series'),' ',content.series?.description||'','series'):''}${visible.variety!==false?lane(content.variety?.title||'Variety Show',regular.filter(item=>item.category==='variety'),' ',content.variety?.description||'','variety'):''}${visible['music-video']!==false?lane(content['music-video']?.title||'Music Video',regular.filter(item=>item.category==='music-video'),' ',content['music-video']?.description||'','music-video'):''}</div></section>`;
+function timelineCategoryTabs() {
+  return `<div class="timeline-category-filters" aria-label="Timeline categories"><button type="button" data-category="all" onclick="filterTimelineCategory(this,'all')">ALL</button><button type="button" class="active" data-category="series" onclick="filterTimelineCategory(this,'series')">SERIES</button><button type="button" data-category="variety" onclick="filterTimelineCategory(this,'variety')">VARIETY</button><button type="button" data-category="music-video" onclick="filterTimelineCategory(this,'music-video')">MUSIC</button></div>`;
 }
-function filterArtistTimeline(button,artist){artist=canonicalArtistId(artist);const section=button.closest('.artist-filmography');section.querySelectorAll('.timeline-artist-filters button').forEach(item=>item.classList.toggle('active',item===button));section.querySelectorAll('.filmography-card').forEach(card=>{const ids=(card.dataset.timelineArtists||'').split('|').map(canonicalArtistId);card.style.display=artist==='all'||ids.includes(artist)?'':'none';});section.querySelectorAll('.filmography-year-group,.timeline-content-group,.timeline-subsection').forEach(group=>{group.style.display=[...group.querySelectorAll('.filmography-card')].some(card=>card.style.display!=='none')?'':'none';});}
+function filterTimelineCategory(button,category) {
+  const section=button?.closest('.artist-filmography');
+  if(!section)return;
+  section.querySelectorAll('.timeline-category-filters button').forEach(item=>item.classList.toggle('active',item===button));
+  section.dataset.activeTimelineCategory=category;
+  applyTimelineFilters(section);
+}
+function applyTimelineFilters(section) {
+  const category=section.dataset.activeTimelineCategory||'series',artist=section.dataset.activeTimelineArtist||'all';
+  section.querySelectorAll('.filmography-card').forEach(card=>{const ids=(card.dataset.timelineArtists||'').split('|').map(canonicalArtistId),categoryMatch=category==='all'||card.dataset.timelineCategory===category,artistMatch=artist==='all'||ids.includes(canonicalArtistId(artist));card.style.display=categoryMatch&&artistMatch?'':'none';});
+  section.querySelectorAll('.filmography-year-group,.timeline-content-group,.timeline-subsection').forEach(group=>{group.style.display=[...group.querySelectorAll('.filmography-card')].some(card=>card.style.display!=='none')?'':'none';});
+}
+function timelineCardMarkup(item) {
+  const url=timelineCardUrl(item),imageOrientation=item.imageOrientation==='landscape'?'landscape':'portrait',posterUrl=versionedMediaUrl(item.poster,item.imageVersion||item.id),tag=url?'a':'article',linkAttributes=url?` href="${escapePageText(url)}" target="_blank" rel="noopener noreferrer"`:'';
+  return `<${tag} class="filmography-card timeline-image-${imageOrientation} ${item.upcoming?'is-upcoming-card':''} ${url?'timeline-clickable-card':''}"${linkAttributes} data-timeline-artists="${escapePageText((item.artistIds||[]).join('|'))}" data-timeline-category="${escapePageText(item.category||'series')}"><div class="timeline-card-media">${item.poster?`<img src="${escapePageText(posterUrl)}" alt="${escapePageText(item.title)}">`:`<div class="filmography-placeholder"><span>${escapePageText(item.title.slice(0,2).toUpperCase())}</span></div>`}${url?'<span class="timeline-view-details">View Details</span>':''}</div><small>${escapePageText(timelineDateLabel(item))}</small><h3>${escapePageText(item.title)}</h3>${item.description?`<p>${escapePageText(item.description)}</p>`:''}${item.note?`<div class="timeline-note">${escapePageText(item.note)}</div>`:''}</${tag}>`;
+}
+function timelineRowsMarkup(items) {
+  const yearOf=item=>item.upcoming?'UPCOMING':(item.year||'TBA'),years=[...new Set(items.map(yearOf))];
+  return `<div class="filmography-timeline"><div class="filmography-timeline-track">${years.map(year=>`<section class="filmography-year-group ${year==='UPCOMING'?'is-upcoming-group':''}"><header><i></i><b>${escapePageText(year)}</b></header><div class="filmography-year-cards">${items.filter(item=>yearOf(item)===year).map(timelineCardMarkup).join('')}</div></section>`).join('')||'<div class="empty">No items yet.</div>'}</div></div>`;
+}
+function timelineLaneMarkup({title,items,description='',category='series',groups=[]}) {
+  const grouped=groups.map(group=>({group,items:items.filter(item=>item.groupId===group.id)})).filter(entry=>entry.items.length),ungrouped=items.filter(item=>!groups.some(group=>group.id===item.groupId));
+  const ungroupedContent=ungrouped.length?(category==='music-video'?timelineRowsMarkup(ungrouped):`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>Other</h4></div>${timelineRowsMarkup(ungrouped)}</section>`):'';
+  const body=groups.length?[...grouped.map(entry=>`<section class="timeline-content-group"><div class="timeline-content-group-head"><h4>${escapePageText(entry.group.title)}</h4>${entry.group.description?`<p>${escapePageText(entry.group.description)}</p>`:''}</div>${timelineRowsMarkup(entry.items)}</section>`),ungroupedContent].join(''):timelineRowsMarkup(items);
+  return `<section class="timeline-subsection"><div class="timeline-subsection-head"><div><h3>${escapePageText(title)}</h3>${description?`<p>${escapePageText(description)}</p>`:''}</div><span>${items.length} items</span></div>${body}</section>`;
+}
+function timelineSectionMarkup({className='',attributes='',eyebrow='OUR JOURNEY',title='Journey',description='',items=[],artistFilters='',groupScopeIds=[],activeArtist='all'}) {
+  const visible=db.siteSettings.timelineVisibility||{},content=db.siteSettings.timelineCategoryContent||{},scope=groupScopeIds.map(canonicalArtistId);
+  const lanes=[['series','Series'],['variety','Variety Show'],['music-video','Music Video']].map(([category,label])=>{const categoryItems=items.filter(item=>(item.category||'series')===category);if(!categoryItems.length||visible[category]===false)return'';const groups=(db.siteSettings.timelineGroups?.[category]||[]).filter(group=>!Array.isArray(group.visibleArtistIds)||!group.visibleArtistIds.length||!scope.length||group.visibleArtistIds.map(canonicalArtistId).some(id=>scope.includes(id)));return timelineLaneMarkup({title:content[category]?.title||label,items:categoryItems,description:content[category]?.description||'',category,groups})}).join('');
+  return `<section class="section artist-filmography timeline-inset ${className}" ${attributes} data-active-timeline-category="series" data-active-timeline-artist="${escapePageText(activeArtist)}"><div class="container"><div class="filmography-head"><small>${escapePageText(eyebrow)}</small><h2>${escapePageText(title)}</h2><p>${escapePageText(description)}</p>${artistFilters}${timelineCategoryTabs()}</div>${lanes}</div></section>`;
+}
+function artistSeriesSection(artistId) {
+  artistId=canonicalArtistId(artistId);
+  const archive=db.siteSettings.artistArchive[artistId];
+  if(!archive||archive.visibility?.series===false)return'';
+  const allowedArtists=sameArtistId(artistId,'duo')?['AT01']:['AT01',artistId];
+  const items=(db.siteSettings.timeline||[]).filter(item=>(item.artistIds||[]).some(id=>allowedArtists.includes(canonicalArtistId(id)))).sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));
+  const artistFilters=sameArtistId(artistId,'duo')?'':`<div class="timeline-artist-filters"><button onclick="filterArtistTimeline(this,'all')">All</button><button onclick="filterArtistTimeline(this,'AT01')">AUAUSAVE</button><button class="active" onclick="filterArtistTimeline(this,'${artistId}')">${escapePageText(artistName(artistId))}</button></div>`;
+  return timelineSectionMarkup({attributes:`data-artist-timeline="${artistId}"`,description:`Series, variety shows and music videos of ${artistName(artistId)}`,items,artistFilters,groupScopeIds:[artistId],activeArtist:sameArtistId(artistId,'duo')?'all':artistId});
+}
+function filterArtistTimeline(button,artist){const section=button.closest('.artist-filmography');section.dataset.activeTimelineArtist=artist==='all'?'all':canonicalArtistId(artist);section.querySelectorAll('.timeline-artist-filters button').forEach(item=>item.classList.toggle('active',item===button));applyTimelineFilters(section);}
 
 function coupleArchivePage() {
   const artist = artistById('duo') || {};
@@ -631,6 +664,7 @@ function coupleArchivePage() {
   <section class="section"><div class="container"><div class="archive-section-head"><span>02</span><div><small>MEET AUAUSAVE</small><h2>Events</h2></div></div><div class="couple-event-search"><label>From<input id="coupleEventFrom" type="date" value="${monthStart}" onchange="filterCoupleArchiveEvents()"></label><label>To<input id="coupleEventTo" type="date" value="${monthEnd}" onchange="filterCoupleArchiveEvents()"></label><span class="couple-event-result"></span></div><div class="couple-event-filters"><button class="active" data-type="all" onclick="filterCoupleArchiveEvents('all')">All</button>${filterTypes.map(type=>`<button data-type="${type.id}" onclick="filterCoupleArchiveEvents('${type.id}')">${type.label}</button>`).join('')}</div><div class="couple-event-list">${events.map(item=>`<article class="couple-event-card" data-date="${item.date}" data-types="${eventTypeValues(item.type).map(type=>type.toLowerCase()).join('|')}"><time><b>${day(item.date)}</b><span>${month(item.date)} ${item.date.slice(0,4)}</span></time><div><small>${eventTypeValues(item.type).join(' · ')}</small><h3>${item.title}</h3><p>${item.place||'TBA'}</p></div>${item.source?`<a href="${item.source}" target="_blank">ดูต้นทาง</a>`:''}</article>`).join('') || '<div class="empty">No couple events yet.</div>'}</div></div></section>
   <section class="section archive-awards"><div class="container"><div class="archive-section-head"><span>04</span><div><small>SHARED ACHIEVEMENTS</small><h2>Awards</h2></div><div class="archive-award-table"><div class="archive-award-row head"><span>Year</span><span>Award</span><span>Organization / Category</span><span>Result</span></div>${awards.map(item=>`<div class="archive-award-row"><strong>${item.year}</strong><span>${awardImage(item)?`<img class="award-image" src="${awardImage(item)}" alt="${item.title}">`:''}${item.title}</span><span>${item.org}<time class="award-date">${awardDisplayDate(item)}</time></span><span>Recipient</span></div>`).join('') || '<div class="empty">No couple awards yet.</div>'}</div></div></section>
   <section class="section"><div class="container"><div class="archive-section-head"><span>04</span><div><small>PHOTO · VIDEO · SOURCE</small><h2>Media Gallery</h2></div><p>Event photos, short clips and original post links.</p></div><div class="couple-media-grid">${media.map(item=>`<article>${item.kind==='video'?`<video src="${item.src}" controls playsinline></video>`:item.kind==='image'?`<img src="${item.src}" alt="${item.title}">`:'<div class="media-link-art">LINK</div>'}<div><h3>${item.title}</h3>${item.url?`<a href="${item.url}" target="_blank">View original post </a>`:''}</div></article>`).join('') || '<div class="empty">No media has been added yet.</div>'}</div></div></section></main>` + footer();
+  document.querySelector('.couple-event-list')?.closest('.section')?.remove();
   document.querySelectorAll('.couple-event-card').forEach((card,index) => card.dataset.artist = canonicalArtistId(events[index]?.artistId || 'AT01'));
   document.querySelector('.couple-event-filters:not(.couple-artist-filters)')?.remove();
   document.querySelector('.couple-event-search')?.insertAdjacentHTML('afterend', `<div class="couple-event-filters couple-artist-filters"><button class="active" data-artist="all" onclick="filterCoupleArchiveArtist('all')">All</button><button data-artist="AT01" onclick="filterCoupleArchiveArtist('AT01')">AUAUSAVE</button><button data-artist="AT02" onclick="filterCoupleArchiveArtist('AT02')">AUAU</button><button data-artist="AT03" onclick="filterCoupleArchiveArtist('AT03')">SAVE</button></div>`);
@@ -695,6 +729,8 @@ profile = function (id) {
   if (scheduleEyebrow) scheduleEyebrow.textContent = monthLabel;
   const visibility = db.siteSettings.artistArchive[id]?.visibility || {};
   document.querySelector('.profile-head')?.closest('.section')?.insertAdjacentHTML('afterend',artistSeriesSection(id));
+  const artistTimelineSection = document.querySelector(`.artist-filmography[data-artist-timeline="${id}"]`);
+  if (artistTimelineSection) applyTimelineFilters(artistTimelineSection);
   if (visibility.events === false) scheduleSection?.remove();
   const awardsSection = [...document.querySelectorAll('main .section')].find(section => section.querySelector('.award-grid'));
   if (visibility.awards === false) awardsSection?.remove();
@@ -1793,7 +1829,7 @@ admin = function () {
 function getHomeSectionElement(id) {
   if (id === 'hero') return document.querySelector('.hero');
   if (id === 'paths') return document.querySelector('.path-section');
-  if (id === 'schedule') return document.querySelector('.home-schedules');
+  if (id === 'schedule') return document.querySelector('.unified-home-schedule, .home-schedules');
   if (id === 'artists') return document.querySelector('#featured');
   if (id === 'presenters') return document.querySelector('.presenter-home');
   if (id === 'youtube') return [...document.querySelectorAll('.section')].find(s => s.querySelector('h2')?.textContent.includes('YouTube'));
@@ -2363,8 +2399,13 @@ function router() {
 function scrollPageToTop() {
   requestAnimationFrame(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
   });
 }
+window.addEventListener('pageshow', () => {
+  scrollPageToTop();
+});
+setTimeout(() => document.documentElement.classList.remove('initial-route-loading'), 10000);
 window.addEventListener("hashchange", router);
 window.addEventListener("storage", event => {
   if (event.key !== "auausave-house-db-v9" || !event.newValue) return;
@@ -2853,7 +2894,7 @@ function eventArtistIds(item){
   }
   const base = ids.length ? ids : [item?.artistId].filter(Boolean);
   const normalized = [...new Set(base.map(canonicalArtistId))].filter(id => db.artists.some(artist => sameArtistId(artist.id, id)));
-  return normalized.includes('AT01') ? ['AT01'] : normalized;
+  return normalized;
 }
 function eventArtistNames(item){
   const ids = eventArtistIds(item);
@@ -2980,7 +3021,12 @@ function renderHomepageFrontScopeEditor(){ensureHomepageFrontDisplaySettings();c
 function saveHomepageFrontScope(event){event.preventDefault();ensureHomepageFrontDisplaySettings();const form=new FormData(event.currentTarget),timeline=[...new Set(form.getAll('homeTimelineArtistIds').map(canonicalArtistId))],presenters=[...new Set(form.getAll('homePresenterArtistIds').map(canonicalArtistId))];if(!timeline.length||!presenters.length){toast('กรุณาเลือกอย่างน้อย 1 ศิลปินในแต่ละส่วน');return;}db.siteSettings.homeTimelineArtistIds=timeline;db.siteSettings.homePresenterArtistIds=presenters;save();pageContentAdmin();toast('บันทึกการแสดงผลหน้าบ้านแล้ว');}
 function homeScopedArtistIds(item){return eventArtistIds(item).length?eventArtistIds(item):(Array.isArray(item.artistIds)?item.artistIds:[item.artistId].filter(Boolean)).map(canonicalArtistId);}
 function homeTimelineItemMatchesScope(item){ensureHomepageFrontDisplaySettings();const ids=homeScopedArtistIds(item);return db.siteSettings.homeTimelineArtistIds.map(canonicalArtistId).some(id=>ids.includes(id));}
-function homeTimelineSection(){ensureHomepageFrontDisplaySettings();const visible=db.siteSettings.timelineVisibility||{},content=db.siteSettings.timelineCategoryContent||{},items=(db.siteSettings.timeline||[]).filter(homeTimelineItemMatchesScope).sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));const card=item=>{const url=timelineCardUrl(item),imageOrientation=item.imageOrientation==='landscape'?'landscape':'portrait',posterUrl=versionedMediaUrl(item.poster,item.imageVersion||item.id),tag=url?'a':'article',linkAttributes=url?` href="${escapePageText(url)}" target="_blank" rel="noopener noreferrer" onkeydown="handleTimelineCardKey(event)"`:'';return `<${tag} class="filmography-card timeline-image-${imageOrientation} ${url?'timeline-clickable-card':''}"${linkAttributes}>${item.poster?`<img src="${escapePageText(posterUrl)}" alt="${escapePageText(item.title)}">`:`<div class="filmography-placeholder"><span>${escapePageText(item.title.slice(0,2).toUpperCase())}</span></div>`}<small>${escapePageText(timelineDateLabel(item))}</small><h3>${escapePageText(item.title)}</h3>${item.description?`<p>${escapePageText(item.description)}</p>`:''}${item.note?`<div class="timeline-note">${escapePageText(item.note)}</div>`:''}</${tag}>`;};const lane=(category,label)=>{const groupItems=items.filter(item=>(item.category||'series')===category);if(!groupItems.length||visible[category]===false)return'';const group=item=>item.upcoming?'UPCOMING':(item.year||'TBA'),years=[...new Set(groupItems.map(group))];return `<section class="timeline-subsection"><div class="timeline-subsection-head"><div><h3>${escapePageText(content[category]?.title||label)}</h3></div><span>${groupItems.length} items</span></div><div class="filmography-timeline"><div class="filmography-timeline-track">${years.map(year=>`<section class="filmography-year-group ${year==='UPCOMING'?'is-upcoming-group':''}"><header><i></i><b>${escapePageText(year)}</b></header><div class="filmography-year-cards">${groupItems.filter(item=>group(item)===year).map(card).join('')}</div></section>`).join('')}</div></div></section>`;};return `<section class="section artist-filmography home-timeline"><div class="container"><div class="filmography-head"><small>AUAUSAVE HOUSE</small><h2>Timeline</h2><p>Selected series, variety shows and music videos.</p></div>${lane('series','Series')}${lane('variety','Variety Show')}${lane('music-video','Music Video')}</div></section>`;}
+function homeTimelineSection(){
+  ensureHomepageFrontDisplaySettings();
+  const scopeIds=db.siteSettings.homeTimelineArtistIds.map(canonicalArtistId);
+  const items=(db.siteSettings.timeline||[]).filter(homeTimelineItemMatchesScope).sort((a,b)=>Number(Boolean(b.upcoming))-Number(Boolean(a.upcoming))||((Number(b.year)||0)-(Number(a.year)||0)));
+  return timelineSectionMarkup({className:'home-timeline',eyebrow:'AUAUSAVE HOUSE',description:'Selected series, variety shows and music videos.',items,groupScopeIds:scopeIds});
+}
 const homeTimelineSectionBeforeEditableHeading=homeTimelineSection;
 homeTimelineSection=function(){
   const template=document.createElement('template');template.innerHTML=homeTimelineSectionBeforeEditableHeading();
@@ -3012,13 +3058,17 @@ function ensureHomeBanners(){
   if(!Array.isArray(db.siteSettings.homeBanners)) db.siteSettings.homeBanners=[];
   return db.siteSettings.homeBanners;
 }
+function homeBannerSoundIcon(soundOn=false){
+  const waves=soundOn?'<path d="M15.5 8.5a5 5 0 0 1 0 7M18.2 5.8a9 9 0 0 1 0 12.4"/>':'<path d="m15 9 6 6M21 9l-6 6"/>';
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9.5v5h3.5l4.5 3.5V6L7.5 9.5H4Z"/>${waves}</svg>`;
+}
 function renderHomeBanner(){
   clearTimeout(homeBannerTimer);
   const main=document.querySelector('#app main'),heroSection=main?.querySelector('.hero'),items=ensureHomeBanners().filter(item=>item.src);
   if(!main||!heroSection||!items.length)return;
   heroSection.insertAdjacentHTML('beforebegin',`<section class="home-media-banner" aria-label="Homepage banner"><div class="home-banner-track">${items.map((item,index)=>item.type==='video'
     ?`<video class="home-banner-slide ${index?'':'active'} ${item.link?'is-linked':''}" src="${escapePageText(item.src)}" data-link="${escapePageText(item.link||'')}" muted playsinline preload="metadata"></video>`
-    :`<img class="home-banner-slide ${index?'':'active'} ${item.link?'is-linked':''}" src="${escapePageText(item.src)}" data-link="${escapePageText(item.link||'')}" alt="Banner ${index+1}">`).join('')}</div>${items.some(item=>item.type==='video')?'<button class="home-banner-sound" type="button" aria-label="เปิดเสียงวิดีโอ" title="เปิดเสียง">🔇</button>':''}${items.length>1?`<button class="home-banner-arrow prev" aria-label="Previous banner">‹</button><button class="home-banner-arrow next" aria-label="Next banner">›</button><div class="home-banner-dots">${items.map((_,index)=>`<button class="${index?'':'active'}" aria-label="Banner ${index+1}"></button>`).join('')}</div>`:''}</section>`);
+    :`<img class="home-banner-slide ${index?'':'active'} ${item.link?'is-linked':''}" src="${escapePageText(item.src)}" data-link="${escapePageText(item.link||'')}" alt="Banner ${index+1}">`).join('')}</div>${items.some(item=>item.type==='video')?`<button class="home-banner-sound" type="button" aria-label="เปิดเสียงวิดีโอ" title="เปิดเสียง">${homeBannerSoundIcon(false)}</button>`:''}${items.length>1?`<button class="home-banner-arrow prev" aria-label="Previous banner">‹</button><button class="home-banner-arrow next" aria-label="Next banner">›</button><div class="home-banner-dots">${items.map((_,index)=>`<button class="${index?'':'active'}" aria-label="Banner ${index+1}"></button>`).join('')}</div>`:''}</section>`);
   const banner=main.querySelector('.home-media-banner');
   let current=0,soundOn=false;
   const slides=[...banner.querySelectorAll('.home-banner-slide')],dots=[...banner.querySelectorAll('.home-banner-dots button')];
@@ -3040,7 +3090,7 @@ function renderHomeBanner(){
   banner.querySelector('.home-banner-arrow.next')?.addEventListener('click',()=>show(current+1));
   slides.forEach(slide=>slide.addEventListener('click',()=>{const link=slide.dataset.link?.trim();if(!link)return;if(/^https?:\/\//i.test(link))window.open(link,'_blank','noopener,noreferrer');else location.href=link;}));
   const soundButton=banner.querySelector('.home-banner-sound');
-  soundButton?.addEventListener('click',()=>{soundOn=!soundOn;banner.querySelectorAll('video').forEach(video=>video.muted=!soundOn);soundButton.textContent=soundOn?'🔊':'🔇';soundButton.setAttribute('aria-label',soundOn?'ปิดเสียงวิดีโอ':'เปิดเสียงวิดีโอ');soundButton.title=soundOn?'ปิดเสียง':'เปิดเสียง';if(items[current]?.type==='video')slides[current].play().catch(()=>{});});
+  soundButton?.addEventListener('click',()=>{soundOn=!soundOn;banner.querySelectorAll('video').forEach(video=>video.muted=!soundOn);soundButton.innerHTML=homeBannerSoundIcon(soundOn);soundButton.setAttribute('aria-label',soundOn?'ปิดเสียงวิดีโอ':'เปิดเสียงวิดีโอ');soundButton.title=soundOn?'ปิดเสียง':'เปิดเสียง';if(items[current]?.type==='video')slides[current].play().catch(()=>{});});
   dots.forEach((dot,index)=>dot.addEventListener('click',()=>show(index)));
   show(0);
 }
@@ -3062,7 +3112,7 @@ home=function(){homeBeforeMediaBanner();renderHomeBanner();};
 const pageContentAdminBeforeMediaBanner=pageContentAdmin;
 pageContentAdmin=function(){pageContentAdminBeforeMediaBanner();if(!adminAuthenticated||adminTab!=='pagecontent'||homeBuilderTab!=='content')return;document.querySelector('.homepage-live-editor')?.insertAdjacentHTML('afterend',homeBannerAdminPanel());};
 const pageContentAdminBeforeWideBannerLabel=pageContentAdmin;
-pageContentAdmin=function(){pageContentAdminBeforeWideBannerLabel();const panel=document.querySelector('.home-banner-admin');if(!panel)return;const label=panel.querySelector('.panel-head small'),note=panel.querySelector('.master-note'),empty=panel.querySelector('.empty');if(label)label.textContent='MEDIA BANNER · 1920 × 800 PX';if(note)note.textContent='ส่วนนี้แยกจาก Hero เดิม แนะนำไฟล์อัตราส่วน 12:5 ขนาด 1920 × 800 พิกเซล';if(empty)empty.textContent='ยังไม่มี Banner — เพิ่มรูปหรือคลิปขนาด 1920 × 800 ได้จากปุ่มด้านบน';};
+pageContentAdmin=function(){pageContentAdminBeforeWideBannerLabel();const panel=document.querySelector('.home-banner-admin');if(!panel)return;const label=panel.querySelector('.panel-head small'),note=panel.querySelector('.master-note'),empty=panel.querySelector('.empty');if(label)label.textContent='MEDIA BANNER · 1600 × 400 PX';if(note)note.textContent='ส่วนนี้แยกจาก Hero เดิม แนะนำไฟล์อัตราส่วน 4:1 ขนาด 1600 × 400 พิกเซล';if(empty)empty.textContent='ยังไม่มี Banner — เพิ่มรูปหรือคลิปขนาด 1600 × 400 ได้จากปุ่มด้านบน';};
 const pageContentAdminBeforeUnifiedSidebar=pageContentAdmin;
 pageContentAdmin=function(){
   pageContentAdminBeforeUnifiedSidebar();
@@ -4044,12 +4094,25 @@ router=function(){routerBeforeResponsiveUI();applyResponsiveContentStructure()};
 
 const hydrateBeforeArtistRowCleanup=hydrateFromSupabase;
 hydrateFromSupabase=async function(){
-  await hydrateBeforeArtistRowCleanup();
-  if(db.siteSettings&&Object.prototype.hasOwnProperty.call(db.siteSettings,'artistRowLayouts')){
-    delete db.siteSettings.artistRowLayouts;
-    save();
+  try{
+    await hydrateBeforeArtistRowCleanup();
+    if(db.siteSettings&&Object.prototype.hasOwnProperty.call(db.siteSettings,'artistRowLayouts')){
+      delete db.siteSettings.artistRowLayouts;
+      save();
+    }
+  }finally{
+    scrollPageToTop();
+    requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.remove('initial-route-loading')));
   }
 };
+
+function deferContentImages(markup){
+  return String(markup||'').replace(/<img(?![^>]*\bloading=)/g,'<img loading="lazy" decoding="async"');
+}
+const presenterCardsBeforeDeferredImages=presenterCards;
+presenterCards=function(...args){return deferContentImages(presenterCardsBeforeDeferredImages(...args))};
+const homeTimelineSectionBeforeDeferredImages=homeTimelineSection;
+homeTimelineSection=function(...args){return deferContentImages(homeTimelineSectionBeforeDeferredImages(...args))};
 
 router();
 hydrateFromSupabase();
@@ -4094,7 +4157,7 @@ const homeBeforeFanbases=home;home=function(){
   if(!document.querySelector('.fanbase-section--home'))document.querySelector('#app main')?.insertAdjacentHTML('beforeend',renderFanbaseSocials({variant:'home'}));
   applyHomepageSectionOrder();
 };
-const profileBeforeFanbases=profile;profile=function(id){profileBeforeFanbases(id);if(!sameArtistId(id,'AT01'))return;const old=document.querySelector('.couple-hashtag');if(old)old.outerHTML='<div class="couple-profile-links"><a class="couple-profile-link" href="#/AUAU">AUAU PROFILE</a><a class="couple-profile-link" href="#/SAVE">SAVE PROFILE</a></div>'};
+const profileBeforeFanbases=profile;profile=function(id){profileBeforeFanbases(id);if(!sameArtistId(id,'AT01'))return;const old=document.querySelector('.couple-hashtag');if(old)old.outerHTML='<div class="couple-profile-links"><a class="couple-profile-link" href="#/AUAU">AUAU PROFILE</a><a class="couple-profile-link" href="#/SAVE">SAVE PROFILE</a><a class="couple-profile-link couple-profile-schedule-link" href="#schedule">SCHEDULE</a></div>'};
 
 function fanbaseAdminSidebar(){const items=[['dashboard','⌂','Dashboard'],['pagecontent','▤','Homepage Content'],['artists','◉','Profiles'],['events','▦','Schedule'],['timeline','◷','Timeline'],['presenters','✦','Presenters'],['awards','◇','Awards'],['projects','◆','Projects'],['fanbases','◎','Fanbase Socials'],['master','⚙','Master Data']];return `<aside class="sidebar"><div class="brand"><i></i>AUAUSAVE HOUSE</div><div class="side-nav">${items.map(([id,icon,label])=>`<button data-icon="${icon}" class="${id==='fanbases'?'active':''}" onclick="adminTab='${id}';admin()">${icon} &nbsp; ${label}</button>`).join('')}</div><a class="back" href="#artists">← ดูหน้าบ้าน</a></aside>`}
 function fanbaseAdmin(){ensureFanbaseSocials();const items=[...db.siteSettings.fanbases].sort((a,b)=>a.displayOrder-b.displayOrder);app.innerHTML=`<div class="admin"><div class="admin-shell">${fanbaseAdminSidebar()}<main class="admin-main"><div class="admin-top"><div><small>FANBASE MANAGEMENT</small><h1>Fanbase Socials</h1><p>จัดการข้อมูลที่แสดงใน “FOLLOW OUR FANBASES”</p></div><button class="btn" onclick="openFanbaseForm()">+ เพิ่ม Fanbase</button></div><section class="fanbase-admin-list">${items.map((x,i)=>`<article class="panel fanbase-admin-card" draggable="true" data-id="${x.id}" ondragstart="fanbaseDragStart(event)" ondragover="fanbaseDragOver(event)" ondrop="fanbaseDrop(event)"><i style="background:${escapePageText(x.accentColor)}"></i><div><small>ลำดับ ${i+1} · ${x.active?'ACTIVE':'INACTIVE'}</small><h2>${escapePageText(x.displayName)}</h2><p>${escapePageText(x.username||'')}</p><span>${x.socialLinks.filter(s=>s.active!==false).length} ช่องทาง</span></div><div class="actions"><button class="btn outline" onclick="openFanbaseForm('${x.id}')">แก้ไข</button><button class="icon-btn" onclick="removeFanbase('${x.id}')">ลบ</button><b class="fanbase-drag-handle">⋮⋮</b></div></article>`).join('')}</section></main></div></div>`}
@@ -4145,7 +4208,7 @@ homeScheduleSection=function(){
 };
 artistCards=function(){
   const cards=homepageOrderedArtists();
-  return `<div class="artists homepage-artist-grid">${cards.map(artist=>`<article class="artist-card" onclick="location.hash='/${artistPublicSlug(artist.id)}'"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">`:`<span>${escapePageText(artist.initial||artist.name.slice(0,2))}</span>`}</div><div class="artist-meta"><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div></article>`).join('')}</div>`;
+  return `<div class="artists homepage-artist-grid">${cards.map(artist=>`<article class="artist-card" onclick="location.hash='/${artistPublicSlug(artist.id)}'"><div class="portrait" style="background:${artist.color}">${artist.image?`<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}" loading="lazy" decoding="async">`:`<span>${escapePageText(artist.initial||artist.name.slice(0,2))}</span>`}</div><div class="artist-meta"><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div></article>`).join('')}</div>`;
 };
 function renderManagedPageTitleEditor(){
   const titles=ensureManagedPageTitles(),labels={artists:'Artists',schedule:'Schedule',presenters:'Presenters',awards:'Awards',projects:'Projects',auausave:'AUAUSAVE',auau:'AUAU',save:'SAVE',mhiipraew:'Mhii Praew'};
@@ -4440,6 +4503,170 @@ admin=function(){
   document.querySelector('.admin-main .admin-top')?.insertAdjacentHTML('afterend',awardSectionAdminPanel());
 };
 ensureAwardSections();
+
+/* Keep Schedule in homepage ordering; the Artists page also has its own schedule view. */
+const ensureHomePageSettingsBeforeArtistScheduleMove = ensureHomePageSettings;
+ensureHomePageSettings = function () {
+  ensureHomePageSettingsBeforeArtistScheduleMove();
+  if (!db.siteSettings.homeSections.some(section => section.id === 'schedule')) {
+    const scheduleSection = {
+      id: 'schedule',
+      label: 'Homepage Schedule',
+      title: 'This Month Schedule',
+      description: 'ตารางงานประจำเดือนบนหน้าบ้าน',
+      visible: true,
+    };
+    const artistsIndex = db.siteSettings.homeSections.findIndex(section => section.id === 'artists');
+    db.siteSettings.homeSections.splice(artistsIndex >= 0 ? artistsIndex + 1 : db.siteSettings.homeSections.length, 0, scheduleSection);
+    db.siteSettings.homeSections = normalizeHomepageSections(db.siteSettings.homeSections);
+  }
+};
+
+function artistDirectoryScheduleSection() {
+  const template = document.createElement('template');
+  template.innerHTML = homeScheduleSection();
+  const section = template.content.querySelector('.home-schedules');
+  if (!section) return '';
+  section.classList.remove('home-schedules');
+  section.classList.add('artists-schedules');
+  const heading = section.querySelector('.section-head h2');
+  if (heading) heading.textContent = 'This Month’s Work Schedule';
+  return section.outerHTML;
+}
+
+const homeBeforeArtistScheduleMove = home;
+home = function () {
+  homeBeforeArtistScheduleMove();
+};
+
+const listingBeforeArtistScheduleMove = listing;
+listing = function (type) {
+  listingBeforeArtistScheduleMove(type);
+  if (type !== 'artists') return;
+  const artistGrid = document.querySelector('main .artists');
+  const hostSection = artistGrid?.closest('.section');
+  if (hostSection && !document.querySelector('main .artists-schedules')) {
+    hostSection.insertAdjacentHTML('afterend', artistDirectoryScheduleSection());
+  }
+};
+
+function refreshScheduleManagement() {
+  if (adminAuthenticated && adminTab === 'artists') admin();
+  else pageContentAdmin();
+}
+
+homeScheduleDrop = function (event, targetId) {
+  event.preventDefault();
+  ensureHomepageFrontDisplaySettings();
+  const sourceId = event.dataTransfer.getData('text/plain');
+  const list = db.siteSettings.homeScheduleOrder;
+  const from = list.indexOf(sourceId), to = list.indexOf(targetId);
+  if (from < 0 || to < 0 || from === to) return;
+  const [item] = list.splice(from, 1);
+  list.splice(to, 0, item);
+  save(); refreshScheduleManagement(); toast('บันทึกลำดับกลุ่มตารางงานแล้ว');
+};
+
+moveHomepageScheduleCard = function (artistId, direction) {
+  ensureHomepageFrontDisplaySettings();
+  const list = db.siteSettings.homeScheduleOrder;
+  const index = list.indexOf(artistId), target = index + direction;
+  if (index < 0 || target < 0 || target >= list.length) return;
+  [list[index], list[target]] = [list[target], list[index]];
+  save(); refreshScheduleManagement(); toast('บันทึกลำดับกลุ่มตารางงานแล้ว');
+};
+
+const artistDirectoryAdminBeforeScheduleMove = artistDirectoryAdmin;
+artistDirectoryAdmin = function () {
+  artistDirectoryAdminBeforeScheduleMove();
+  const tools = document.querySelector('.artist-directory-tools');
+  if (!tools || document.querySelector('.artists-schedule-admin')) return;
+  const panel = document.createElement('div');
+  panel.className = 'artists-schedule-admin';
+  panel.innerHTML = renderHomepageScheduleOrderEditor()
+    .replace('SCHEDULE CARD ORDER', 'ARTISTS · SCHEDULE')
+    .replace('จัดลำดับกลุ่มตารางงาน', 'จัดลำดับตารางงานหน้า Artists')
+    .replace('ระบบบันทึกลำดับทันทีเหมือนส่วนจัดลำดับหน้าแรก', 'ลำดับนี้ใช้กับตารางงานที่แสดงใต้รายชื่อศิลปินในหน้า #artists');
+  tools.insertAdjacentElement('beforebegin', panel);
+};
+
+const pageContentAdminBeforeScheduleMove = pageContentAdmin;
+pageContentAdmin = function () {
+  pageContentAdminBeforeScheduleMove();
+  document.querySelectorAll('.homepage-schedule-order-editor').forEach(panel => panel.remove());
+};
+
+ensureHomePageSettings();
+
+/* Homepage schedule: one chronological list with artist colour coding.
+   The grouped schedule on the Artists page remains a separate view. */
+function unifiedHomeScheduleSection() {
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthLabel = new Intl.DateTimeFormat('en-US', {month:'long'}).format(now);
+  const events = db.events
+    .filter(event => event.date.startsWith(monthKey))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 12);
+  const artists = homepageScheduleArtists();
+  const artistIndex = new Map(artists.map((artist, index) => [canonicalArtistId(artist.id), index]));
+  const artistBadge = artistId => {
+    const id = canonicalArtistId(artistId);
+    const artist = artistById(id);
+    const index = artistIndex.get(id) ?? 0;
+    const label = sameArtistId(id, 'duo') ? '#AUAUSAVE' : (artist?.name || artistName(id));
+    return `<span class="unified-schedule-artist" style="--artist-color:${artistDisplayColor(id, index)}"><i></i>${escapePageText(label)}</span>`;
+  };
+  const rows = events.map(event => {
+    const ids = calendarEventArtistIds(event);
+    const badges = (ids.length ? ids : [event.artistId]).filter(Boolean).map(artistBadge).join('');
+    const date = new Date(`${event.date}T00:00:00`);
+    const weekday = new Intl.DateTimeFormat('en-US', {weekday:'short'}).format(date);
+    return `<article class="unified-schedule-row">
+      <time datetime="${escapePageText(event.date)}"><b>${day(event.date)}</b><span>${month(event.date)}</span><small>${weekday}</small></time>
+      <div class="unified-schedule-detail"><div class="unified-schedule-badges">${badges}</div><h3>${escapePageText(event.title)}</h3><p>${escapePageText(event.place || 'Location to be announced')}</p></div>
+      <span class="unified-schedule-type">${escapePageText(event.type || 'EVENT')}</span>
+    </article>`;
+  }).join('');
+  return `<section class="section unified-home-schedule"><div class="container">
+    <div class="unified-schedule-shell">
+      <header class="unified-schedule-head"><h2>${escapePageText(monthLabel)} Schedule</h2><a class="btn outline" href="#schedule">View full calendar</a></header>
+      <div class="unified-schedule-list">${rows || `<div class="empty">No events scheduled for ${escapePageText(monthLabel)}.</div>`}</div>
+    </div>
+  </div></section>`;
+}
+
+const homeBeforeUnifiedSchedule = home;
+home = function () {
+  homeBeforeUnifiedSchedule();
+  const artistSection = document.querySelector('main .homepage-artist-grid')?.closest('.section');
+  if (artistSection) {
+    artistSection.classList.add('home-artist-section');
+    artistSection.querySelector('.section-head .btn')?.remove();
+  }
+  const scheduleVisible = db.siteSettings.homeSections?.find(section => section.id === 'schedule')?.visible !== false;
+  if (!scheduleVisible) {
+    document.querySelectorAll('main .home-schedules, main .unified-home-schedule').forEach(section => section.remove());
+    return;
+  }
+  const oldUpcoming = document.querySelector('main .schedule-wrap')?.closest('.section');
+  if (oldUpcoming) {
+    oldUpcoming.outerHTML = unifiedHomeScheduleSection();
+    document.querySelectorAll('main .home-schedules').forEach(section => section.remove());
+    return;
+  }
+  document.querySelectorAll('main .home-schedules').forEach(section => section.remove());
+  if (artistSection && !document.querySelector('main .unified-home-schedule')) {
+    artistSection.insertAdjacentHTML('afterend', unifiedHomeScheduleSection());
+  }
+};
+
+/* Apply the saved homepage order only after every late-rendered section exists. */
+const homeBeforeFinalSectionOrder = home;
+home = function () {
+  homeBeforeFinalSectionOrder();
+  applyHomePageBuilder();
+};
 
 /* Unified AWARDS admin: Section > Subsection > Year > Awards. */
 let awardAdminView='manage';

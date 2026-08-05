@@ -87,7 +87,7 @@
   };
   const mapFromDb = {
     artists: r => ({ id:r.id,name:r.nickname ?? r.name,realName:r.name_TH ?? r.real_name,nameEN:r.name_EN||'',role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image:r.image_url,socialLinks:Array.isArray(r.social_links)?r.social_links:[] }),
-    events: r => ({ id:r.id,artistId:r.artist_id,date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'',poster:r.poster_url||'' }),
+    events: r => ({ id:r.id,artistId:r.artist_id,artistIds:Array.isArray(r.artist_ids)&&r.artist_ids.length?r.artist_ids:[r.artist_id].filter(Boolean),date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'',poster:r.poster_url||'' }),
     award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parentId:r.parent_id||'',displayOrder:Number(r.display_order)||0,active:r.active!==false }),
     awards: r => ({ id:r.id,artistId:r.artist_id,year:String(r.award_year||''),day:String(r.award_day||''),month:String(r.award_month||''),title:r.title,org:r.organization,source:r.source_url||'',image:r.image_url||'',mainSectionId:r.main_section_id||'',subsectionId:r.subsection_id||'',displayOrder:Number(r.display_order)||0 }),
     award_section_assignments: r => ({ id:r.id,awardId:r.award_id,mainSectionId:r.main_section_id,subsectionId:r.subsection_id||'',displayOrder:Number(r.display_order)||0 }),
@@ -96,7 +96,7 @@
   };
   const mapToDb = {
     artists: r => ({ id:r.id,nickname:r.name,name_TH:r.realName||null,name_EN:r.nameEN||null,role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image_url:r.image||null,social_links:Array.isArray(r.socialLinks)?r.socialLinks:[] }),
-    events: r => ({ id:r.id,artist_id:r.artistId,event_date:r.date,title:r.title,place:r.place,event_type:r.type,series_id:r.seriesId||null,source_url:r.source||null,poster_url:r.poster||null }),
+    events: r => ({ id:r.id,artist_id:r.artistId,artist_ids:Array.isArray(r.artistIds)&&r.artistIds.length?[...new Set(r.artistIds.map(String))]:[r.artistId].filter(Boolean),event_date:r.date,title:r.title,place:r.place,event_type:r.type,series_id:r.seriesId||null,source_url:r.source||null,poster_url:r.poster||null }),
     award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parent_id:r.parentId||null,display_order:Number(r.displayOrder)||0,active:r.active!==false }),
     awards: r => ({ id:r.id,artist_id:r.artistId,award_year:Number(r.year)||null,award_day:Number(r.day)||null,award_month:Number(r.month)||null,title:r.title,organization:r.org,source_url:r.source||null,image_url:r.image||null,main_section_id:r.mainSectionId||null,subsection_id:r.subsectionId||null,display_order:Number(r.displayOrder)||0 }),
     award_section_assignments: r => ({ id:r.id,award_id:r.awardId,main_section_id:r.mainSectionId,subsection_id:r.subsectionId||null,display_order:Number(r.displayOrder)||0 }),
