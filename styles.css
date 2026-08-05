@@ -1659,3 +1659,38 @@ main:has(> .home-media-banner) > :is(
   background-color:transparent!important;
   background-image:none!important;
 }
+
+/* Tighten the two homepage section transitions requested in the visual review. */
+main:has(> .home-media-banner) > .home-artist-section{
+  padding-bottom:clamp(28px,3.5vw,44px);
+}
+main:has(> .home-media-banner) > .unified-home-schedule{
+  padding-block:23px;
+}
+main:has(> .home-media-banner) > .presenter-home{
+  padding-top:clamp(28px,3.5vw,44px);
+}
+
+@media(max-width:700px){
+  main:has(> .home-media-banner) > .unified-home-schedule{
+    padding-block:14px;
+  }
+}
+
+/* Projects index: halve the transition from the page title to the project list. */
+main > .project-hub-hero{
+  padding-bottom:15px;
+}
+main > .project-hub-section{
+  padding-top:clamp(28px,3.5vw,44px);
+}
+
+@media(max-width:1024px){
+  main > .project-hub-hero{padding-bottom:24px}
+}
+@media(max-width:767px){
+  main > .project-hub-hero{padding-bottom:20px}
+}
+@media(max-width:480px){
+  main > .project-hub-hero{padding-bottom:17px}
+}
