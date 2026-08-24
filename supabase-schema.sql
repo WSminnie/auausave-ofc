@@ -27,7 +27,7 @@ create table if not exists public.events (
   artist_ids text[] not null default '{}',
   event_date date not null, title text not null, place text, event_type text not null,
   series_id text references public.series(id) on delete set null,
-  source_url text, poster_url text, created_at timestamptz default now(), updated_at timestamptz default now()
+  source_url text, created_at timestamptz default now(), updated_at timestamptz default now()
 );
 alter table public.events add column if not exists artist_ids text[] not null default '{}';
 update public.events set artist_ids = array[artist_id] where cardinality(artist_ids) = 0 and artist_id is not null;
@@ -174,7 +174,7 @@ do $$ declare t text; begin
 end $$;
 
 insert into public.site_settings(id,settings) values
-('homepage','{"heroImage":"","heroFit":"cover","heroPosition":"center"}'::jsonb)
+('homepage','{}'::jsonb)
 on conflict (id) do nothing;
 
 -- Public media bucket. Reads are public; writes require a signed-in admin.

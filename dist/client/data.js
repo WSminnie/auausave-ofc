@@ -160,7 +160,6 @@ window.AUAUSAVE_DATA = {
     AT04: 'AT04',
   },
   DEFAULT_PAGE_CONTENT: {
-    home: { th:{eyebrow:'บ้านแฟนคลับอู่อู๋เซฟ',title:'OUR HOUSE.\nOUR STORY.',description:'บ้านแฟนคลับของอู่อู๋เซฟ พื้นที่เก็บทุกโมเมนต์ของ #AuauSave'}, en:{eyebrow:'AUAUSAVE FANBASE',title:'OUR HOUSE.\nOUR STORY.',description:'The fan home for AuauSave, keeping every shared moment and every journey close.'} },
     artists: { th:{eyebrow:'AUAUSAVE HOUSE archive',title:'ศิลปินของเรา',description:'ทำความรู้จักอู่อู๋เซฟ ทั้งพาสคู่และพาสเดี่ยว'}, en:{eyebrow:'AUAUSAVE HOUSE ARCHIVE',title:'AUAUSAVE',description:'Meet Auau and Save through their couple and solo journeys.'} },
     schedule: { th:{eyebrow:'อดีต · ปัจจุบัน · อนาคต',title:'ปฏิทินงาน',description:'ย้อนดูงานที่ผ่านมา และวางแผนติดตามงานในอนาคต'}, en:{eyebrow:'PAST · PRESENT · FUTURE',title:'Event Calendar',description:'Review past events and plan for every upcoming schedule.'} },
     presenters: { th:{eyebrow:'แบรนด์และพาร์ตเนอร์',title:'พรีเซนเตอร์',description:'รวมแบรนด์ที่ร่วมเดินทางกับอู่อู๋เซฟ ทั้งงานคู่และงานเดี่ยว'}, en:{eyebrow:'BRAND & PARTNERSHIP',title:'Presenters',description:'Brands partnering with AuauSave across couple and solo projects.'} },

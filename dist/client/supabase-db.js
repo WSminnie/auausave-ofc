@@ -87,7 +87,7 @@
   };
   const mapFromDb = {
     artists: r => ({ id:r.id,name:r.nickname ?? r.name,realName:r.name_TH ?? r.real_name,nameEN:r.name_EN||'',role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image:r.image_url,socialLinks:Array.isArray(r.social_links)?r.social_links:[] }),
-    events: r => ({ id:r.id,artistId:r.artist_id,artistIds:Array.isArray(r.artist_ids)&&r.artist_ids.length?r.artist_ids:[r.artist_id].filter(Boolean),date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'',poster:r.poster_url||'' }),
+    events: r => ({ id:r.id,artistId:r.artist_id,artistIds:Array.isArray(r.artist_ids)&&r.artist_ids.length?r.artist_ids:[r.artist_id].filter(Boolean),date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'' }),
     award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parentId:r.parent_id||'',displayOrder:Number(r.display_order)||0,active:r.active!==false }),
     awards: r => ({ id:r.id,artistId:r.artist_id,year:String(r.award_year||''),day:String(r.award_day||''),month:String(r.award_month||''),title:r.title,org:r.organization,source:r.source_url||'',image:r.image_url||'',mainSectionId:r.main_section_id||'',subsectionId:r.subsection_id||'',displayOrder:Number(r.display_order)||0 }),
     award_section_assignments: r => ({ id:r.id,awardId:r.award_id,mainSectionId:r.main_section_id,subsectionId:r.subsection_id||'',displayOrder:Number(r.display_order)||0 }),
@@ -96,7 +96,7 @@
   };
   const mapToDb = {
     artists: r => ({ id:r.id,nickname:r.name,name_TH:r.realName||null,name_EN:r.nameEN||null,role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image_url:r.image||null,social_links:Array.isArray(r.socialLinks)?r.socialLinks:[] }),
-    events: r => ({ id:r.id,artist_id:r.artistId,artist_ids:Array.isArray(r.artistIds)&&r.artistIds.length?[...new Set(r.artistIds.map(String))]:[r.artistId].filter(Boolean),event_date:r.date,title:r.title,place:r.place,event_type:r.type,series_id:r.seriesId||null,source_url:r.source||null,poster_url:r.poster||null }),
+    events: r => ({ id:r.id,artist_id:r.artistId,artist_ids:Array.isArray(r.artistIds)&&r.artistIds.length?[...new Set(r.artistIds.map(String))]:[r.artistId].filter(Boolean),event_date:r.date,title:r.title,place:r.place,event_type:r.type,series_id:r.seriesId||null,source_url:r.source||null }),
     award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parent_id:r.parentId||null,display_order:Number(r.displayOrder)||0,active:r.active!==false }),
     awards: r => ({ id:r.id,artist_id:r.artistId,award_year:Number(r.year)||null,award_day:Number(r.day)||null,award_month:Number(r.month)||null,title:r.title,organization:r.org,source_url:r.source||null,image_url:r.image||null,main_section_id:r.mainSectionId||null,subsection_id:r.subsectionId||null,display_order:Number(r.displayOrder)||0 }),
     award_section_assignments: r => ({ id:r.id,award_id:r.awardId,main_section_id:r.mainSectionId,subsection_id:r.subsectionId||null,display_order:Number(r.displayOrder)||0 }),
@@ -132,7 +132,7 @@
     knownIds.event_types = new Set(types.map(row => row.id));
     knownIds.series = new Set(series.map(row => row.id));
     const {data:settings} = await client.from('site_settings').select('settings').eq('id','homepage').maybeSingle();
-    result.siteSettings = settings?.settings || {heroImage:'',heroFit:'cover',heroPosition:'center'};
+    result.siteSettings = settings?.settings || {};
     return result;
   }
 
@@ -142,7 +142,7 @@
       return {id:`asa_${safe(award.id)}_${safe(assignment.mainSectionId)}_${safe(assignment.subsectionId)}`,awardId:award.id,mainSectionId:assignment.mainSectionId,subsectionId:assignment.subsectionId||'',displayOrder:Number(assignment.displayOrder)||index+1};
     }));
     for (const table of tables) {
-      const mediaFields = {artists:['image'],events:['poster'],awards:['image'],presenters:['logo','announcementImage'],videos:['thumbnail']}[table] || [];
+      const mediaFields = {artists:['image'],awards:['image'],presenters:['logo','announcementImage'],videos:['thumbnail']}[table] || [];
       const { data:existing, error:readError } = await client.from(table).select('*');
       if (readError) throw readError;
       const knownBeforeSave = knownIds[table] || new Set();
@@ -193,7 +193,11 @@
     const {data:latestSettings,error:settingsReadError} = await client.from('site_settings').select('settings').eq('id','homepage').maybeSingle();
     if (settingsReadError) throw settingsReadError;
     database.siteSettings = await uploadEmbeddedMedia(database.siteSettings || {}, 'settings/homepage');
-    const mergedSettings = mergeSettings(latestSettings?.settings || {}, database.siteSettings || {});
+    const legacyFreeSettings = {...(latestSettings?.settings || {})};
+    ['heroImage','heroFit','heroPosition','heroOverlayText','heroOverlayVisible'].forEach(key=>delete legacyFreeSettings[key]);
+    if(Array.isArray(legacyFreeSettings.homeSections))legacyFreeSettings.homeSections=legacyFreeSettings.homeSections.filter(section=>section?.id!=='hero');
+    if(legacyFreeSettings.pageContent)delete legacyFreeSettings.pageContent.home;
+    const mergedSettings = mergeSettings(legacyFreeSettings, database.siteSettings || {});
     const {error:settingsError} = await client.from('site_settings').upsert({id:'homepage',settings:mergedSettings},{onConflict:'id'});
     if (settingsError) throw settingsError;
     await removeUnreferencedMedia(latestSettings?.settings || {}, mergedSettings);
@@ -204,6 +208,15 @@
   async function signIn(email,password){return client.auth.signInWithPassword({email,password});}
   async function signOut(){return client.auth.signOut();}
   async function session(){return client.auth.getSession();}
+  async function removeEventPosters(){
+    const {data:rows,error}=await client.from('events').select('id,poster_url').not('poster_url','is',null);
+    if(error){if(error.code==='42703'||/poster_url.*does not exist/i.test(error.message||''))return{records:0,files:0};throw error;}
+    const paths=[...new Set((rows||[]).map(row=>storagePathFromUrl(row.poster_url)).filter(Boolean))];
+    if(paths.length){const {error:storageError}=await client.storage.from(config.mediaBucket).remove(paths);if(storageError)throw storageError;}
+    const ids=(rows||[]).map(row=>row.id);
+    if(ids.length){const {error:updateError}=await client.from('events').update({poster_url:null}).in('id',ids);if(updateError)throw updateError;}
+    return{records:ids.length,files:paths.length};
+  }
   async function removeAwardAssignment(awardId,mainSectionId,subsectionId=''){
     let query=client.from('award_section_assignments').delete().eq('award_id',awardId).eq('main_section_id',mainSectionId);
     query=subsectionId?query.eq('subsection_id',subsectionId):query.is('subsection_id',null);
@@ -235,5 +248,5 @@
     return (data||[]).map(mapFromDb.award_section_assignments);
   }
 
-  window.auausaveDB = { client, load, save, signIn, signOut, session, removeAwardAssignment, upsertAwardAssignments, upsertAwardSectionAssignments };
+  window.auausaveDB = { client, load, save, signIn, signOut, session, removeEventPosters, removeAwardAssignment, upsertAwardAssignments, upsertAwardSectionAssignments };
 })();
