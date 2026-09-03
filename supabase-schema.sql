@@ -19,17 +19,24 @@ create table if not exists public.event_types (
 );
 
 create table if not exists public.series (
-  id text primary key, name text not null unique, description text
+  id text primary key, name text not null unique, description text,
+  broadcasts jsonb not null default '[]'::jsonb
 );
+alter table public.series add column if not exists broadcasts jsonb not null default '[]'::jsonb;
 
 create table if not exists public.events (
   id text primary key, artist_id text references public.artists(id) on delete cascade,
   artist_ids text[] not null default '{}',
   event_date date not null, title text not null, place text, event_type text not null,
   series_id text references public.series(id) on delete set null,
-  source_url text, created_at timestamptz default now(), updated_at timestamptz default now()
+  source_url text, schedule_type text, episode integer,
+  broadcasts jsonb not null default '[]'::jsonb,
+  created_at timestamptz default now(), updated_at timestamptz default now()
 );
 alter table public.events add column if not exists artist_ids text[] not null default '{}';
+alter table public.events add column if not exists schedule_type text;
+alter table public.events add column if not exists episode integer;
+alter table public.events add column if not exists broadcasts jsonb not null default '[]'::jsonb;
 update public.events set artist_ids = array[artist_id] where cardinality(artist_ids) = 0 and artist_id is not null;
 create index if not exists events_date_idx on public.events(event_date);
 create index if not exists events_artist_idx on public.events(artist_id);
@@ -143,7 +150,7 @@ create table if not exists public.site_settings (
 );
 
 insert into public.event_types(id,name,sort_order) values
- ('event','Event',1),('live','Live',2),('series','Series',3),('private','Private',4),('other','Other',5),('dexx','DEXX',6)
+ ('event','Event',1),('live','Live',2),('series','Series',3),('private','Private',4),('other','Other',5),('dexx','DEXX',6),('series_broadcast','Series Broadcast',7)
 on conflict (id) do update set name=excluded.name,sort_order=excluded.sort_order;
 insert into public.series(id,name) values ('yoursky','YourSkySeries'),('fanboy','Mr.Fanboy Series')
 on conflict (id) do update set name=excluded.name;

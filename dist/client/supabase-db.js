@@ -87,7 +87,7 @@
   };
   const mapFromDb = {
     artists: r => ({ id:r.id,name:r.nickname ?? r.name,realName:r.name_TH ?? r.real_name,nameEN:r.name_EN||'',role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image:r.image_url,socialLinks:Array.isArray(r.social_links)?r.social_links:[] }),
-    events: r => ({ id:r.id,artistId:r.artist_id,artistIds:Array.isArray(r.artist_ids)&&r.artist_ids.length?r.artist_ids:[r.artist_id].filter(Boolean),date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'' }),
+    events: r => ({ id:r.id,artistId:r.artist_id||'',artistIds:Array.isArray(r.artist_ids)&&r.artist_ids.length?r.artist_ids:[r.artist_id].filter(Boolean),date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'',scheduleType:r.schedule_type||'',episode:r.episode??null,broadcasts:Array.isArray(r.broadcasts)?r.broadcasts:[] }),
     award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parentId:r.parent_id||'',displayOrder:Number(r.display_order)||0,active:r.active!==false }),
     awards: r => ({ id:r.id,artistId:r.artist_id,year:String(r.award_year||''),day:String(r.award_day||''),month:String(r.award_month||''),title:r.title,org:r.organization,source:r.source_url||'',image:r.image_url||'',mainSectionId:r.main_section_id||'',subsectionId:r.subsection_id||'',displayOrder:Number(r.display_order)||0 }),
     award_section_assignments: r => ({ id:r.id,awardId:r.award_id,mainSectionId:r.main_section_id,subsectionId:r.subsection_id||'',displayOrder:Number(r.display_order)||0 }),
@@ -96,7 +96,7 @@
   };
   const mapToDb = {
     artists: r => ({ id:r.id,nickname:r.name,name_TH:r.realName||null,name_EN:r.nameEN||null,role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image_url:r.image||null,social_links:Array.isArray(r.socialLinks)?r.socialLinks:[] }),
-    events: r => ({ id:r.id,artist_id:r.artistId,artist_ids:Array.isArray(r.artistIds)&&r.artistIds.length?[...new Set(r.artistIds.map(String))]:[r.artistId].filter(Boolean),event_date:r.date,title:r.title,place:r.place,event_type:r.type,series_id:r.seriesId||null,source_url:r.source||null }),
+    events: r => ({ id:r.id,artist_id:r.artistId||null,artist_ids:Array.isArray(r.artistIds)&&r.artistIds.length?[...new Set(r.artistIds.map(String))]:[r.artistId].filter(Boolean),event_date:r.date,title:r.title,place:r.place||null,event_type:r.type,series_id:r.seriesId||null,source_url:r.source||null,schedule_type:r.scheduleType||null,episode:r.episode==null?null:Number(r.episode),broadcasts:Array.isArray(r.broadcasts)?r.broadcasts:[] }),
     award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parent_id:r.parentId||null,display_order:Number(r.displayOrder)||0,active:r.active!==false }),
     awards: r => ({ id:r.id,artist_id:r.artistId,award_year:Number(r.year)||null,award_day:Number(r.day)||null,award_month:Number(r.month)||null,title:r.title,organization:r.org,source_url:r.source||null,image_url:r.image||null,main_section_id:r.mainSectionId||null,subsection_id:r.subsectionId||null,display_order:Number(r.displayOrder)||0 }),
     award_section_assignments: r => ({ id:r.id,award_id:r.awardId,main_section_id:r.mainSectionId,subsection_id:r.subsectionId||null,display_order:Number(r.displayOrder)||0 }),
@@ -128,7 +128,7 @@
     ]);
     if (typeError || seriesError) throw typeError || seriesError;
     result.masterData.types = types.map(x=>({id:x.id,label:x.name}));
-    result.masterData.series = series.map(x=>({id:x.id,label:x.name}));
+    result.masterData.series = series.map(x=>({id:x.id,label:x.name,broadcasts:Array.isArray(x.broadcasts)?x.broadcasts:[]}));
     knownIds.event_types = new Set(types.map(row => row.id));
     knownIds.series = new Set(series.map(row => row.id));
     const {data:settings} = await client.from('site_settings').select('settings').eq('id','homepage').maybeSingle();
@@ -174,7 +174,7 @@
       knownIds[table] = new Set([...(existing || []).map(row => row.id).filter(id => !deletedIds.includes(id)), ...localIds]);
     }
     const typeRows = database.masterData.types.map((x,i)=>({id:x.id,name:x.label,sort_order:i}));
-    const seriesRows = database.masterData.series.map(x=>({id:x.id,name:x.label}));
+    const seriesRows = database.masterData.series.map(x=>({id:x.id,name:x.label,broadcasts:Array.isArray(x.broadcasts)?x.broadcasts:[]}));
     for (const [table, rows] of [['event_types',typeRows],['series',seriesRows]]) {
       const {data:existing,error:readError} = await client.from(table).select('id');
       if (readError) throw readError;
