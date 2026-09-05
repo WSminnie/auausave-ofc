@@ -996,6 +996,14 @@ html{
 .project-type-group .project-filter-row b{font-size:28px}
 .food-project-hub-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 .food-project-card .project-simple-copy{display:grid!important;align-items:start}
+.donation-project-card .project-simple-copy{display:grid!important;align-content:start;align-items:start;gap:14px;min-width:0}
+.donation-project-card .project-simple-copy h2{max-width:100%;overflow-wrap:anywhere}
+.project-card-financial{display:grid;justify-items:start;gap:4px;min-width:0;max-width:100%}
+.project-card-financial>strong{display:flex;align-items:baseline;justify-content:flex-start;flex-wrap:wrap;gap:3px;min-width:0;max-width:100%}
+.project-card-financial>.project-card-final{display:grid;justify-items:start;text-align:left}
+.project-card-opening{color:#817a71;font-size:10px;font-weight:700;line-height:1.35}
+.donation-project-card .project-card-financial>strong>small{flex-basis:100%;width:100%;justify-self:start;text-align:left}
+.donation-project-card .project-card-financial>strong>span{overflow-wrap:anywhere}
 .food-project-card .project-simple-copy strong{display:grid;justify-items:start}
 .food-project-card .project-simple-copy .project-card-queue-metric{font-size:18px;font-weight:700;line-height:normal}
 .food-project-card .project-simple-copy .project-card-queue-metric small{color:#817a71;font-size:9px;font-weight:700;line-height:normal;letter-spacing:.04em}
@@ -1005,6 +1013,7 @@ html{
 .combined-card-metric{display:grid;min-width:0;gap:4px}
 .combined-card-metric span{color:#d86666;white-space:nowrap}
 .food-project-card .project-simple-copy .combined-card-total{justify-items:end;text-align:right}
+.combined-card-total .project-card-opening{display:block;text-align:right}
 .project-simple-image{position:relative}.project-closed-badge{position:absolute;top:14px;right:14px;padding:7px 10px;border-radius:99px;background:#171717;color:#fff;font-size:9px;line-height:1;letter-spacing:.12em;box-shadow:0 8px 20px rgba(0,0,0,.22)}.project-simple-card.is-closed .project-simple-copy{align-items:end}.project-card-final{display:grid;justify-items:end;gap:3px;text-align:right}.project-card-final small{color:#817a71;font-size:9px;letter-spacing:.08em}.project-card-final span{color:#d86666;font-size:18px}.project-card-final em{color:#817a71;font-size:10px;font-style:normal}.project-closed-message{margin-top:22px;padding:clamp(28px,5vw,54px);border-radius:22px;background:#171717;color:#fff;text-align:center}.project-closed-message>span{font-size:10px;font-weight:900;letter-spacing:.16em;color:#efb4a8}.project-closed-message h2{margin:12px 0 8px;font-size:clamp(28px,4vw,48px)}.project-closed-message p{margin:0 auto;max-width:620px;color:#bbb;line-height:1.7}.project-closed-total{display:grid;gap:5px;margin-top:28px}.project-closed-total small{color:#aaa;font-size:10px;letter-spacing:.1em}.project-closed-total strong{font-size:clamp(42px,7vw,72px);color:#efb4a8}.project-closed-total time{color:#aaa;font-size:12px}.donation-anonymous-row span{font-weight:800;color:#d86666}.donation-ledger.is-final .donation-card-head{align-items:flex-end}.donation-final-card strong{color:#d86666}
 @media(max-width:600px){.project-simple-card.is-closed .project-simple-copy{align-items:start}.project-card-final{justify-items:start;text-align:left}.project-closed-message{text-align:left}.project-closed-message p{margin:0}.project-closed-total strong{overflow-wrap:anywhere}}
 
@@ -1201,9 +1210,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .award-grid,.couple-archive .archive-awards .award-grid,.project-hub-grid,.food-project-hub-grid{gap:7px}
   .award{padding:10px}
   .project-simple-copy{padding:10px}
+  .donation-project-card .project-simple-copy{gap:10px}
   .project-simple-copy strong small{font-size:7px}
   .combined-card-summary{grid-template-columns:1fr;gap:7px}
   .food-project-card .project-simple-copy .combined-card-total{justify-items:start;text-align:left}
+  .combined-card-total .project-card-opening{text-align:left}
 }
 
 .home-artist-section .section-head .btn,
