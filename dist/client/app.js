@@ -11,6 +11,28 @@ seed.events = [
 let db =
   JSON.parse(localStorage.getItem("auausave-house-db-v9") || "null") ||
   structuredClone(seed);
+const failedVideoThumbnailUrls = new Set();
+const legacyVideoThumbnailPath = /\/storage\/v1\/object\/public\/[^/]+\/videos\/[^/?]+\/thumbnail\.jpg(?:[?#]|$)/i;
+function videoThumbnailUrl(video) {
+  const value = [video?.thumbnailUrl, video?.posterUrl, video?.thumbnail]
+    .find(candidate => typeof candidate === 'string' && candidate.trim());
+  if (!value) return '';
+  const url = value.trim();
+  if (legacyVideoThumbnailPath.test(url) || failedVideoThumbnailUrls.has(url)) return '';
+  return url;
+}
+function videoThumbnailImage(video) {
+  const url = videoThumbnailUrl(video);
+  return url ? `<img src="${escapePageText(url)}" alt="${escapePageText(video.title || 'ภาพปกวิดีโอ')}" data-video-thumbnail>` : '';
+}
+document.addEventListener('error', event => {
+  const image = event.target;
+  if (!(image instanceof HTMLImageElement) || !image.matches('[data-video-thumbnail]')) return;
+  const url = image.getAttribute('src');
+  if (url) failedVideoThumbnailUrls.add(url);
+  image.removeAttribute('src');
+  image.remove();
+}, true);
 const ARTIST_ID_ALIASES = window.AUAUSAVE_DATA.ARTIST_ID_ALIASES;
 function canonicalArtistId(id) {
   return ARTIST_ID_ALIASES[String(id || '')] || String(id || '');
@@ -497,7 +519,7 @@ function scheduleRows(items = db.events) {
 function videos(items = db.videos) {
   if (!items.length) return '<div class="empty">ยังไม่มีวิดีโอ</div>';
   const thumb = (v) =>
-    `<div class="thumb" style="background:${v.color}">${v.thumbnail ? `<img src="${v.thumbnail}" alt="${v.title}">` : ""}<span class="play">▶</span></div>`;
+    `<div class="thumb" style="background:${v.color}">${videoThumbnailImage(v)}<span class="play">▶</span></div>`;
   return `<div class="youtube-grid"><article class="video"><a href="${items[0].url}" target="_blank">${thumb(items[0])}</a><div class="video-info"><h3>${items[0].title}</h3><p>${artistName(items[0].artistId)} · ${items[0].views}</p></div></article><div class="video-stack">${items
     .slice(1)
     .map(
@@ -938,13 +960,13 @@ home = function () {
     );
 };
 function videoTile(v) {
-  return `<article class="hub-video"><a href="${v.url}" target="_blank"><div class="hub-thumb" style="background:${v.color}">${v.thumbnail ? `<img src="${v.thumbnail}" alt="${v.title}">` : ""}<span>▶</span></div></a><small>${artistName(v.artistId)}</small><h3>${v.title}</h3><p>${v.views}</p></article>`;
+  return `<article class="hub-video"><a href="${v.url}" target="_blank"><div class="hub-thumb" style="background:${v.color}">${videoThumbnailImage(v)}<span>▶</span></div></a><small>${artistName(v.artistId)}</small><h3>${v.title}</h3><p>${v.views}</p></article>`;
 }
 function youtubeHub(compact = false) {
   const featured = db.videos.find((v) => v.featured === "yes") || db.videos[0],
     groups = db.siteSettings.youtubeCategories;
   if (!featured) return '<div class="empty">ยังไม่มีวิดีโอ</div>';
-  return `<div class="featured-watch ${compact?'home-featured-watch':''}"><div class="featured-player">${featured.embedUrl ? `<iframe src="${featured.embedUrl}" title="${featured.title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${featured.url}" target="_blank" style="background:${featured.color}">${featured.thumbnail ? `<img src="${featured.thumbnail}" alt="${featured.title}">` : ""}<span class="big-play">▶</span><small>เปิดดูบน YouTube</small></a>`}</div><div class="featured-copy"><span class="eyebrow">Featured video</span><h2>${featured.title}</h2><p>${artistName(featured.artistId)} · ${featured.views}</p><a class="btn" href="${featured.url}" target="_blank">เปิดบน YouTube </a></div></div>${groups
+  return `<div class="featured-watch ${compact?'home-featured-watch':''}"><div class="featured-player">${featured.embedUrl ? `<iframe src="${featured.embedUrl}" title="${featured.title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<a href="${featured.url}" target="_blank" style="background:${featured.color}">${videoThumbnailImage(featured)}<span class="big-play">▶</span><small>เปิดดูบน YouTube</small></a>`}</div><div class="featured-copy"><span class="eyebrow">Featured video</span><h2>${featured.title}</h2><p>${artistName(featured.artistId)} · ${featured.views}</p><a class="btn" href="${featured.url}" target="_blank">เปิดบน YouTube </a></div></div>${groups
     .map((group, index) => {
       const {id: key, title, description: desc, linkLabel, linkUrl} = group;
       const items = db.videos.filter(
@@ -1625,7 +1647,9 @@ openForm = function (type, id) {
     );
 };
 function imageUploadTemplate(field, label, value = "") {
-  return `<div class="field full image-upload-field"><label>${label}</label><div class="image-uploader"><div class="upload-preview ${value ? "has-image" : ""}" id="uploadPreview_${field}">${value ? `<img src="${value}" alt="preview">` : "<span>＋<small>เลือกรูปภาพ</small></span>"}</div><div><input type="file" accept="image/jpeg,image/png,image/webp" onchange="handleImageUpload(this,'${field}')"><input type="hidden" name="${field}" value="${value}"><p>รองรับ JPG, PNG, WebP · ระบบจะย่อรูปให้อัตโนมัติ</p>${value ? `<button type="button" class="remove-image" onclick="removeUploadedImage('${field}')">ลบรูปนี้</button>` : ""}</div></div></div>`;
+  const previewUrl = field === 'thumbnail' ? videoThumbnailUrl({thumbnail:value}) : value;
+  const previewImage = previewUrl ? `<img src="${escapePageText(previewUrl)}" alt="preview"${field === 'thumbnail' ? ' data-video-thumbnail' : ''}>` : "<span>＋<small>เลือกรูปภาพ</small></span>";
+  return `<div class="field full image-upload-field"><label>${label}</label><div class="image-uploader"><div class="upload-preview ${previewUrl ? "has-image" : ""}" id="uploadPreview_${field}">${previewImage}</div><div><input type="file" accept="image/jpeg,image/png,image/webp" onchange="handleImageUpload(this,'${field}')"><input type="hidden" name="${field}" value="${escapePageText(value)}"><p>รองรับ JPG, PNG, WebP · ระบบจะย่อรูปให้อัตโนมัติ</p>${value ? `<button type="button" class="remove-image" onclick="removeUploadedImage('${field}')">ลบรูปนี้</button>` : ""}</div></div></div>`;
 }
 const renderFormWithPrimaryImage = openForm;
 openForm = function (type, id) {
