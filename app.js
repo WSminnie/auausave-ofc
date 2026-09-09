@@ -390,8 +390,6 @@ async function syncDatabaseInBackground() {
     const { data } = await window.auausaveDB.session();
     if (data.session) {
       updateDatabaseStatusUi('กำลังบันทึกลง Supabase...', false);
-      await window.auausaveDB.removeEventPosters?.();
-      db.events.forEach(event => delete event.poster);
       const snapshot = structuredClone(db);
       databaseSyncQueue = databaseSyncQueue.catch(() => {}).then(() => window.auausaveDB.save(snapshot));
       const synced = await databaseSyncQueue;
@@ -5049,21 +5047,6 @@ admin=function(){
 let adminSelectedDate = '';
 let adminCalendarQuery = '';
 let adminCalendarSearchTimer = 0;
-let eventPosterCleanupStarted = false;
-
-async function cleanupEventPosterMedia(){
-  if(eventPosterCleanupStarted||!window.auausaveDB?.removeEventPosters)return;
-  eventPosterCleanupStarted=true;
-  try{
-    const {data}=await window.auausaveDB.session();
-    if(!data.session){eventPosterCleanupStarted=false;return;}
-    const result=await window.auausaveDB.removeEventPosters();
-    db.events.forEach(event=>delete event.poster);
-    save(false);
-    if(result.records||result.files)toast(`ลบรูปตารางงานแล้ว ${result.records} รายการ · ${result.files} ไฟล์`);
-  }catch(error){eventPosterCleanupStarted=false;console.warn('Event poster cleanup:',error.message);}
-}
-
 function adminCalendarIcon(name){
   const paths={
     left:'<path d="m15 18-6-6 6-6"/>',right:'<path d="m9 18 6-6-6-6"/>',
@@ -5134,7 +5117,6 @@ function adminCalendarWorkspace(){
 }
 
 adminEventCalendar=function(){
-  cleanupEventPosterMedia();
   try{
     if(!db.artists.some(artist=>sameArtistId(artist.id,adminEventFilter))) adminEventFilter='all';
     app.innerHTML=adminCalendarWorkspace();

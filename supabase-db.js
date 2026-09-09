@@ -208,15 +208,6 @@
   async function signIn(email,password){return client.auth.signInWithPassword({email,password});}
   async function signOut(){return client.auth.signOut();}
   async function session(){return client.auth.getSession();}
-  async function removeEventPosters(){
-    const {data:rows,error}=await client.from('events').select('id,poster_url').not('poster_url','is',null);
-    if(error){if(error.code==='42703'||/poster_url.*does not exist/i.test(error.message||''))return{records:0,files:0};throw error;}
-    const paths=[...new Set((rows||[]).map(row=>storagePathFromUrl(row.poster_url)).filter(Boolean))];
-    if(paths.length){const {error:storageError}=await client.storage.from(config.mediaBucket).remove(paths);if(storageError)throw storageError;}
-    const ids=(rows||[]).map(row=>row.id);
-    if(ids.length){const {error:updateError}=await client.from('events').update({poster_url:null}).in('id',ids);if(updateError)throw updateError;}
-    return{records:ids.length,files:paths.length};
-  }
   async function removeAwardAssignment(awardId,mainSectionId,subsectionId=''){
     let query=client.from('award_section_assignments').delete().eq('award_id',awardId).eq('main_section_id',mainSectionId);
     query=subsectionId?query.eq('subsection_id',subsectionId):query.is('subsection_id',null);
@@ -248,5 +239,5 @@
     return (data||[]).map(mapFromDb.award_section_assignments);
   }
 
-  window.auausaveDB = { client, load, save, signIn, signOut, session, removeEventPosters, removeAwardAssignment, upsertAwardAssignments, upsertAwardSectionAssignments };
+  window.auausaveDB = { client, load, save, signIn, signOut, session, removeAwardAssignment, upsertAwardAssignments, upsertAwardSectionAssignments };
 })();
