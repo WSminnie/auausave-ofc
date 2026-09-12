@@ -4983,7 +4983,10 @@ function updateSeriesBroadcastForm(changedInput){
   const artistPicker=form.querySelector('.event-artist-picker,[data-multi-artist-picker]');
   if(artistPicker){artistPicker.hidden=active;artistPicker.querySelectorAll('input').forEach(input=>{input.disabled=active;input.required=false})}
   const series=form.querySelector('[name="seriesId"]'),seriesField=series?.closest('.field');if(seriesField)seriesField.style.display=(active||[...form.querySelectorAll('[name="eventType"]:checked')].some(input=>String(input.value).toLowerCase()==='series'))?'grid':'none';if(series)series.required=active;
-  form.querySelector('[data-series-broadcast-fields]')?.toggleAttribute('hidden',!active);const editor=form.querySelector('[data-schedule-broadcast-editor]');editor?.toggleAttribute('hidden',!active);editor?.querySelectorAll('input,select,button').forEach(control=>control.disabled=!active);
+  const episodeField=form.querySelector('[data-series-broadcast-fields]'),episodeInput=episodeField?.querySelector('[name="episode"]');
+  episodeField?.toggleAttribute('hidden',!active);
+  if(episodeInput){episodeInput.disabled=!active;episodeInput.required=active}
+  const editor=form.querySelector('[data-schedule-broadcast-editor]');editor?.toggleAttribute('hidden',!active);editor?.querySelectorAll('input,select,button').forEach(control=>control.disabled=!active);
   if(active&&!form.dataset.eventId&&enabled)copySeriesBroadcastDefaults(false);
 }
 const openFormBeforeSeriesBroadcast=openForm;
