@@ -1687,6 +1687,20 @@ main:has(> .home-media-banner) > .home-artist-section{
 main:has(> .home-media-banner) > .unified-home-schedule{
   padding-block:23px;
 }
+
+/* Keep every event available on Home without letting a busy month lengthen the page. */
+.unified-home-schedule .unified-schedule-list{
+  max-height:min(560px,65vh);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  scrollbar-width:thin;
+  scrollbar-color:#aaa49a transparent;
+}
+.unified-home-schedule .unified-schedule-list::-webkit-scrollbar{width:10px}
+.unified-home-schedule .unified-schedule-list::-webkit-scrollbar-track{background:transparent}
+.unified-home-schedule .unified-schedule-list::-webkit-scrollbar-thumb{background:#aaa49a;border:3px solid #fff;border-radius:999px}
+.unified-home-schedule .unified-schedule-list:focus-visible{outline:3px solid color-mix(in srgb,var(--focus) 55%,white);outline-offset:4px}
 main:has(> .home-media-banner) > .presenter-home{
   padding-top:clamp(28px,3.5vw,44px);
 }
@@ -1695,6 +1709,7 @@ main:has(> .home-media-banner) > .presenter-home{
   main:has(> .home-media-banner) > .unified-home-schedule{
     padding-block:14px;
   }
+  .unified-home-schedule .unified-schedule-list{max-height:52vh}
 }
 
 /* Projects index: halve the transition from the page title to the project list. */

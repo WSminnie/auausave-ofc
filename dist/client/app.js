@@ -4559,8 +4559,7 @@ function unifiedHomeScheduleSection() {
   const monthLabel = new Intl.DateTimeFormat('en-US', {month:'long'}).format(now);
   const events = db.events
     .filter(event => event.date.startsWith(monthKey))
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 12);
+    .sort((a, b) => a.date.localeCompare(b.date));
   const artists = homepageScheduleArtists();
   const artistIndex = new Map(artists.map((artist, index) => [canonicalArtistId(artist.id), index]));
   const artistBadge = artistId => {
@@ -4585,7 +4584,7 @@ function unifiedHomeScheduleSection() {
   return `<section class="section unified-home-schedule"><div class="container">
     <div class="unified-schedule-shell">
       <header class="unified-schedule-head"><h2>${escapePageText(monthLabel)} Schedule</h2><a class="btn outline" href="#schedule">View full calendar</a></header>
-      <div class="unified-schedule-list">${rows || `<div class="empty">No events scheduled for ${escapePageText(monthLabel)}.</div>`}</div>
+      <div class="unified-schedule-list" tabindex="0" role="region" aria-label="All events scheduled for ${escapePageText(monthLabel)}">${rows || `<div class="empty">No events scheduled for ${escapePageText(monthLabel)}.</div>`}</div>
     </div>
   </div></section>`;
 }
