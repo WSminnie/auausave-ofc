@@ -3379,6 +3379,7 @@ async function refreshProjectCardTotal(project){
 }
 function projectDetailPage(slug){
   ensureProjectSettings();const project=db.siteSettings.projects.items.find(item=>item.slug===slug&&item.visible!==false);if(!project){projectHubPage();return}
+  if(project.status==='closed'){renderCompletedProject(project);return}
   const banner=project.banner?`<div class="project-banner-placeholder has-image"><img src="${escapePageText(project.banner)}" alt="${escapePageText(project.title)}"></div>`:'';
   const qr=project.qrCode?`<div class="project-qr-placeholder has-image"><img src="${escapePageText(project.qrCode)}" alt="QR Code"></div>`:`<div class="project-qr-placeholder"><span>QR</span></div>`;
   const formAction=project.formUrl?`window.open('${escapePageText(project.formUrl)}','_blank','noopener')`:`toast('กรุณาใส่ลิงก์ Google Form ในหลังบ้าน')`;
@@ -3387,7 +3388,7 @@ function projectDetailPage(slug){
     const amount=new Intl.NumberFormat('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Math.max(0,Number(project.finalDonationAmount)||0));
     const closedDate=project.closedAt?new Intl.DateTimeFormat('th-TH',{dateStyle:'long'}).format(new Date(project.closedAt)):'';
     const paymentGrid=document.querySelector('.project-payment-grid');
-    paymentGrid?.insertAdjacentHTML('beforebegin',`<section class="project-closed-message"><span>PROJECT CLOSED</span><h2>โปรเจกต์นี้สิ้นสุดการรับโดเนทแล้ว</h2><p>ขอบคุณทุกการสนับสนุนที่ร่วมเป็นส่วนหนึ่งของโปรเจกต์นี้<br>Donation for this project has officially closed. Thank you for all your support.</p><div class="project-closed-total"><small>FINAL DONATION AMOUNT</small><strong>฿${amount}</strong>${closedDate?`<time>ปิดโปรเจกต์เมื่อ ${closedDate}</time>`:''}</div></section>`);
+    paymentGrid?.insertAdjacentHTML('beforebegin',`<section class="project-closed-message"><span>PROJECT CLOSED</span><h2>โปรเจกต์นี้สิ้นสุดการรับโดเนทแล้ว</h2><p>ขอบคุณสำหรับทุกแรงสนับสนุน และขอบคุณที่มาร่วมเป็นส่วนหนึ่งของโปรเจกต์นี้นะคะ<br>Thank you for all your support and for being a part of this journey with us.</p><div class="project-closed-total"><small>FINAL DONATION AMOUNT</small><strong>฿${amount}</strong>${closedDate?`<time>ปิดโปรเจกต์เมื่อ ${closedDate}</time>`:''}</div></section>`);
     paymentGrid?.remove();document.querySelector('.project-form-callout')?.remove();
   }
   document.querySelector('.project-detail-hero')?.remove();
@@ -3458,10 +3459,13 @@ async function refreshProjectDonations(projectId){
   ensureProjectSettings();const project=db.siteSettings.projects.items.find(item=>item.id===projectId),status=document.querySelector('[data-donation-status]');if(!project)return;
   try{
     const donations=projectDonationsFromTable(await loadGoogleSheetTable(project.sheetUrl));
-    const submittedTotal=donations.reduce((sum,item)=>sum+item.amount,0),openingBalance=Math.max(0,Number(project.openingBalance)||0),closed=project.status==='closed',total=closed?Math.max(0,Number(project.finalDonationAmount)||0):openingBalance+submittedTotal,goal=Number(project.goal)||1,progress=Math.min(total/goal*100,100),remaining=Math.max(goal-total,0),anonymous=closed?Math.max(total-submittedTotal,0):0,money=value=>new Intl.NumberFormat('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value);
-    document.querySelector('[data-donation-total]').textContent=`฿${money(total)}`;document.querySelector('[data-donation-percent]').textContent=`${progress.toFixed(2)}%`;if(document.querySelector('[data-donation-remaining]'))document.querySelector('[data-donation-remaining]').textContent=`฿${money(remaining)}`;document.querySelector('[data-donation-progress]').style.width=`${progress}%`;
+    const submittedTotal=donations.reduce((sum,item)=>sum+item.amount,0),openingBalance=Math.max(0,Number(project.openingBalance)||0),closed=project.status==='closed',total=closed?Math.max(0,Number(project.finalDonationAmount)||0):openingBalance+submittedTotal,goal=Number(project.goal)||1,progress=Math.min(total/goal*100,100),remaining=Math.max(goal-total,0),summaryAnonymous=closed?Math.max(total-openingBalance-submittedTotal,0):0,money=value=>new Intl.NumberFormat('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value);
+    const totalNode=document.querySelector('[data-donation-total]'),percentNode=document.querySelector('[data-donation-percent]'),progressNode=document.querySelector('[data-donation-progress]'),anonymousNode=document.querySelector('[data-completed-anonymous]'),formDonationsNode=document.querySelector('[data-completed-form-donations]');
+    if(totalNode)totalNode.textContent=`฿${money(total)}`;if(percentNode)percentNode.textContent=`${progress.toFixed(2)}%`;if(document.querySelector('[data-donation-remaining]'))document.querySelector('[data-donation-remaining]').textContent=`฿${money(remaining)}`;if(progressNode)progressNode.style.width=`${progress}%`;if(anonymousNode)anonymousNode.textContent=`฿${money(summaryAnonymous)}`;if(formDonationsNode)formDonationsNode.textContent=`฿${money(submittedTotal)}`;
     const rows=donations.slice(-20).reverse().map(item=>`<div><span>${new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric'}).format(item.date)}</span><time>${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(item.date)}</time><strong>฿${money(item.amount)}</strong></div>`);
-    if(anonymous>0)rows.unshift(`<div class="donation-anonymous-row"><span>Anonymous Fans</span><time>—</time><strong>฿${money(anonymous)}</strong></div>`);
+    if(summaryAnonymous>0)rows.unshift(`<div class="donation-anonymous-row"><span>Anonymous Fans</span><time>—</time><strong>฿${money(summaryAnonymous)}</strong></div>`);
+    if(openingBalance>0)rows.unshift(`<div class="donation-carry-over-row"><span>Carry-over</span><time>—</time><strong>฿${money(openingBalance)}</strong></div>`);
+    if(closed)rows.push(`<div class="donation-total-row"><span>Total funds</span><time>รวมทั้งหมด</time><strong>฿${money(total)}</strong></div>`);
     document.querySelector('[data-donation-list]').innerHTML=rows.join('')||'<div class="empty">ยังไม่มีรายการ</div>';
     if(status)status.textContent=`อัปเดตจาก Google Sheet · ${new Intl.DateTimeFormat('th-TH',{hour:'2-digit',minute:'2-digit'}).format(new Date())} น.`;
   }catch(error){if(status)status.textContent=`เชื่อม Google Sheet ไม่สำเร็จ: ${error.message}`}
@@ -3655,7 +3659,7 @@ function projectHubSimpleCard(project,type='donation'){
   const openingBalance=hasOpeningBalance?Math.max(0,Number(project.openingBalance)||0):null;
   const openingMarkup=hasOpeningBalance?`<small class="project-card-opening">ยอดยกมา ฿${money(openingBalance)}</small>`:'';
   const closed=project.status==='closed';
-  const amount=closed?`<div class="project-card-financial"><strong class="project-card-final"><small>FINAL DONATION</small><span>฿${money(project.finalDonationAmount)}</span><em>/ ฿${money(project.goal)}</em></strong></div>`:type==='combined'?`<div class="combined-card-summary"><strong class="project-card-queue-metric combined-card-metric"><small>คิวคงเหลือ / คิวทั้งหมด</small><span data-food-project-card-queue="${escapePageText(project.id)}">0 / 0 คิว</span></strong><div class="project-card-financial combined-card-total">${openingMarkup}<strong class="project-card-queue-metric combined-card-metric"><small>ยอดรวมปัจจุบัน</small><span data-food-project-card-total="${escapePageText(project.id)}">฿${money(openingBalance)}</span></strong></div></div>`:type==='personal'?`<strong class="project-card-queue-metric"><small>คิวคงเหลือ / คิวทั้งหมด</small><span data-personal-project-card-count="${escapePageText(project.id)}">${project.sheetUrl?'กำลังอัปเดต…':'0 / 0 คิว'}</span></strong>`:`<div class="project-card-financial"><strong><small>ยอดเรียลไทม์ / เป้า</small><span data-project-card-total="${escapePageText(project.id)}">${project.sheetUrl?'กำลังอัปเดต…':`฿${money(openingBalance)}`}</span><em>/ ฿${money(project.goal)}</em></strong></div>`;
+  const amount=closed?`<div class="project-card-financial"><strong class="project-card-final"><small>ยอดสนับสนุนทั้งหมด</small><span>${projectSummaryMoney(project.finalDonationAmount)}</span></strong></div>`:type==='combined'?`<div class="combined-card-summary"><strong class="project-card-queue-metric combined-card-metric"><small>คิวคงเหลือ / คิวทั้งหมด</small><span data-food-project-card-queue="${escapePageText(project.id)}">0 / 0 คิว</span></strong><div class="project-card-financial combined-card-total">${openingMarkup}<strong class="project-card-queue-metric combined-card-metric"><small>ยอดรวมปัจจุบัน</small><span data-food-project-card-total="${escapePageText(project.id)}">฿${money(openingBalance)}</span></strong></div></div>`:type==='personal'?`<strong class="project-card-queue-metric"><small>คิวคงเหลือ / คิวทั้งหมด</small><span data-personal-project-card-count="${escapePageText(project.id)}">${project.sheetUrl?'กำลังอัปเดต…':'0 / 0 คิว'}</span></strong>`:`<div class="project-card-financial"><strong><small>ยอดเรียลไทม์ / เป้า</small><span data-project-card-total="${escapePageText(project.id)}">${project.sheetUrl?'กำลังอัปเดต…':`฿${money(openingBalance)}`}</span><em>/ ฿${money(project.goal)}</em></strong></div>`;
   return `<a class="project-hub-card project-simple-card ${type==='donation'?'donation-project-card':'food-project-card'} ${type==='combined'?'combined-project-card':''} ${closed?'is-closed':''}" href="#project/${escapePageText(project.slug)}"><div class="project-simple-image">${project.cardImage?`<img src="${escapePageText(project.cardImage)}" alt="${escapePageText(project.title)}">`:`<span>${escapePageText(project.title.slice(0,2).toUpperCase())}</span>`}${closed?'<b class="project-closed-badge">PROJECT CLOSED</b>':''}</div><div class="project-simple-copy"><h2>${escapePageText(project.title)}</h2>${amount}</div></a>`;
 }
 projectHubPage=function(){
@@ -3731,6 +3735,58 @@ async function refreshFoodSupportProject(projectId){
     const donationList=document.querySelector('[data-food-donation-list]');if(donationList)donationList.innerHTML=donation.slice(0,12).map(row=>`<div><span>${new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric'}).format(row.date)}</span><time>${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(row.date)}</time><strong>฿${money(row.amount)}</strong></div>`).join('')||'<div class="food-empty">ยังไม่มีรายการโดเนท</div>';
   }catch(error){setFoodSupportError(`โหลดไม่สำเร็จ: ${error.message}`)}
 }
+function projectReportUrl(value){
+  try{const url=new URL(String(value||''));return ['https:','http:'].includes(url.protocol)?url.href:''}catch{return ''}
+}
+function projectSummaryMoney(value){
+  return value===null||value===undefined||value===''?'—':`฿${new Intl.NumberFormat('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(value))}`;
+}
+function renderCompletedProject(project){
+  const report=projectReportUrl(project.summaryReportUrl),date=project.closedAt?new Date(project.closedAt):null,hasDate=date&&!Number.isNaN(date.getTime()),openingBalance=Math.max(0,Number(project.openingBalance)||0),hasActualExpense=project.actualExpense!==null&&project.actualExpense!==undefined&&project.actualExpense!=='';
+  const closedDate=hasDate?new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric'}).format(date):'',total=Math.max(0,Number(project.finalDonationAmount)||0),goal=Math.max(0,Number(project.goal)||0),closingBalance=hasActualExpense?total-Number(project.actualExpense):null,goalAchieved=goal>0&&total>=goal;
+  const valueCard=(type,title,thai,value,attribute='')=>`<article class="completed-summary-card is-${type}"><span>${title}</span><small>${thai}</small><strong ${attribute}>${value}</strong></article>`;
+  app.innerHTML=nav('projects')+`<main class="completed-project-page"><section class="section project-media-section"><div class="container"><a class="completed-project-back" href="#projects">← Our Projects</a>${project.banner||project.cardImage?`<div class="project-banner-placeholder has-image"><img src="${escapePageText(project.banner||project.cardImage)}" alt="${escapePageText(project.title)}"></div>`:''}<section class="project-closed-message completed-project-hero"><span>PROJECT CLOSED</span><h1>${escapePageText(project.title)}</h1>${closedDate?`<time class="completed-project-date">CLOSED · ${closedDate}</time>`:''}<p><span>ขอบคุณสำหรับทุกแรงสนับสนุน และขอบคุณที่มาร่วมเป็นส่วนหนึ่งของโปรเจกต์นี้ไปด้วยกันนะคะ</span><small>Thank you for all your support and for being a part of this journey with us.</small></p>${report?`<a class="btn completed-report-link" href="${escapePageText(report)}" target="_blank" rel="noopener noreferrer"><b>ดูรายงานสรุปโปรเจกต์</b><span>View Project Summary</span></a>`:''}</section></div></section><section class="section completed-summary-section"><div class="container"><header class="completed-section-head"><h2>FINAL SUMMARY</h2></header><article class="completed-total-raised"><div class="completed-total-head"><span>Total funds</span><em>${goalAchieved?'✓ Goal achieved':'Project closed'}</em></div><strong data-donation-total>${projectSummaryMoney(project.finalDonationAmount)}</strong><small>Project goal <b>${projectSummaryMoney(project.goal)}</b></small></article><section class="completed-summary-group" aria-labelledby="funds-received-title"><h3 id="funds-received-title">Funds received</h3><div class="completed-summary-grid completed-funds-grid">${valueCard('carry-over','Carry-over','ยอดยกมา',projectSummaryMoney(openingBalance))}${valueCard('form-donations','Form donations','ยอดโดเนทผ่านแบบฟอร์ม',project.sheetUrl?'กำลังคำนวณ…':'—','data-completed-form-donations')}${valueCard('anonymous','Anonymous donations','ยอดโดเนทไม่ระบุชื่อ',project.sheetUrl?'กำลังคำนวณ…':'—','data-completed-anonymous')}</div></section><section class="completed-summary-group completed-closing-group" aria-labelledby="project-closing-title"><h3 id="project-closing-title">Project closing</h3><div class="completed-closing-grid">${valueCard('expense','Actual expense','ค่าใช้จ่ายจริง',projectSummaryMoney(project.actualExpense))}${valueCard('closing-balance','Closing balance','ยอดคงเหลือหลังปิดโปรเจกต์',projectSummaryMoney(closingBalance))}</div></section><section class="donation-recent-card donation-ledger is-final completed-donation-ledger" aria-labelledby="completed-donation-title"><div class="donation-card-head"><div><span>FINAL PROJECT RECORD</span><h3 id="completed-donation-title">DONATION SUMMARY</h3></div></div><div class="donation-ledger-head"><span>Date</span><span>Time</span><span>Amount</span></div><div class="donation-ledger-list" data-donation-list><div class="empty">${project.sheetUrl?'กำลังโหลดรายการ...':'ยังไม่มีข้อมูลรายการบริจาค'}</div></div><p class="donation-disclaimer">ยอดแสดงก่อนหักค่าธรรมเนียมการโอนต่างประเทศ / Amount shown before international transfer fees.</p></section></div></section></main>`+footer();
+  if(project.sheetUrl)setTimeout(()=>refreshProjectDonations(project.id),0);
+}
+function organizeProjectDetails(form,item){
+  const grid=form.querySelector('.form-grid');
+  grid.insertAdjacentHTML('beforeend',`<div class="field" data-project-close-field><label>Actual Expense (บาท)</label><input name="actualExpense" type="number" step="0.01" value="${escapePageText(item.actualExpense??'')}"></div><div class="field" data-project-close-field><label>Remaining Amount (บาท)</label><input name="remainingAmount" type="number" step="0.01" value="${escapePageText(item.remainingAmount??'')}"><small>ยอดคงเหลือหลังปิดโปรเจกต์ กรุณาระบุตามยอดที่ตรวจสอบแล้ว</small></div><div class="field full" data-project-close-field><label>Summary Report URL</label><input name="summaryReportUrl" type="url" value="${escapePageText(item.summaryReportUrl||'')}"><small>ลิงก์ไฟล์สรุปโครงการ เช่น Google Slides, Google Drive หรือ PDF</small></div>`);
+  const field=name=>form.querySelector(`[name="${name}"]`)?.closest('.field');
+  const section=(title,names)=>{
+    const node=document.createElement('section');node.className='project-form-section';
+    node.innerHTML=`<h3>${title}</h3><div class="form-grid"></div>`;
+    names.forEach(name=>{const control=field(name);if(control)node.lastElementChild.append(control)});
+    grid.append(node);return node;
+  };
+  grid.classList.add('project-form-sections');
+  ['title','slug','cardImage','banner','accountName','qrCode','status'].forEach(name=>field(name)?.classList.add('full'));
+  ['projectType','sectionId'].forEach(name=>field(name)?.classList.remove('full'));
+  section('PROJECT INFORMATION',['title','projectType','sectionId','slug','cardImage','banner']);
+  const donation=section('DONATION DETAILS',['goal','openingBalance','startDate']);
+  const payment=section('PAYMENT INFORMATION',['bankName','accountNumber','accountName','qrCode']);
+  section('DONATION FORM & DATA',['formUrl','googleFormMainUrl','donationFormUrl','personalSupportFormUrl','sheetUrl','sheetName','maximumQueue','donationLiveEnabled','personalQueueEnabled']);
+  const status=section('PROJECT STATUS',['status']);
+  const closing=section('CLOSING DETAILS',['finalDonationAmount','actualExpense','remainingAmount','closedAt']);status.append(closing);
+  const reports=section('REPORT & DOCUMENTS',['summaryReportUrl']);
+  section('DISPLAY SETTINGS',['visible']);
+  field('openingBalance').querySelector('label').textContent='ยอดยกมา (บาท)';
+  field('openingBalance').querySelector('small').textContent='ยอดคงเหลือที่นำมาใช้ต่อจากโปรเจกต์ก่อนหน้า';
+  field('finalDonationAmount').querySelector('small').textContent='ยอดสุดท้ายที่ Admin ยืนยันหลังตรวจสอบยอดบริจาค หากมียอดยกมา กรุณารวมยอดยกมาไว้ในยอดนี้ด้วย ระบบจะไม่บวกเพิ่มให้อัตโนมัติ';
+  field('visible').querySelector('span').textContent='แสดงโปรเจกต์บนหน้าบ้าน';
+  form.querySelectorAll('.field').forEach((node,index)=>{
+    const control=node.querySelector('input:not([type="hidden"]),select,textarea'),label=node.querySelector('label');
+    if(control&&label){control.id||=`project-detail-field-${index}`;label.htmlFor=control.id}
+  });
+  const sync=()=>{
+    const type=form.elements.projectType.value,closed=form.elements.status.value==='closed';
+    donation.hidden=type!=='donation';payment.hidden=type==='personalSupportQueue';closing.hidden=reports.hidden=!closed;
+    ['goal','startDate'].forEach(name=>{form.elements[name].required=type==='donation'&&(!item.id||Boolean(item[name]));});
+    form.elements.projectType.required=true;form.elements.status.required=true;
+    // Preserve editability of legacy projects that have no section yet.
+    form.elements.sectionId.required=!item.id||Boolean(item.sectionId);
+  };
+  form.elements.projectType.addEventListener('change',sync);form.elements.status.addEventListener('change',sync);sync();
+}
 openProjectForm=function(id=''){
   donationOpenProjectForm(id);const item=db.siteSettings.projects.items.find(project=>project.id===id)||{},form=document.querySelector('#modal form'),grid=form?.querySelector('.form-grid');if(!grid)return;
   grid.insertAdjacentHTML('afterbegin',`<div class="field full"><label>Project Type</label><select name="projectType"><option value="donation" ${!item.projectType||item.projectType==='donation'?'selected':''}>Donation</option><option value="personalSupportQueue" ${item.projectType==='personalSupportQueue'?'selected':''}>Personal Support Queue</option><option value="foodSupportQueue" ${item.projectType==='foodSupportQueue'?'selected':''}>Donation + Personal Support Queue</option></select></div>
@@ -3752,15 +3808,21 @@ openProjectForm=function(id=''){
   const statusSelect=form.querySelector('[name="status"]');
   const syncTypeFields=()=>{const type=typeSelect.value;form.querySelectorAll('[data-project-types]').forEach(field=>field.hidden=!field.dataset.projectTypes.split(' ').includes(type));const sheetHelp=form.querySelector('[name="sheetUrl"]')?.closest('.field')?.querySelector('small');if(sheetHelp)sheetHelp.textContent=type==='personalSupportQueue'?'ชีตฟอร์มลงคิวใช้เพียงคอลัมน์ Timestamp และ X Account ได้':type==='foodSupportQueue'?'ใช้ Google Sheet ชุดเดียวกันและแยกรายการด้วย Type of support':'ระบบจะอ่าน Timestamp และ Donation Amount โดยไม่แสดงชื่อผู้โอน';const closed=statusSelect?.value==='closed';form.querySelectorAll('[data-project-close-field]').forEach(field=>field.hidden=!closed);const finalInput=form.querySelector('[name="finalDonationAmount"]'),closedInput=form.querySelector('[name="closedAt"]');if(finalInput)finalInput.required=closed;if(closedInput)closedInput.required=closed;};
   typeSelect.addEventListener('change',syncTypeFields);statusSelect?.addEventListener('change',syncTypeFields);syncTypeFields();
+  organizeProjectDetails(form,item);
 };
 saveProjectForm=async function(event,id=''){
   event.preventDefault();ensureProjectSettings();const form=new FormData(event.currentTarget),title=String(form.get('title')||'').trim(),slug=String(form.get('slug')||title).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||`project-${Date.now()}`;
   if(db.siteSettings.projects.items.some(project=>project.slug===slug&&project.id!==id)){toast('Slug นี้ถูกใช้แล้ว');return}
   const status=String(form.get('status')||'active'),finalDonationAmount=status==='closed'?Number(form.get('finalDonationAmount')):null,closedAt=status==='closed'?String(form.get('closedAt')||''):null,sheetUrl=String(form.get('sheetUrl')||'').trim(),openingBalanceRaw=String(form.get('openingBalance')??'').trim(),openingBalance=openingBalanceRaw===''?null:Number(openingBalanceRaw);
   if(openingBalance!==null&&(!Number.isFinite(openingBalance)||openingBalance<0)){toast('ยอดยกมาต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป');return}
+  const optionalAmount=name=>String(form.get(name)??'').trim()===''?null:Number(form.get(name));
+  const actualExpense=optionalAmount('actualExpense'),remainingAmount=optionalAmount('remainingAmount'),summaryReportUrl=String(form.get('summaryReportUrl')||'').trim();
+  if([actualExpense,remainingAmount].some(value=>value!==null&&!Number.isFinite(value))){toast('กรุณากรอกจำนวนเงินให้ถูกต้อง');return}
+  if(summaryReportUrl&&!projectReportUrl(summaryReportUrl)){toast('ลิงก์รายงานต้องขึ้นต้นด้วย https:// หรือ http://');return}
   if(status==='closed'&&(!Number.isFinite(finalDonationAmount)||finalDonationAmount<0||!closedAt)){toast('กรุณากรอก Final Donation Amount และ Closed Date ให้ครบ');return}
   if(status==='closed'&&sheetUrl){try{const submittedTotal=projectDonationsFromTable(await loadGoogleSheetTable(sheetUrl)).reduce((sum,item)=>sum+item.amount,0);if(finalDonationAmount<submittedTotal){toast(`ยอดสุดท้ายต้องไม่น้อยกว่ายอดในฟอร์ม ฿${new Intl.NumberFormat('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}).format(submittedTotal)}`);return}}catch(error){toast(`ตรวจสอบยอดจาก Google Sheet ไม่สำเร็จ: ${error.message}`);return}}
   const existing=db.siteSettings.projects.items.find(item=>item.id===id),values={title,slug,status,finalDonationAmount,closedAt,projectType:form.get('projectType')||'donation',sectionId:String(form.get('sectionId')||''),description:existing?.description||'',descriptionHtml:existing?.descriptionHtml||'',goal:Number(form.get('goal'))||0,openingBalance,maximumQueue:Number(form.get('maximumQueue'))||0,startDate:form.get('startDate')||'',cardImage:String(form.get('cardImage')||'').trim(),banner:String(form.get('banner')||'').trim(),qrCode:String(form.get('qrCode')||'').trim(),bankName:String(form.get('bankName')||'').trim(),accountNumber:String(form.get('accountNumber')||'').trim(),accountName:String(form.get('accountName')||'').trim(),formUrl:String(form.get('formUrl')||'').trim(),googleFormMainUrl:String(form.get('googleFormMainUrl')||'').trim(),donationFormUrl:String(form.get('donationFormUrl')||'').trim(),personalSupportFormUrl:String(form.get('personalSupportFormUrl')||'').trim(),sheetUrl,sheetName:String(form.get('sheetName')||'').trim(),donationLiveEnabled:status==='closed'?false:form.get('donationLiveEnabled')==='on',personalQueueEnabled:form.get('personalQueueEnabled')==='on',visible:form.get('visible')==='on',queueStatuses:existing?.queueStatuses||{}};
+  Object.assign(values,{actualExpense,remainingAmount,summaryReportUrl:summaryReportUrl||null});
   if(existing)Object.assign(existing,values);else db.siteSettings.projects.items.unshift({id:`project_${Date.now()}`,...values});
   save();closeModal();projectsAdmin();toast('บันทึกโปรเจกต์แล้ว');
 };

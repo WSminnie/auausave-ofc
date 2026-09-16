@@ -1014,7 +1014,7 @@ html{
 .combined-card-metric span{color:#d86666;white-space:nowrap}
 .food-project-card .project-simple-copy .combined-card-total{justify-items:end;text-align:right}
 .combined-card-total .project-card-opening{display:block;text-align:right}
-.project-simple-image{position:relative}.project-closed-badge{position:absolute;top:14px;right:14px;padding:7px 10px;border-radius:99px;background:#171717;color:#fff;font-size:9px;line-height:1;letter-spacing:.12em;box-shadow:0 8px 20px rgba(0,0,0,.22)}.project-simple-card.is-closed .project-simple-copy{align-items:end}.project-card-final{display:grid;justify-items:end;gap:3px;text-align:right}.project-card-final small{color:#817a71;font-size:9px;letter-spacing:.08em}.project-card-final span{color:#d86666;font-size:18px}.project-card-final em{color:#817a71;font-size:10px;font-style:normal}.project-closed-message{margin-top:22px;padding:clamp(28px,5vw,54px);border-radius:22px;background:#171717;color:#fff;text-align:center}.project-closed-message>span{font-size:10px;font-weight:900;letter-spacing:.16em;color:#efb4a8}.project-closed-message h2{margin:12px 0 8px;font-size:clamp(28px,4vw,48px)}.project-closed-message p{margin:0 auto;max-width:620px;color:#bbb;line-height:1.7}.project-closed-total{display:grid;gap:5px;margin-top:28px}.project-closed-total small{color:#aaa;font-size:10px;letter-spacing:.1em}.project-closed-total strong{font-size:clamp(42px,7vw,72px);color:#efb4a8}.project-closed-total time{color:#aaa;font-size:12px}.donation-anonymous-row span{font-weight:800;color:#d86666}.donation-ledger.is-final .donation-card-head{align-items:flex-end}.donation-final-card strong{color:#d86666}
+.project-simple-image{position:relative}.project-closed-badge{position:absolute;top:14px;right:14px;padding:7px 10px;border-radius:99px;background:#171717;color:#fff;font-size:9px;line-height:1;letter-spacing:.12em;box-shadow:0 8px 20px rgba(0,0,0,.22)}.project-simple-card.is-closed .project-simple-copy{align-items:end}.project-card-final{display:grid;justify-items:end;gap:3px;text-align:right}.project-card-final small{color:#817a71;font-size:9px;letter-spacing:.08em}.project-card-final span{color:#d86666;font-size:18px}.project-card-final em{color:#817a71;font-size:10px;font-style:normal}.project-closed-message{margin-top:22px;padding:clamp(28px,5vw,54px);border-radius:22px;background:#171717;color:#fff;text-align:center}.project-closed-message>span{font-size:14px;font-weight:900;letter-spacing:.16em;color:#efb4a8}.project-closed-message h2{margin:12px 0 8px;font-size:clamp(28px,4vw,48px)}.project-closed-message p{margin:0 auto;max-width:620px;color:#bbb;line-height:1.7}.project-closed-total{display:grid;gap:5px;margin-top:28px}.project-closed-total small{color:#aaa;font-size:10px;letter-spacing:.1em}.project-closed-total strong{font-size:clamp(42px,7vw,72px);color:#efb4a8}.project-closed-total time{color:#aaa;font-size:12px}.donation-anonymous-row span{font-weight:800;color:#d86666}.donation-ledger.is-final .donation-card-head{align-items:flex-end}.donation-final-card strong{color:#d86666}
 @media(max-width:600px){.project-simple-card.is-closed .project-simple-copy{align-items:start}.project-card-final{justify-items:start;text-align:left}.project-closed-message{text-align:left}.project-closed-message p{margin:0}.project-closed-total strong{overflow-wrap:anywhere}}
 
 /* Series Broadcast — intentionally image-free and independent from artist colors. */
@@ -1766,3 +1766,74 @@ main > .project-hub-section{
 @media(max-width:600px){.timeline-admin-folder>header{grid-template-columns:auto minmax(0,1fr);padding:12px}.timeline-admin-folder>header .timeline-folder-count{grid-column:2}.timeline-admin-folder>header .btn{grid-column:1/-1;width:100%}.timeline-admin-folder-body{padding:10px}}
 
 .donation-main-card>.donation-opening-balance{margin-top:8px;color:#efb4a8;font-size:11px;font-weight:700;line-height:1.4}
+.modal.project-admin-modal{width:min(860px,100%)}
+.project-form-sections{display:block}
+.project-form-section{padding-top:24px;margin-top:24px;border-top:1px solid var(--line)}
+.project-form-section:first-child{padding-top:0;margin-top:0;border-top:0}
+.project-form-section h3{font-size:13px;margin:0 0 16px;color:var(--muted);letter-spacing:.06em}
+.project-form-section .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.project-form-section .field{min-width:0;align-self:start}
+.project-form-section .field small{display:block;margin-top:6px;line-height:1.5}
+.project-form-section[hidden]{display:none!important}
+.project-admin-modal .form-actions{position:sticky;bottom:-30px;z-index:2;background:#fff;border-top:1px solid var(--line);padding:16px 0;margin-top:24px}
+@media(max-width:600px){.project-form-section .form-grid{grid-template-columns:1fr}.project-admin-modal .form-actions{bottom:-26px}}
+
+/* Closed donation project: editorial close followed by a transparent final record. */
+.completed-project-page{background:#eee9e1}
+.completed-project-page .project-media-section{padding-bottom:0}
+.completed-project-back{display:inline-flex;margin-bottom:18px;color:#5f5953;font-size:13px;font-weight:700}
+.completed-project-page .project-banner-placeholder{margin-bottom:16px}
+.completed-project-hero{margin-top:0;padding:clamp(34px,6vw,72px);text-align:left}
+.completed-project-hero>span{display:block;margin-bottom:16px}
+.completed-project-hero h1{max-width:760px;margin:0;font-size:clamp(30px,4vw,52px);line-height:1.05;letter-spacing:-.025em;text-wrap:balance}
+.completed-project-date{display:block;margin-top:12px;color:#aaa19a;font-size:10px;font-weight:700;letter-spacing:.1em}
+.completed-project-hero p{max-width:680px;margin:28px 0 0;color:#eee5dc;font-size:clamp(15px,1.7vw,18px);line-height:1.7}
+.completed-project-hero p>span,.completed-project-hero p>small{display:block}
+.completed-project-hero p>small{margin-top:4px;color:#aaa19a;font-size:.88em}
+.completed-project-hero .completed-report-link{margin-top:20px;background:#fff;color:#171717}
+.completed-project-hero .completed-report-link b{font-size:12px}
+.completed-project-hero .completed-report-link span{color:#716a63}
+.completed-summary-section{padding-top:clamp(52px,7vw,88px);padding-bottom:clamp(68px,9vw,112px)}
+.completed-section-head{margin-bottom:24px}
+.completed-section-head h2{margin:0;color:#1d1d1f;font-size:clamp(28px,3.7vw,46px);font-weight:650;line-height:1.08;letter-spacing:-.025em}
+.completed-total-raised{min-height:230px;padding:clamp(28px,4vw,42px);border-radius:28px;background:#1d1d1f;color:#fff;display:flex;flex-direction:column}
+.completed-total-head{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.completed-total-head>span{font-size:clamp(17px,2vw,21px);font-weight:700;letter-spacing:-.01em}
+.completed-total-head>em{flex:none;padding:7px 11px;border-radius:99px;background:#332d2c;color:#ffb3a6;font-size:11px;font-style:normal;font-weight:700}
+.completed-total-raised>strong{margin:clamp(28px,4vw,44px) 0 24px;font-size:clamp(52px,7.5vw,86px);line-height:.92;letter-spacing:-.04em;overflow-wrap:anywhere}
+.completed-total-raised>small{margin-top:auto;color:#a9a5a2;font-size:13px}
+.completed-total-raised>small b{margin-left:7px;color:#f3efea;font-size:15px}
+.completed-summary-group{margin-top:clamp(36px,5vw,56px)}
+.completed-summary-group>h3{margin:0 0 16px;color:#514d49;font-size:clamp(18px,2vw,23px);font-weight:650;letter-spacing:-.015em}
+.completed-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
+.completed-summary-card{display:flex;min-width:0;min-height:176px;flex-direction:column;padding:24px;border:1px solid rgba(75,66,60,.12);border-radius:24px;background:#f9f7f3}
+.completed-summary-card>span{color:#1d1d1f;font-size:16px;font-weight:700;letter-spacing:-.01em}
+.completed-summary-card>small{margin-top:5px;color:#77716c;font-size:12px}
+.completed-summary-card>strong{margin-top:auto;color:#1d1d1f;font-size:clamp(25px,3vw,36px);font-weight:750;line-height:1;letter-spacing:-.03em;overflow-wrap:anywhere}
+.completed-summary-card.is-carry-over{background:#faf8f4}
+.completed-summary-card.is-form-donations{background:#fff8f2}
+.completed-summary-card.is-anonymous{background:#f8e9e6;border-color:rgba(202,116,105,.18)}
+.completed-summary-card.is-anonymous>strong{color:#a84949}
+.completed-closing-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:12px}
+.completed-closing-grid .completed-summary-card{min-height:184px}
+.completed-summary-card.is-expense{background:#faf8f4}
+.completed-summary-card.is-closing-balance{background:#fff0e8;border-color:rgba(210,135,101,.2)}
+.completed-summary-card.is-closing-balance>strong{font-size:clamp(30px,3.7vw,46px)}
+.completed-report-link{display:inline-flex;align-items:center;gap:10px}
+.completed-report-link span{font-size:10px;font-weight:600}
+.completed-donation-ledger{margin-top:clamp(42px,6vw,72px);padding:clamp(22px,4vw,36px);border-color:#d8d0c6;border-radius:20px;background:#fbf9f6}
+.completed-donation-ledger .donation-card-head{padding-bottom:4px}
+.completed-donation-ledger .donation-card-head span{font-size:10px;letter-spacing:.14em}
+.completed-donation-ledger .donation-card-head h3{font-size:clamp(26px,3.2vw,40px);letter-spacing:-.025em}
+.completed-donation-ledger .donation-ledger-head{margin-top:24px;background:#eee9e1}
+.completed-donation-ledger .donation-ledger-list>div{min-height:55px}
+.completed-donation-ledger .donation-carry-over-row{margin-top:8px;border:1px solid #e3dcd2;border-radius:12px;background:#f5f1ea}
+.completed-donation-ledger .donation-carry-over-row span,.completed-donation-ledger .donation-carry-over-row strong{color:#514d49;font-weight:750}
+.completed-donation-ledger .donation-anonymous-row{margin-top:8px;border:0;border-radius:12px;background:#f2deda}
+.completed-donation-ledger .donation-anonymous-row span,.completed-donation-ledger .donation-anonymous-row strong{color:#a84949}
+.completed-donation-ledger .donation-total-row{margin-top:14px;border:0;border-radius:12px;background:#1d1d1f}
+.completed-donation-ledger .donation-total-row span,.completed-donation-ledger .donation-total-row time,.completed-donation-ledger .donation-total-row strong{color:#fff;font-weight:750}
+.completed-donation-ledger .donation-total-row strong{font-size:16px}
+.completed-donation-ledger .donation-disclaimer{margin:18px 0 0;padding-top:16px;border-top:1px solid #e6dfd6}
+@media(max-width:900px){.completed-funds-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.completed-funds-grid .is-anonymous{grid-column:1/-1}}
+@media(max-width:600px){.completed-project-hero{padding:30px 24px}.completed-project-hero h1{font-size:clamp(28px,9vw,40px)}.completed-project-hero .completed-report-link{align-items:flex-start;flex-direction:column}.completed-total-raised{min-height:220px;padding:26px 22px}.completed-total-head{align-items:flex-start;flex-direction:column}.completed-total-raised>strong{font-size:clamp(48px,16vw,68px)}.completed-summary-grid,.completed-closing-grid{grid-template-columns:1fr}.completed-funds-grid .is-anonymous{grid-column:auto}.completed-summary-card,.completed-closing-grid .completed-summary-card{min-height:150px}.completed-donation-ledger{padding:20px 16px}.completed-donation-ledger .donation-ledger-head,.completed-donation-ledger .donation-ledger-list>div{grid-template-columns:1fr .65fr .85fr;gap:8px}.completed-donation-ledger .donation-ledger-list span,.completed-donation-ledger .donation-ledger-list time{font-size:11px}}
