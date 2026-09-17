@@ -1858,7 +1858,26 @@ main > .project-hub-section{
   .completed-summary-card.is-closing-balance>strong{color:#7f3d27}
 }
 @media(min-width:1024px){
-  .completed-closing-grid .completed-summary-card.is-closing-balance>strong{align-self:stretch;margin:auto 0;text-align:center}
+  .completed-summary-section>.container{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);column-gap:16px}
+  .completed-section-head,.completed-total-raised,.completed-donation-ledger{grid-column:1/-1}
+  .completed-summary-group{display:flex;min-width:0;margin-top:56px;flex-direction:column;align-self:stretch}
+  .completed-summary-group>h3{margin-bottom:18px;font-size:clamp(22px,2.1vw,30px)}
+  .completed-summary-group>h3:after{display:none}
+  .completed-funds-grid,.completed-closing-grid{flex:1;margin-top:0;overflow:hidden;border:1px solid rgba(75,66,60,.24);border-radius:28px;background:#fbf9f6}
+  .completed-funds-grid{display:grid;grid-template-columns:1fr;grid-template-rows:minmax(96px,1fr) minmax(96px,1fr) minmax(82px,.85fr)}
+  .completed-closing-grid{display:grid;grid-template-columns:1fr;grid-template-rows:repeat(2,minmax(137px,1fr))}
+  .completed-funds-grid .completed-summary-card,.completed-closing-grid .completed-summary-card{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto 1fr;align-content:start;min-height:0;padding:18px 24px;border:0;border-radius:0;background:transparent;box-shadow:none;column-gap:18px;row-gap:1px}
+  .completed-funds-grid .completed-summary-card+ .completed-summary-card,.completed-closing-grid .completed-summary-card+ .completed-summary-card{border-top:1px solid rgba(75,66,60,.16)}
+  .completed-funds-grid .completed-summary-card>span,.completed-closing-grid .completed-summary-card>span{grid-column:1;grid-row:1;font-size:17px;line-height:1.15}
+  .completed-funds-grid .completed-summary-card>small,.completed-closing-grid .completed-summary-card>small{grid-column:1;grid-row:2;margin-top:0;font-size:12px;line-height:1.25}
+  .completed-funds-grid .completed-summary-card>strong,.completed-closing-grid .completed-summary-card>strong{grid-column:2;grid-row:1/-1;align-self:center;margin:0;font-size:clamp(28px,2.5vw,38px);text-align:right;white-space:nowrap}
+  .completed-funds-grid .completed-summary-card.is-anonymous{background:#f9ece9}
+  .completed-funds-grid .completed-summary-card.is-anonymous>strong{font-size:clamp(25px,2.2vw,34px)}
+  .completed-closing-grid .completed-summary-card.is-closing-balance{background:#fff0e8}
+  .completed-closing-grid .completed-summary-card.is-closing-balance>strong{align-self:center;margin:0;font-size:clamp(30px,3vw,44px);text-align:right}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note{grid-template-rows:auto auto auto}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note>strong{grid-row:1/3;margin:0}
+  .completed-closing-grid .completed-expense-note{grid-column:1/-1;grid-row:3;width:100%;max-width:none;margin-top:16px;padding-top:12px}
 }
 @media(max-width:600px){.completed-project-hero{padding:30px 24px}.completed-project-hero h1{font-size:clamp(28px,9vw,40px)}.completed-project-hero .completed-report-link{align-items:flex-start;flex-direction:column}}
 @media(max-width:1023px){
