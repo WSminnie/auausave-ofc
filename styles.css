@@ -1817,6 +1817,11 @@ main > .project-hub-section{
 .completed-closing-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:12px}
 .completed-closing-grid .completed-summary-card{min-height:184px}
 .completed-summary-card.is-expense{background:#faf8f4}
+.completed-summary-card.is-expense.has-note>strong{margin-top:22px;font-size:clamp(28px,3vw,36px)}
+.completed-expense-note{max-width:420px;margin-top:18px;padding-top:13px;color:#625d58;line-height:1.45}
+.completed-expense-note:before{content:"";display:block;width:52px;margin-bottom:13px;border-top:1px solid rgba(75,66,60,.22)}
+.completed-expense-note p{margin:0;font-size:clamp(10px,1.05vw,13px);font-weight:500;letter-spacing:-.01em;white-space:nowrap}
+.completed-expense-note small{display:block;margin-top:4px;color:#8a837d;font-size:clamp(9px,.95vw,12px);font-weight:400;line-height:1.45;letter-spacing:-.01em;white-space:nowrap}
 .completed-summary-card.is-closing-balance{background:#fff0e8;border-color:rgba(166,100,70,.32)}
 .completed-summary-card.is-closing-balance>strong{font-size:clamp(30px,3.7vw,46px)}
 .completed-report-link{display:inline-flex;align-items:center;gap:10px}
@@ -1835,13 +1840,41 @@ main > .project-hub-section{
 .completed-donation-ledger .donation-total-row span,.completed-donation-ledger .donation-total-row time,.completed-donation-ledger .donation-total-row strong{color:#fff;font-weight:750}
 .completed-donation-ledger .donation-total-row strong{font-size:16px}
 .completed-donation-ledger .donation-disclaimer{margin:18px 0 0;padding-top:16px;border-top:1px solid #e6dfd6}
-@media(max-width:900px){.completed-funds-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.completed-funds-grid .is-anonymous{grid-column:1/-1}}
+@media(min-width:768px){
+  .completed-summary-group>h3{display:flex;align-items:center;gap:14px}
+  .completed-summary-group>h3:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(75,66,60,.22),transparent)}
+  .completed-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+  .completed-funds-grid .is-anonymous{grid-column:auto}
+  .completed-closing-grid{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px}
+  .completed-summary-card{position:relative;min-height:clamp(184px,16vw,208px);padding:clamp(22px,2.4vw,30px);overflow:hidden;border-radius:26px;box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 1px 2px rgba(45,38,33,.04)}
+  .completed-summary-card>span{font-size:17px}
+  .completed-summary-card>small{margin-top:6px}
+  .completed-summary-card>strong{font-variant-numeric:tabular-nums}
+  .completed-summary-card.is-carry-over{background:linear-gradient(145deg,#fffdf9,#f4f0ea)}
+  .completed-summary-card.is-form-donations{background:linear-gradient(145deg,#fffaf5,#f8eee6)}
+  .completed-summary-card.is-anonymous{background:linear-gradient(145deg,#fbeeed,#f5dfdc)}
+  .completed-summary-card.is-expense{background:linear-gradient(145deg,#fffdf9,#f4f0ea)}
+  .completed-summary-card.is-closing-balance{background:linear-gradient(145deg,#fff4ed,#fbe2d6)}
+  .completed-summary-card.is-closing-balance>strong{color:#7f3d27}
+}
+@media(min-width:1024px){
+  .completed-closing-grid .completed-summary-card.is-closing-balance>strong{align-self:stretch;margin:auto 0;text-align:center}
+}
 @media(max-width:600px){.completed-project-hero{padding:30px 24px}.completed-project-hero h1{font-size:clamp(28px,9vw,40px)}.completed-project-hero .completed-report-link{align-items:flex-start;flex-direction:column}}
 @media(max-width:1023px){
   .completed-project-hero h1{max-width:none;font-size:clamp(18px,4.4vw,42px);letter-spacing:-.04em;white-space:nowrap}
   .completed-project-hero p{max-width:none;margin-top:22px;line-height:1.35}
   .completed-project-hero p>span{font-size:clamp(6px,2.05vw,16px);letter-spacing:-.025em;white-space:nowrap}
   .completed-project-hero p>small{font-size:clamp(6px,1.85vw,14px);letter-spacing:-.02em;white-space:nowrap}
+  .completed-summary-card.is-expense.has-note{padding:22px}
+}
+@media(min-width:768px) and (max-width:1023px){
+  .completed-closing-grid .completed-summary-card{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto 1fr;gap:3px 14px}
+  .completed-closing-grid .completed-summary-card>span{grid-column:1;grid-row:1}
+  .completed-closing-grid .completed-summary-card>small{grid-column:1;grid-row:2}
+  .completed-closing-grid .completed-summary-card>strong{grid-column:2;grid-row:1/3;align-self:center;margin:0;font-size:clamp(22px,3.2vw,28px);text-align:right;white-space:nowrap}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note>strong{margin:0}
+  .completed-closing-grid .completed-expense-note{grid-column:1/-1;grid-row:3;align-self:end;width:100%;max-width:none}
 }
 @media(max-width:767px){
   .completed-summary-section{padding-top:48px;padding-bottom:72px}
@@ -1864,9 +1897,15 @@ main > .project-hub-section{
   .completed-funds-grid .completed-summary-card>small,.completed-closing-grid .completed-summary-card>small{grid-column:1;grid-row:2;margin-top:0;font-size:11px;line-height:1.35}
   .completed-funds-grid .completed-summary-card>strong,.completed-closing-grid .completed-summary-card>strong{grid-column:2;grid-row:1/3;align-self:center;margin:0;font-size:clamp(20px,5.5vw,24px);white-space:nowrap}
   .completed-funds-grid .completed-summary-card.is-anonymous{grid-column:auto;background:#f9ece9}
-  .completed-closing-grid .completed-summary-card.is-closing-balance{display:flex;min-height:0;padding:20px;flex-direction:column;align-items:flex-start;background:#fff0e8}
-  .completed-closing-grid .completed-summary-card.is-closing-balance>span,.completed-closing-grid .completed-summary-card.is-closing-balance>small,.completed-closing-grid .completed-summary-card.is-closing-balance>strong{display:block}
-  .completed-closing-grid .completed-summary-card.is-closing-balance>strong{align-self:stretch;margin-top:18px;font-size:clamp(30px,8.5vw,38px);text-align:left;white-space:normal}
+  .completed-closing-grid .completed-summary-card.is-closing-balance{display:grid;min-height:0;padding:18px 20px;background:#fff0e8}
+  .completed-closing-grid .completed-summary-card.is-closing-balance>strong{grid-column:2;grid-row:1/3;align-self:center;margin:0;font-size:clamp(22px,6vw,26px);text-align:right;white-space:nowrap}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note{display:flex;padding:18px 20px;flex-direction:column;align-items:flex-start}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note>span,.completed-closing-grid .completed-summary-card.is-expense.has-note>small,.completed-closing-grid .completed-summary-card.is-expense.has-note>strong{display:block}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note>strong{align-self:stretch;margin-top:16px;font-size:clamp(25px,7vw,30px);white-space:normal}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note .completed-expense-note{width:100%;max-width:none;margin-top:16px;padding-top:12px}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note .completed-expense-note:before{margin-bottom:12px}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note .completed-expense-note p{font-size:clamp(7px,2.05vw,10px);letter-spacing:-.025em;white-space:nowrap}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note .completed-expense-note small{font-size:clamp(6.5px,1.85vw,9px);letter-spacing:-.02em;white-space:nowrap}
   .completed-donation-ledger{margin-top:48px;padding:22px 20px;border-radius:24px}
   .completed-donation-ledger .donation-card-head h3{font-size:clamp(24px,7vw,28px);line-height:1.05}
   .completed-donation-ledger .donation-ledger-head{display:none}
