@@ -5,7 +5,7 @@
   const preset = field => field.startsWith('series_row_')
     ? { canChoose: false, orientation: 'square', ratio: 1, shape: 'series-character', label: 'Character · 1:1' }
     : field === 'banner_url'
-      ? { canChoose: false, orientation: 'landscape', ratio: 3, shape: 'video', label: 'Banner · 3:1' }
+      ? { canChoose: false, orientation: 'landscape', ratio: 4, shape: 'video', label: 'Banner · 1600 × 400 PX (4:1)' }
       : { canChoose: false, orientation: 'landscape', ratio: 16 / 9, shape: 'video', label: 'Image · 16:9' };
   function install() {
     if (installed) return;

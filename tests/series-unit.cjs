@@ -87,7 +87,7 @@ test('image crop presets match Series display aspect ratios', () => {
   const { SeriesFeature: S } = setup(['series/admin/image-integration.js']);
   assert.equal(S.images.preset('cover_url').ratio, 16 / 9);
   assert.equal(S.images.preset('thumbnail_url').ratio, 16 / 9);
-  assert.equal(S.images.preset('banner_url').ratio, 3);
+  assert.equal(S.images.preset('banner_url').ratio, 4);
   assert.equal(S.images.preset('image_url').ratio, 16 / 9);
   assert.equal(S.images.preset('series_row_1').ratio, 1);
 });

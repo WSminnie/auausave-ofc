@@ -13,7 +13,7 @@
   };
   C.links = links => `<div class="series-links">${(links || []).map(link => {
     const url = validTimelineUrl(link.url);
-    return url ? `<a href="${C.e(url)}" target="_blank" rel="noopener noreferrer">${C.e(link.label)} <span aria-hidden="true">↗</span><span class="series-sr-only"> (opens in a new tab)</span></a>` : '';
+    return url ? `<a href="${C.e(url)}" target="_blank" rel="noopener noreferrer">${C.e(link.label)}<span class="series-sr-only"> (opens in a new tab)</span></a>` : '';
   }).join('')}</div>`;
   C.meta = (label, value) => value ? `<div><dt>${C.e(label)}</dt><dd>${C.e(value)}</dd></div>` : '';
   document.addEventListener('error', event => {
