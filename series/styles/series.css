@@ -74,7 +74,7 @@
 .series-header-facts dd{margin:0;line-height:1.75;font-size:14px;white-space:pre-line;overflow-wrap:anywhere}
 .series-public .series-section-nav{margin-bottom:28px;gap:28px}.series-public .series-section-nav button[aria-current]{border-bottom-color:var(--red)}
 .series-public .series-section{padding:8px 0 40px}.series-public .series-section h2{font-size:19px;letter-spacing:.035em;margin-bottom:20px}
-.series-public #series-overview>.series-copy{max-width:75ch;line-height:1.85;margin-bottom:20px;overflow-wrap:anywhere}
+.series-public .series-overview-story>.series-copy{max-width:none;line-height:1.85;margin-bottom:20px;overflow-wrap:anywhere}
 .series-public .series-hashtag{color:var(--blue);font-size:13px;overflow-wrap:anywhere}
 .series-public .series-cast{margin-top:32px}.series-public .series-cast>h3{font-size:16px;text-transform:uppercase;letter-spacing:.035em;margin-bottom:16px}
 .series-public .series-cast-grid{gap:16px}.series-public .series-cast-grid article{padding:16px;background:var(--white);border:1px solid var(--line);border-radius:12px;align-items:center}
@@ -116,3 +116,9 @@
 @media(max-width:800px){.series-public .series-cast-grid{grid-template-columns:1fr}.series-public .series-cast-grid .series-image{width:96px}}
 
 .series-public .series-links a:focus-visible,.series-public .series-links a:hover{text-decoration:underline;text-underline-offset:3px}
+
+.series-overview-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:32px;align-items:start}
+.series-overview-story{min-width:0}
+.series-public .series-overview-layout>.series-cast{min-width:0;margin-top:0}
+.series-public .series-overview-layout>.series-cast>h3{margin-top:0}
+@media(min-width:1101px){.series-overview-layout.has-cast{grid-template-columns:minmax(0,1.65fr) minmax(320px,1fr);gap:clamp(28px,4vw,64px)}.series-public .series-overview-layout .series-cast-grid{grid-template-columns:minmax(0,1fr)}}
