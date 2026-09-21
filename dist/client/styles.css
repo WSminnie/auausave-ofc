@@ -255,7 +255,7 @@
 .home-media-banner{width:min(calc(100% - clamp(28px,5vw,96px)),1600px);aspect-ratio:4/1;max-height:none;margin:clamp(20px,3vw,48px) auto;border-radius:clamp(12px,1.5vw,24px)}.home-banner-admin-thumb{aspect-ratio:4/1;height:auto}
 .home-banner-sound{position:absolute;z-index:5;right:clamp(12px,2vw,28px);top:clamp(12px,2vw,28px);width:44px;height:44px;border:1px solid rgba(255,255,255,.35);border-radius:50%;background:rgba(0,0,0,.5);color:#fff;font-size:19px;display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(8px)}.home-banner-sound:hover{background:rgba(0,0,0,.72)}@media(max-width:560px){.home-banner-sound{width:38px;height:38px;font-size:16px}}
 .home-banner-slide.is-linked{cursor:pointer}.home-banner-admin-list .home-banner-link-field{display:grid;gap:5px}.home-banner-admin-list .home-banner-link-input{width:min(100%,440px);padding:8px 10px}
-.donation-live{background:#f3eee7;color:#171717;overflow:hidden}.donation-live .container{position:relative}.donation-live-head{display:flex;align-items:end;justify-content:space-between;gap:30px;margin-bottom:34px}.donation-live-head h2{font-size:clamp(38px,5.5vw,72px);line-height:1.02;letter-spacing:-2px;margin:8px 0 0}.donation-live-status{display:grid;grid-template-columns:10px auto;align-items:center;gap:5px 9px;padding:13px 16px;border:1px solid #cec6bb;border-radius:14px;background:rgba(255,255,255,.55)}.donation-live-status i{width:9px;height:9px;border-radius:50%;background:#67a978;box-shadow:0 0 0 5px rgba(103,169,120,.14)}.donation-live-status span{font-size:10px;letter-spacing:1.5px;font-weight:900}.donation-live-status small{grid-column:1/-1;color:#817a71;font-size:10px}.donation-kpi-grid{display:grid;grid-template-columns:1.8fr 1fr .7fr;gap:14px}.donation-main-card,.donation-side-card{min-height:220px;border-radius:24px;padding:26px;background:#fff;border:1px solid #ddd4c9;display:flex;flex-direction:column}.donation-main-card{background:#171717;color:#fff}.donation-main-card>span,.donation-side-card>span{font-size:11px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:#999}.donation-main-card>strong{font-size:clamp(58px,8vw,102px);line-height:1;margin:22px 0 auto;letter-spacing:-4px}.donation-side-card>strong{font-size:clamp(35px,4vw,57px);line-height:1;margin:29px 0 12px;letter-spacing:-2px}.donation-side-card small{color:#817a71;margin-top:auto}.donation-count-card{background:#d86666;color:#fff;border-color:#d86666}.donation-count-card>span,.donation-count-card small{color:#ffe7e3}.donation-progress-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}.donation-progress-meta b{font-size:21px;color:#efb4a8}.donation-progress-meta span{font-size:11px;color:#aaa}.donation-progress{height:10px;background:#3a3a3a;border-radius:99px;overflow:hidden}.donation-progress i{display:block;height:100%;min-width:8px;border-radius:99px;background:linear-gradient(90deg,#d86666,#efb4a8)}.donation-lower-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:14px;margin-top:14px}.donation-chart-card,.donation-recent-card{background:#fff;border:1px solid #ddd4c9;border-radius:24px;padding:25px}.donation-card-head{display:flex;align-items:start;justify-content:space-between;gap:20px}.donation-card-head span{font-size:9px;letter-spacing:1.5px;color:#d86666;font-weight:900}.donation-card-head h3{font-size:23px;margin:4px 0}.donation-card-head>b{font-size:13px}.donation-bars{height:180px;display:flex;align-items:end;justify-content:space-between;gap:12px;border-bottom:1px solid #ddd4c9;margin-top:22px;padding:0 8px}.donation-bars>div{flex:1;display:grid;justify-items:center;align-items:end;height:100%;position:relative}.donation-bars i{display:block;width:min(44px,70%);max-height:135px;min-height:12px;border-radius:7px 7px 0 0;background:linear-gradient(180deg,#d86666,#efb4a8)}.donation-bars small{position:absolute;bottom:-20px;font-size:8px;color:#817a71}.donation-bars span{position:absolute;top:3px;font-size:8px;color:#d86666;font-weight:800}.donation-recent-list{display:grid;margin-top:12px}.donation-recent-list>div{display:grid;grid-template-columns:36px 1fr auto;align-items:center;gap:11px;padding:11px 0;border-top:1px solid #eee9e2}.donation-avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#eee8df;color:#76675d;font-size:10px;font-weight:900}.donation-recent-list p{margin:0;min-width:0}.donation-recent-list p b,.donation-recent-list p small{display:block}.donation-recent-list p b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.donation-recent-list p small{font-size:9px;color:#928a81;margin-top:2px}.donation-recent-list>div>strong{font-size:12px;color:#4f8b61}.donation-disclaimer{font-size:10px;color:#817a71;margin:16px 4px 0}@media(max-width:850px){.donation-kpi-grid{grid-template-columns:1fr 1fr}.donation-main-card{grid-column:1/-1}.donation-lower-grid{grid-template-columns:1fr}.donation-live-head{align-items:start}.donation-live-status{flex:none}}@media(max-width:600px){.donation-live-head{display:grid}.donation-live-head h2{letter-spacing:-1px}.donation-live-status{justify-self:start}.donation-kpi-grid{grid-template-columns:1fr}.donation-main-card{min-height:190px}.donation-side-card{min-height:150px}.donation-main-card>strong{font-size:60px;letter-spacing:-3px}.donation-bars{gap:5px}.donation-chart-card,.donation-recent-card{padding:20px}.donation-recent-list>div{grid-template-columns:32px 1fr auto}.donation-avatar{width:32px;height:32px}}
+.donation-live{background:transparent;color:#171717;overflow:hidden}.donation-live .container{position:relative}.donation-live-head{display:flex;align-items:end;justify-content:space-between;gap:30px;margin-bottom:34px}.donation-live-head h2{font-size:clamp(38px,5.5vw,72px);line-height:1.02;letter-spacing:-2px;margin:8px 0 0}.donation-live-status{display:grid;grid-template-columns:10px auto;align-items:center;gap:5px 9px;padding:13px 16px;border:1px solid #cec6bb;border-radius:14px;background:rgba(255,255,255,.55)}.donation-live-status i{width:9px;height:9px;border-radius:50%;background:#67a978;box-shadow:0 0 0 5px rgba(103,169,120,.14)}.donation-live-status span{font-size:10px;letter-spacing:1.5px;font-weight:900}.donation-live-status small{grid-column:1/-1;color:#817a71;font-size:10px}.donation-kpi-grid{display:grid;grid-template-columns:1.8fr 1fr .7fr;gap:14px}.donation-main-card,.donation-side-card{min-height:220px;border-radius:24px;padding:26px;background:#fff;border:1px solid #ddd4c9;display:flex;flex-direction:column}.donation-main-card{background:#171717;color:#fff}.donation-main-card>span,.donation-side-card>span{font-size:11px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:#999}.donation-main-card>strong{font-size:clamp(58px,8vw,102px);line-height:1;margin:22px 0 auto;letter-spacing:-4px}.donation-side-card>strong{font-size:clamp(35px,4vw,57px);line-height:1;margin:29px 0 12px;letter-spacing:-2px}.donation-side-card small{color:#817a71;margin-top:auto}.donation-count-card{background:#d86666;color:#fff;border-color:#d86666}.donation-count-card>span,.donation-count-card small{color:#ffe7e3}.donation-progress-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}.donation-progress-meta b{font-size:21px;color:#efb4a8}.donation-progress-meta span{font-size:11px;color:#aaa}.donation-progress{height:10px;background:#3a3a3a;border-radius:99px;overflow:hidden}.donation-progress i{display:block;height:100%;min-width:8px;border-radius:99px;background:linear-gradient(90deg,#d86666,#efb4a8)}.donation-lower-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:14px;margin-top:14px}.donation-chart-card,.donation-recent-card{background:#fff;border:1px solid #ddd4c9;border-radius:24px;padding:25px}.donation-card-head{display:flex;align-items:start;justify-content:space-between;gap:20px}.donation-card-head span{font-size:9px;letter-spacing:1.5px;color:#d86666;font-weight:900}.donation-card-head h3{font-size:23px;margin:4px 0}.donation-card-head>b{font-size:13px}.donation-bars{height:180px;display:flex;align-items:end;justify-content:space-between;gap:12px;border-bottom:1px solid #ddd4c9;margin-top:22px;padding:0 8px}.donation-bars>div{flex:1;display:grid;justify-items:center;align-items:end;height:100%;position:relative}.donation-bars i{display:block;width:min(44px,70%);max-height:135px;min-height:12px;border-radius:7px 7px 0 0;background:linear-gradient(180deg,#d86666,#efb4a8)}.donation-bars small{position:absolute;bottom:-20px;font-size:8px;color:#817a71}.donation-bars span{position:absolute;top:3px;font-size:8px;color:#d86666;font-weight:800}.donation-recent-list{display:grid;margin-top:12px}.donation-recent-list>div{display:grid;grid-template-columns:36px 1fr auto;align-items:center;gap:11px;padding:11px 0;border-top:1px solid #eee9e2}.donation-avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#eee8df;color:#76675d;font-size:10px;font-weight:900}.donation-recent-list p{margin:0;min-width:0}.donation-recent-list p b,.donation-recent-list p small{display:block}.donation-recent-list p b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.donation-recent-list p small{font-size:9px;color:#928a81;margin-top:2px}.donation-recent-list>div>strong{font-size:12px;color:#4f8b61}.donation-disclaimer{font-size:10px;color:#817a71;margin:16px 4px 0}@media(max-width:850px){.donation-kpi-grid{grid-template-columns:1fr 1fr}.donation-main-card{grid-column:1/-1}.donation-lower-grid{grid-template-columns:1fr}.donation-live-head{align-items:start}.donation-live-status{flex:none}}@media(max-width:600px){.donation-live-head{display:grid}.donation-live-head h2{letter-spacing:-1px}.donation-live-status{justify-self:start}.donation-kpi-grid{grid-template-columns:1fr}.donation-main-card{min-height:190px}.donation-side-card{min-height:150px}.donation-main-card>strong{font-size:60px;letter-spacing:-3px}.donation-bars{gap:5px}.donation-chart-card,.donation-recent-card{padding:20px}.donation-recent-list>div{grid-template-columns:32px 1fr auto}.donation-avatar{width:32px;height:32px}}
 .project-spotlight{padding-top:10px;padding-bottom:10px}.project-spotlight-card{display:flex;align-items:center;justify-content:space-between;gap:25px;padding:27px 30px;border-radius:22px;background:#171717;color:#fff;text-decoration:none}.project-spotlight-card span{display:grid;gap:5px}.project-spotlight-card small{color:#efb4a8;font-size:9px;letter-spacing:1.5px;font-weight:900}.project-spotlight-card b{font-size:27px}.project-spotlight-card i{font-size:11px;color:#aaa;font-style:normal}.project-spotlight-card>strong{padding:12px 17px;border-radius:99px;background:#fff;color:#171717;font-size:11px}.project-hub-hero{background:#171717;color:#fff}.project-hub-hero p{color:#aaa}.project-hub-section{background:#eee9e1}.project-filter-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.project-filter-row b{font-size:20px}.project-filter-row span{font-size:10px;color:#817a71}.project-hub-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.project-hub-card{min-height:480px;border-radius:28px;padding:30px;display:flex;flex-direction:column;text-decoration:none;color:#171717;border:1px solid #d7cec3;background:#fff}.project-hub-card>div,.project-hub-card footer{display:flex;justify-content:space-between;gap:15px}.project-hub-card>div span{font-size:10px;letter-spacing:1.5px;font-weight:900}.project-hub-card>div small{font-size:9px;color:#817a71}.project-hub-card h2{font-size:clamp(42px,5vw,70px);line-height:.95;letter-spacing:-3px;margin:70px 0 20px}.project-hub-card p{max-width:420px;color:#817a71;line-height:1.7}.project-hub-card footer{align-items:end;margin-top:auto;padding-top:25px;border-top:1px solid #ddd4c9}.project-hub-card footer b{font-size:30px}.project-hub-card footer span{font-size:10px}.project-hub-card.is-active{background:#d86666;color:#fff;border-color:#d86666}.project-hub-card.is-active p,.project-hub-card.is-active>div small{color:#ffe1dd}.project-hub-card.is-active footer{border-color:rgba(255,255,255,.35)}.project-hub-card.is-next{background:#e4ddd3;color:#766f67}.project-detail-hero{padding:70px 0;background:#171717;color:#fff}.project-detail-hero a{display:inline-block;margin-bottom:45px;color:#aaa;text-decoration:none;font-size:11px}.project-detail-hero h1{font-size:clamp(72px,12vw,165px);line-height:.78;letter-spacing:-8px;margin:18px 0 60px}.project-detail-hero .container>div{display:flex;align-items:end;justify-content:space-between;gap:30px;border-top:1px solid #444;padding-top:25px}.project-detail-hero p{font-size:18px;max-width:520px;color:#bbb;line-height:1.6}.project-detail-hero .container>div>span{display:grid;text-align:right;gap:4px}.project-detail-hero .container>div b{font-size:11px;color:#efb4a8}.project-detail-hero .container>div small{font-size:10px;color:#888}@media(max-width:700px){.project-spotlight-card{align-items:flex-start;flex-direction:column}.project-hub-grid{grid-template-columns:1fr}.project-hub-card{min-height:420px}.project-detail-hero{padding:45px 0}.project-detail-hero h1{font-size:72px;letter-spacing:-4px;margin-bottom:40px}.project-detail-hero .container>div{display:grid}.project-detail-hero .container>div>span{text-align:left}}
 .project-media-section{background:#eee9e1;padding-bottom:25px}.project-banner-placeholder{aspect-ratio:16/6;border-radius:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(135deg,#d86666,#6e526b 58%,#171717);color:#fff;overflow:hidden}.project-banner-placeholder span{font-size:9px;letter-spacing:1.7px;font-weight:900;color:#ffdcd7}.project-banner-placeholder strong{font-size:clamp(28px,4vw,54px);margin:12px 0 7px}.project-banner-placeholder small{color:#e7dfe6}.project-payment-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:14px;margin-top:14px}.project-qr-card,.project-account-card{border:1px solid #d7cec3;border-radius:24px;background:#fff;padding:26px}.project-qr-card{display:flex;align-items:center;gap:24px}.project-qr-placeholder{width:min(190px,45%);aspect-ratio:1;flex:none;padding:15px;background:repeating-conic-gradient(#171717 0 25%,#fff 0 50%) 50%/24px 24px;border:12px solid #fff;box-shadow:0 0 0 1px #ddd}.project-qr-placeholder span{width:54px;height:54px;display:grid;place-items:center;margin:calc(50% - 27px);background:#fff;border:5px solid #171717;font-weight:900}.project-qr-card p{margin:0}.project-qr-card p small,.project-account-card>span{display:block;font-size:9px;letter-spacing:1.5px;color:#d86666;font-weight:900;margin-bottom:9px}.project-qr-card p strong{font-size:22px;line-height:1.35}.project-account-card h2{font-size:34px;margin:4px 0 22px}.project-account-card dl{margin:0}.project-account-card dl>div{display:grid;grid-template-columns:120px 1fr;padding:12px 0;border-top:1px solid #eee9e2}.project-account-card dt{font-size:10px;color:#817a71}.project-account-card dd{margin:0;font-weight:800}.project-account-card>small{display:block;margin-top:17px;color:#817a71}.donation-kpi-grid{grid-template-columns:1.8fr 1fr}.donation-ledger{margin-top:14px}.donation-ledger-head,.donation-ledger-list>div{display:grid;grid-template-columns:1.1fr .8fr .7fr;gap:15px;align-items:center}.donation-ledger-head{margin-top:20px;padding:10px 16px;border-radius:10px;background:#eee9e2;color:#817a71;font-size:9px;font-weight:800;letter-spacing:1px}.donation-ledger-head span:last-child{text-align:right}.donation-ledger-list>div{padding:15px 16px;border-bottom:1px solid #eee9e2}.donation-ledger-list span,.donation-ledger-list time{font-size:12px}.donation-ledger-list time{color:#817a71}.donation-ledger-list strong{text-align:right;color:#4f8b61;font-size:14px}@media(max-width:760px){.project-payment-grid{grid-template-columns:1fr}.project-banner-placeholder{aspect-ratio:4/3;padding:24px}.project-qr-card{align-items:flex-start}.project-account-card dl>div{grid-template-columns:95px 1fr}}@media(max-width:600px){.donation-kpi-grid{grid-template-columns:1fr}.donation-ledger-head,.donation-ledger-list>div{grid-template-columns:1fr .7fr .7fr;padding-left:8px;padding-right:8px}.project-qr-card{display:grid}.project-qr-placeholder{width:190px;max-width:100%}}
 .project-form-callout{display:grid;grid-template-columns:1fr minmax(280px,.55fr);align-items:center;gap:30px;margin-top:14px;padding:30px;border-radius:25px;background:#171717;color:#fff;box-shadow:0 18px 45px rgba(23,23,23,.16)}.project-form-callout>div>span{font-size:10px;letter-spacing:1.6px;font-weight:900;color:#efb4a8}.project-form-callout h2{font-size:clamp(27px,3.5vw,45px);line-height:1.1;margin:9px 0}.project-form-callout p{max-width:650px;margin:0;color:#aaa;font-size:12px;line-height:1.7}.project-form-cta{position:relative;overflow:hidden;border:0;border-radius:19px;padding:23px 25px;text-align:left;background:#d86666;color:#fff;cursor:pointer;box-shadow:0 0 0 7px rgba(216,102,102,.16);transition:transform .2s,box-shadow .2s}.project-form-cta:before{content:"";position:absolute;width:150px;height:150px;border-radius:50%;right:-65px;top:-75px;background:rgba(255,255,255,.13)}.project-form-cta:hover{transform:translateY(-3px);box-shadow:0 12px 35px rgba(216,102,102,.35)}.project-form-cta small,.project-form-cta strong,.project-form-cta b{position:relative;display:block}.project-form-cta small{font-size:9px;letter-spacing:1.5px;color:#ffe5e1}.project-form-cta strong{font-size:24px;margin:8px 0 18px}.project-form-cta b{font-size:11px}@media(max-width:760px){.project-form-callout{grid-template-columns:1fr}.project-form-cta{width:100%}}
@@ -996,6 +996,14 @@ html{
 .project-type-group .project-filter-row b{font-size:28px}
 .food-project-hub-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 .food-project-card .project-simple-copy{display:grid!important;align-items:start}
+.donation-project-card .project-simple-copy{display:grid!important;align-content:start;align-items:start;gap:14px;min-width:0}
+.donation-project-card .project-simple-copy h2{max-width:100%;overflow-wrap:anywhere}
+.project-card-financial{display:grid;justify-items:start;gap:4px;min-width:0;max-width:100%}
+.project-card-financial>strong{display:flex;align-items:baseline;justify-content:flex-start;flex-wrap:wrap;gap:3px;min-width:0;max-width:100%}
+.project-card-financial>.project-card-final{display:grid;justify-items:start;text-align:left}
+.project-card-opening{color:#817a71;font-size:10px;font-weight:700;line-height:1.35}
+.donation-project-card .project-card-financial>strong>small{flex-basis:100%;width:100%;justify-self:start;text-align:left}
+.donation-project-card .project-card-financial>strong>span{overflow-wrap:anywhere}
 .food-project-card .project-simple-copy strong{display:grid;justify-items:start}
 .food-project-card .project-simple-copy .project-card-queue-metric{font-size:18px;font-weight:700;line-height:normal}
 .food-project-card .project-simple-copy .project-card-queue-metric small{color:#817a71;font-size:9px;font-weight:700;line-height:normal;letter-spacing:.04em}
@@ -1005,7 +1013,8 @@ html{
 .combined-card-metric{display:grid;min-width:0;gap:4px}
 .combined-card-metric span{color:#d86666;white-space:nowrap}
 .food-project-card .project-simple-copy .combined-card-total{justify-items:end;text-align:right}
-.project-simple-image{position:relative}.project-closed-badge{position:absolute;top:14px;right:14px;padding:7px 10px;border-radius:99px;background:#171717;color:#fff;font-size:9px;line-height:1;letter-spacing:.12em;box-shadow:0 8px 20px rgba(0,0,0,.22)}.project-simple-card.is-closed .project-simple-copy{align-items:end}.project-card-final{display:grid;justify-items:end;gap:3px;text-align:right}.project-card-final small{color:#817a71;font-size:9px;letter-spacing:.08em}.project-card-final span{color:#d86666;font-size:18px}.project-card-final em{color:#817a71;font-size:10px;font-style:normal}.project-closed-message{margin-top:22px;padding:clamp(28px,5vw,54px);border-radius:22px;background:#171717;color:#fff;text-align:center}.project-closed-message>span{font-size:10px;font-weight:900;letter-spacing:.16em;color:#efb4a8}.project-closed-message h2{margin:12px 0 8px;font-size:clamp(28px,4vw,48px)}.project-closed-message p{margin:0 auto;max-width:620px;color:#bbb;line-height:1.7}.project-closed-total{display:grid;gap:5px;margin-top:28px}.project-closed-total small{color:#aaa;font-size:10px;letter-spacing:.1em}.project-closed-total strong{font-size:clamp(42px,7vw,72px);color:#efb4a8}.project-closed-total time{color:#aaa;font-size:12px}.donation-anonymous-row span{font-weight:800;color:#d86666}.donation-ledger.is-final .donation-card-head{align-items:flex-end}.donation-final-card strong{color:#d86666}
+.combined-card-total .project-card-opening{display:block;text-align:right}
+.project-simple-image{position:relative}.project-closed-badge{position:absolute;top:14px;right:14px;padding:7px 10px;border-radius:99px;background:#171717;color:#fff;font-size:9px;line-height:1;letter-spacing:.12em;box-shadow:0 8px 20px rgba(0,0,0,.22)}.project-simple-card.is-closed .project-simple-copy{align-items:end}.project-card-final{display:grid;justify-items:end;gap:3px;text-align:right}.project-card-final small{color:#817a71;font-size:9px;letter-spacing:.08em}.project-card-final span{color:#d86666;font-size:18px}.project-card-final em{color:#817a71;font-size:10px;font-style:normal}.project-closed-message{margin-top:22px;padding:clamp(28px,5vw,54px);border-radius:22px;background:#171717;color:#fff;text-align:center}.project-closed-message>span{font-size:14px;font-weight:900;letter-spacing:.16em;color:#efb4a8}.project-closed-message h2{margin:12px 0 8px;font-size:clamp(28px,4vw,48px)}.project-closed-message p{margin:0 auto;max-width:620px;color:#bbb;line-height:1.7}.project-closed-total{display:grid;gap:5px;margin-top:28px}.project-closed-total small{color:#aaa;font-size:10px;letter-spacing:.1em}.project-closed-total strong{font-size:clamp(42px,7vw,72px);color:#efb4a8}.project-closed-total time{color:#aaa;font-size:12px}.donation-anonymous-row span{font-weight:800;color:#d86666}.donation-ledger.is-final .donation-card-head{align-items:flex-end}.donation-final-card strong{color:#d86666}
 @media(max-width:600px){.project-simple-card.is-closed .project-simple-copy{align-items:start}.project-card-final{justify-items:start;text-align:left}.project-closed-message{text-align:left}.project-closed-message p{margin:0}.project-closed-total strong{overflow-wrap:anywhere}}
 
 /* Series Broadcast — intentionally image-free and independent from artist colors. */
@@ -1201,9 +1210,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .award-grid,.couple-archive .archive-awards .award-grid,.project-hub-grid,.food-project-hub-grid{gap:7px}
   .award{padding:10px}
   .project-simple-copy{padding:10px}
+  .donation-project-card .project-simple-copy{gap:10px}
   .project-simple-copy strong small{font-size:7px}
   .combined-card-summary{grid-template-columns:1fr;gap:7px}
   .food-project-card .project-simple-copy .combined-card-total{justify-items:start;text-align:left}
+  .combined-card-total .project-card-opening{text-align:left}
 }
 
 .home-artist-section .section-head .btn,
@@ -1753,3 +1764,178 @@ main > .project-hub-section{
 /* Timeline status groups share the quiet, collapsible admin language used by Awards. */
 .timeline-admin-tree{display:grid;gap:14px;margin-top:16px}.timeline-admin-folder{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:#fff}.timeline-admin-folder>header{display:grid;grid-template-columns:auto minmax(150px,1fr) auto auto;gap:12px;align-items:center;padding:14px 16px;background:#faf8f4}.timeline-admin-folder.is-on-air>header{background:#fff5f3;border-left:3px solid #d86666}.timeline-folder-toggle{width:34px;height:34px;border:1px solid var(--line);border-radius:50%;background:#fff;cursor:pointer}.timeline-admin-folder header small{color:var(--muted);font-size:9px;letter-spacing:1.3px}.timeline-admin-folder header h3{margin:2px 0 0}.timeline-folder-count{color:var(--muted);font-size:11px;white-space:nowrap}.timeline-admin-folder-body{padding:12px 16px 16px}.timeline-admin-folder-body.timeline-admin-list{margin:0}.timeline-admin-list .actions a.icon-btn{display:inline-grid;place-items:center;text-decoration:none}.filmography-year-group.is-on-air-group>header i{background:#d86666;box-shadow:0 0 0 4px rgba(216,102,102,.12)}.filmography-year-group.is-on-air-group>header b{color:#efb4a8}
 @media(max-width:600px){.timeline-admin-folder>header{grid-template-columns:auto minmax(0,1fr);padding:12px}.timeline-admin-folder>header .timeline-folder-count{grid-column:2}.timeline-admin-folder>header .btn{grid-column:1/-1;width:100%}.timeline-admin-folder-body{padding:10px}}
+
+.donation-main-card>.donation-opening-balance{margin-top:8px;color:#efb4a8;font-size:11px;font-weight:700;line-height:1.4}
+.modal.project-admin-modal{width:min(860px,100%)}
+.project-form-sections{display:block}
+.project-form-section{padding-top:24px;margin-top:24px;border-top:1px solid var(--line)}
+.project-form-section:first-child{padding-top:0;margin-top:0;border-top:0}
+.project-form-section h3{font-size:13px;margin:0 0 16px;color:var(--muted);letter-spacing:.06em}
+.project-form-section .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.project-form-section .field{min-width:0;align-self:start}
+.project-form-section .field small{display:block;margin-top:6px;line-height:1.5}
+.project-form-section[hidden]{display:none!important}
+.project-admin-modal .form-actions{position:sticky;bottom:-30px;z-index:2;background:#fff;border-top:1px solid var(--line);padding:16px 0;margin-top:24px}
+@media(max-width:600px){.project-form-section .form-grid{grid-template-columns:1fr}.project-admin-modal .form-actions{bottom:-26px}}
+
+/* Closed donation project: editorial close followed by a transparent final record. */
+.completed-project-page{background:transparent}
+.completed-project-page .project-media-section{padding-bottom:0}
+.completed-project-back{display:inline-flex;margin-bottom:18px;color:#5f5953;font-size:13px;font-weight:700}
+.completed-project-page .project-banner-placeholder{margin-bottom:16px}
+.completed-project-hero{margin-top:0;padding:clamp(34px,6vw,72px);border:1px solid rgba(0,0,0,.42);text-align:left}
+.completed-project-hero>span{display:block;margin-bottom:16px}
+.completed-project-hero h1{max-width:760px;margin:0;font-size:clamp(30px,4vw,52px);line-height:1.05;letter-spacing:-.025em;text-wrap:balance}
+.completed-project-date{display:block;margin-top:12px;color:#aaa19a;font-size:10px;font-weight:700;letter-spacing:.1em}
+.completed-project-hero p{max-width:680px;margin:28px 0 0;color:#eee5dc;font-size:clamp(15px,1.7vw,18px);line-height:1.7}
+.completed-project-hero p>span,.completed-project-hero p>small{display:block}
+.completed-project-hero p>small{margin-top:4px;color:#aaa19a;font-size:.88em}
+.completed-project-hero .completed-report-link{margin-top:20px;background:#fff;color:#171717}
+.completed-project-hero .completed-report-link b{font-size:12px}
+.completed-project-hero .completed-report-link span{color:#716a63}
+.completed-summary-section{padding-top:clamp(52px,7vw,88px);padding-bottom:clamp(68px,9vw,112px);background:transparent}
+.completed-section-head{margin-bottom:24px}
+.completed-section-head h2{margin:0;color:#1d1d1f;font-size:clamp(28px,3.7vw,46px);font-weight:650;line-height:1.08;letter-spacing:-.025em}
+.completed-total-raised{min-height:230px;padding:clamp(28px,4vw,42px);border:1px solid #0b0b0c;border-radius:28px;background:#1d1d1f;color:#fff;display:flex;flex-direction:column}
+.completed-total-head{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.completed-total-head>span{font-size:clamp(17px,2vw,21px);font-weight:700;letter-spacing:-.01em}
+.completed-total-head>em{flex:none;padding:7px 11px;border-radius:99px;background:#332d2c;color:#ffb3a6;font-size:11px;font-style:normal;font-weight:700}
+.completed-total-raised>strong{margin:clamp(28px,4vw,44px) 0 24px;font-size:clamp(52px,7.5vw,86px);line-height:.92;letter-spacing:-.04em;overflow-wrap:anywhere}
+.completed-total-raised>small{margin-top:auto;color:#a9a5a2;font-size:13px}
+.completed-total-raised>small b{margin-left:7px;color:#f3efea;font-size:15px}
+.completed-summary-group{margin-top:clamp(36px,5vw,56px)}
+.completed-summary-group>h3{margin:0 0 16px;color:#514d49;font-size:clamp(18px,2vw,23px);font-weight:650;letter-spacing:-.015em}
+.completed-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
+.completed-summary-card{display:flex;min-width:0;min-height:176px;flex-direction:column;padding:24px;border:1px solid rgba(75,66,60,.24);border-radius:24px;background:#f9f7f3}
+.completed-summary-card>span{color:#1d1d1f;font-size:16px;font-weight:700;letter-spacing:-.01em}
+.completed-summary-card>small{margin-top:5px;color:#77716c;font-size:12px}
+.completed-summary-card>strong{margin-top:auto;color:#1d1d1f;font-size:clamp(25px,3vw,36px);font-weight:750;line-height:1;letter-spacing:-.03em;overflow-wrap:anywhere}
+.completed-summary-card.is-carry-over{background:#faf8f4}
+.completed-summary-card.is-form-donations{background:#fff8f2}
+.completed-summary-card.is-anonymous{background:#f8e9e6;border-color:rgba(167,84,75,.32)}
+.completed-summary-card.is-anonymous>strong{color:#a84949}
+.completed-closing-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:12px}
+.completed-closing-grid .completed-summary-card{min-height:184px}
+.completed-summary-card.is-expense{background:#faf8f4}
+.completed-summary-card.is-expense.has-note>strong{margin-top:22px;font-size:clamp(28px,3vw,36px)}
+.completed-expense-note{max-width:420px;margin-top:18px;padding-top:13px;color:#625d58;line-height:1.45}
+.completed-expense-note:before{content:"";display:block;width:52px;margin-bottom:13px;border-top:1px solid rgba(75,66,60,.22)}
+.completed-expense-note p{margin:0;font-size:clamp(10px,1.05vw,13px);font-weight:500;letter-spacing:-.01em;white-space:nowrap}
+.completed-expense-note small{display:block;margin-top:4px;color:#8a837d;font-size:clamp(9px,.95vw,12px);font-weight:400;line-height:1.45;letter-spacing:-.01em;white-space:nowrap}
+.completed-summary-card.is-closing-balance{background:#fff0e8;border-color:rgba(166,100,70,.32)}
+.completed-summary-card.is-closing-balance>strong{font-size:clamp(30px,3.7vw,46px)}
+.completed-report-link{display:inline-flex;align-items:center;gap:10px}
+.completed-report-link span{font-size:10px;font-weight:600}
+.completed-donation-ledger{margin-top:clamp(42px,6vw,72px);padding:clamp(22px,4vw,36px);border-color:#bfb4a8;border-radius:20px;background:#fbf9f6}
+.completed-donation-ledger .donation-card-head{padding-bottom:4px}
+.completed-donation-ledger .donation-card-head span{font-size:10px;letter-spacing:.14em}
+.completed-donation-ledger .donation-card-head h3{font-size:clamp(26px,3.2vw,40px);letter-spacing:-.025em}
+.completed-donation-ledger .donation-ledger-head{margin-top:24px;background:#eee9e1}
+.completed-donation-ledger .donation-ledger-list>div{min-height:55px}
+.completed-donation-ledger .donation-carry-over-row{margin-top:8px;border:1px solid #c8bdb1;border-radius:12px;background:#f5f1ea}
+.completed-donation-ledger .donation-carry-over-row span,.completed-donation-ledger .donation-carry-over-row strong{color:#514d49;font-weight:750}
+.completed-donation-ledger .donation-anonymous-row{margin-top:8px;border:1px solid rgba(167,84,75,.28);border-radius:12px;background:#f2deda}
+.completed-donation-ledger .donation-anonymous-row span,.completed-donation-ledger .donation-anonymous-row strong{color:#a84949}
+.completed-donation-ledger .donation-total-row{margin-top:14px;border:0;border-radius:12px;background:#1d1d1f}
+.completed-donation-ledger .donation-total-row span,.completed-donation-ledger .donation-total-row time,.completed-donation-ledger .donation-total-row strong{color:#fff;font-weight:750}
+.completed-donation-ledger .donation-total-row strong{font-size:16px}
+.completed-donation-ledger .donation-disclaimer{margin:18px 0 0;padding-top:16px;border-top:1px solid #e6dfd6}
+@media(min-width:768px){
+  .completed-summary-group>h3{display:flex;align-items:center;gap:14px}
+  .completed-summary-group>h3:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(75,66,60,.22),transparent)}
+  .completed-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+  .completed-funds-grid .is-anonymous{grid-column:auto}
+  .completed-closing-grid{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px}
+  .completed-summary-card{position:relative;min-height:clamp(184px,16vw,208px);padding:clamp(22px,2.4vw,30px);overflow:hidden;border-radius:26px;box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 1px 2px rgba(45,38,33,.04)}
+  .completed-summary-card>span{font-size:17px}
+  .completed-summary-card>small{margin-top:6px}
+  .completed-summary-card>strong{font-variant-numeric:tabular-nums}
+  .completed-summary-card.is-carry-over{background:linear-gradient(145deg,#fffdf9,#f4f0ea)}
+  .completed-summary-card.is-form-donations{background:linear-gradient(145deg,#fffaf5,#f8eee6)}
+  .completed-summary-card.is-anonymous{background:linear-gradient(145deg,#fbeeed,#f5dfdc)}
+  .completed-summary-card.is-expense{background:linear-gradient(145deg,#fffdf9,#f4f0ea)}
+  .completed-summary-card.is-closing-balance{background:linear-gradient(145deg,#fff4ed,#fbe2d6)}
+  .completed-summary-card.is-closing-balance>strong{color:#7f3d27}
+}
+@media(min-width:1024px){
+  .completed-summary-section>.container{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);column-gap:16px}
+  .completed-section-head,.completed-total-raised,.completed-donation-ledger{grid-column:1/-1}
+  .completed-summary-group{display:flex;min-width:0;margin-top:56px;flex-direction:column;align-self:stretch}
+  .completed-summary-group>h3{margin-bottom:18px;font-size:clamp(22px,2.1vw,30px)}
+  .completed-summary-group>h3:after{display:none}
+  .completed-funds-grid,.completed-closing-grid{flex:1;margin-top:0;overflow:hidden;border:1px solid rgba(75,66,60,.24);border-radius:28px;background:#fbf9f6}
+  .completed-funds-grid{display:grid;grid-template-columns:1fr;grid-template-rows:minmax(96px,1fr) minmax(96px,1fr) minmax(82px,.85fr)}
+  .completed-closing-grid{display:grid;grid-template-columns:1fr;grid-template-rows:repeat(2,minmax(137px,1fr))}
+  .completed-funds-grid .completed-summary-card,.completed-closing-grid .completed-summary-card{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto 1fr;align-content:start;min-height:0;padding:18px 24px;border:0;border-radius:0;background:transparent;box-shadow:none;column-gap:18px;row-gap:1px}
+  .completed-funds-grid .completed-summary-card+ .completed-summary-card,.completed-closing-grid .completed-summary-card+ .completed-summary-card{border-top:1px solid rgba(75,66,60,.16)}
+  .completed-funds-grid .completed-summary-card>span,.completed-closing-grid .completed-summary-card>span{grid-column:1;grid-row:1;font-size:17px;line-height:1.15}
+  .completed-funds-grid .completed-summary-card>small,.completed-closing-grid .completed-summary-card>small{grid-column:1;grid-row:2;margin-top:0;font-size:12px;line-height:1.25}
+  .completed-funds-grid .completed-summary-card>strong,.completed-closing-grid .completed-summary-card>strong{grid-column:2;grid-row:1/-1;align-self:center;margin:0;font-size:clamp(28px,2.5vw,38px);text-align:right;white-space:nowrap}
+  .completed-funds-grid .completed-summary-card.is-anonymous{background:#f9ece9}
+  .completed-funds-grid .completed-summary-card.is-anonymous>strong{font-size:clamp(25px,2.2vw,34px)}
+  .completed-closing-grid .completed-summary-card.is-closing-balance{background:#fff0e8}
+  .completed-closing-grid .completed-summary-card.is-closing-balance>strong{align-self:center;margin:0;font-size:clamp(30px,3vw,44px);text-align:right}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note{grid-template-rows:auto auto auto}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note>strong{grid-row:1/3;margin:0}
+  .completed-closing-grid .completed-expense-note{grid-column:1/-1;grid-row:3;width:100%;max-width:none;margin-top:16px;padding-top:12px}
+}
+@media(max-width:600px){.completed-project-hero{padding:30px 24px}.completed-project-hero h1{font-size:clamp(28px,9vw,40px)}.completed-project-hero .completed-report-link{align-items:flex-start;flex-direction:column}}
+@media(max-width:1023px){
+  .completed-project-hero h1{max-width:none;font-size:clamp(18px,4.4vw,42px);letter-spacing:-.04em;white-space:nowrap}
+  .completed-project-hero p{max-width:none;margin-top:22px;line-height:1.35}
+  .completed-project-hero p>span{font-size:clamp(6px,2.05vw,16px);letter-spacing:-.025em;white-space:nowrap}
+  .completed-project-hero p>small{font-size:clamp(6px,1.85vw,14px);letter-spacing:-.02em;white-space:nowrap}
+  .completed-summary-card.is-expense.has-note{padding:22px}
+}
+@media(min-width:768px) and (max-width:1023px){
+  .completed-closing-grid .completed-summary-card{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto 1fr;gap:3px 14px}
+  .completed-closing-grid .completed-summary-card>span{grid-column:1;grid-row:1}
+  .completed-closing-grid .completed-summary-card>small{grid-column:1;grid-row:2}
+  .completed-closing-grid .completed-summary-card>strong{grid-column:2;grid-row:1/3;align-self:center;margin:0;font-size:clamp(22px,3.2vw,28px);text-align:right;white-space:nowrap}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note>strong{margin:0}
+  .completed-closing-grid .completed-expense-note{grid-column:1/-1;grid-row:3;align-self:end;width:100%;max-width:none}
+}
+@media(max-width:767px){
+  .completed-summary-section{padding-top:48px;padding-bottom:72px}
+  .completed-summary-section>.container{padding-inline:16px}
+  .completed-section-head{margin-bottom:20px}
+  .completed-section-head h2{font-size:clamp(30px,8.2vw,32px);line-height:1.05}
+  .completed-total-raised{min-height:0;padding:24px;border-radius:24px}
+  .completed-total-head{align-items:center;gap:12px}
+  .completed-total-head>span{font-size:17px}
+  .completed-total-head>em{padding:6px 9px;font-size:10px;white-space:nowrap}
+  .completed-total-raised>strong{margin:28px 0 26px;font-size:clamp(48px,13vw,64px);line-height:.94}
+  .completed-total-raised>small{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;font-size:12px}
+  .completed-total-raised>small b{margin-left:0;font-size:14px}
+  .completed-summary-group{margin-top:48px}
+  .completed-summary-group>h3{margin-bottom:14px;font-size:19px}
+  .completed-funds-grid,.completed-closing-grid{display:block;margin-top:0;overflow:hidden;border:1px solid rgba(75,66,60,.24);border-radius:24px;background:#fbf9f6}
+  .completed-funds-grid .completed-summary-card,.completed-closing-grid .completed-summary-card{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;min-height:0;padding:18px 20px;border:0;border-radius:0;background:transparent;gap:3px 16px}
+  .completed-funds-grid .completed-summary-card+ .completed-summary-card,.completed-closing-grid .completed-summary-card+ .completed-summary-card{border-top:1px solid rgba(75,66,60,.16)}
+  .completed-funds-grid .completed-summary-card>span,.completed-closing-grid .completed-summary-card>span{grid-column:1;grid-row:1;font-size:15px}
+  .completed-funds-grid .completed-summary-card>small,.completed-closing-grid .completed-summary-card>small{grid-column:1;grid-row:2;margin-top:0;font-size:11px;line-height:1.35}
+  .completed-funds-grid .completed-summary-card>strong,.completed-closing-grid .completed-summary-card>strong{grid-column:2;grid-row:1/3;align-self:center;margin:0;font-size:clamp(20px,5.5vw,24px);white-space:nowrap}
+  .completed-funds-grid .completed-summary-card.is-anonymous{grid-column:auto;background:#f9ece9}
+  .completed-closing-grid .completed-summary-card.is-closing-balance{display:grid;min-height:0;padding:18px 20px;background:#fff0e8}
+  .completed-closing-grid .completed-summary-card.is-closing-balance>strong{grid-column:2;grid-row:1/3;align-self:center;margin:0;font-size:clamp(22px,6vw,26px);text-align:right;white-space:nowrap}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note{display:flex;padding:18px 20px;flex-direction:column;align-items:flex-start}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note>span,.completed-closing-grid .completed-summary-card.is-expense.has-note>small,.completed-closing-grid .completed-summary-card.is-expense.has-note>strong{display:block}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note>strong{align-self:stretch;margin-top:16px;font-size:clamp(25px,7vw,30px);white-space:normal}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note .completed-expense-note{width:100%;max-width:none;margin-top:16px;padding-top:12px}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note .completed-expense-note:before{margin-bottom:12px}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note .completed-expense-note p{font-size:clamp(7px,2.05vw,10px);letter-spacing:-.025em;white-space:nowrap}
+  .completed-closing-grid .completed-summary-card.is-expense.has-note .completed-expense-note small{font-size:clamp(6.5px,1.85vw,9px);letter-spacing:-.02em;white-space:nowrap}
+  .completed-donation-ledger{margin-top:48px;padding:22px 20px;border-radius:24px}
+  .completed-donation-ledger .donation-card-head h3{font-size:clamp(24px,7vw,28px);line-height:1.05}
+  .completed-donation-ledger .donation-ledger-head{display:none}
+  .completed-donation-ledger .donation-ledger-list{margin-top:18px}
+  .completed-donation-ledger .donation-ledger-list>div{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;min-height:0;padding:15px 4px;gap:3px 16px}
+  .completed-donation-ledger .donation-ledger-list span{grid-column:1;grid-row:1;font-size:13px;font-weight:650}
+  .completed-donation-ledger .donation-ledger-list time{grid-column:1;grid-row:2;font-size:11px}
+  .completed-donation-ledger .donation-ledger-list strong{grid-column:2;grid-row:1/3;align-self:center;font-size:14px;white-space:nowrap}
+  .completed-donation-ledger .donation-carry-over-row,.completed-donation-ledger .donation-anonymous-row{margin-top:8px;padding:15px 14px;border-radius:14px}
+  .completed-donation-ledger .donation-carry-over-row time,.completed-donation-ledger .donation-anonymous-row time{display:none}
+  .completed-donation-ledger .donation-total-row{margin-top:14px;padding:16px 14px;border-radius:14px}
+  .completed-donation-ledger .donation-total-row strong{font-size:16px}
+  .completed-donation-ledger .donation-disclaimer{margin-top:16px;padding-top:14px}
+}

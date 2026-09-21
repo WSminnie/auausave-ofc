@@ -469,6 +469,7 @@ return `<nav class="nav"><div class="container nav-inner">
   <div class="links" id="public-navigation">
     <a onclick="closePublicMenu()" class="${active === "artists" ? "active" : ""}" href="#artists">AuauSave</a>
     <a onclick="closePublicMenu()" class="${active === "schedule" ? "active" : ""}" href="#schedule">Schedule</a>
+    ${db.siteSettings?.seriesMenuVisible !== false ? `<a onclick="closePublicMenu()" class="${active === "series" ? "active" : ""}" href="#series">Series</a>` : ''}
     <a onclick="closePublicMenu()" class="${active === "presenters" ? "active" : ""}" href="#presenters">Presenters</a>
     <a onclick="closePublicMenu()" class="${active === "awards" ? "active" : ""}" href="#awards">Awards</a>
     <a onclick="closePublicMenu()" class="${active === "projects" ? "active" : ""}" href="#projects">Projects</a>
@@ -1108,6 +1109,7 @@ const ADMIN_MENU_ITEMS = [
   ['pagecontent','▤','Homepage'],
   ['artists','◉','Artist'],
   ['events','▦','Schedule'],
+  ['series','▤','Series'],
   ['timeline','◷','Timeline'],
   ['presenters','✦','Presenters'],
   ['awards','◇','Awards'],
@@ -1120,6 +1122,7 @@ function adminSidebarMarkup(backHref='#home',backLabel='← กลับหน�
   return `<aside class="sidebar"><div class="brand"><i></i>AUAUSAVE HOUSE</div><div class="side-nav">${buttons}</div><a class="back" href="${backHref}">${backLabel}</a></aside>`;
 }
 function admin() {
+  if (adminTab === 'series') { if (adminAuthenticated) SeriesFeature.admin.render(); return; }
   const c = configs[adminTab],
     items = db[adminTab];
   app.innerHTML = `<div class="admin"><div class="admin-shell">${adminSidebarMarkup("#home","← กลับหน้าเว็บไซต์")}<main class="admin-main"><div class="admin-top"><div><small style="color:var(--muted)">CONTENT MANAGEMENT</small><h1>จัดการ${c.label}</h1></div><button class="btn" onclick="openForm('${adminTab}')">+ เพิ่มข้อมูล</button></div><div class="stats">${Object.entries(
@@ -2362,7 +2365,8 @@ async function hydrateFromSupabase() {
 
 function router() {
   route = location.hash.slice(1) || "home";
-  if (route === "home") home();
+  if (route === 'series' || route.startsWith('series/')) SeriesFeature.pages.render(route);
+  else if (route === "home") home();
   else if (
     ["artists", "schedule", "presenters", "awards"].includes(route)
   )

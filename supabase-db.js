@@ -239,5 +239,5 @@
     return (data||[]).map(mapFromDb.award_section_assignments);
   }
 
-  window.auausaveDB = { client, load, save, signIn, signOut, session, removeAwardAssignment, upsertAwardAssignments, upsertAwardSectionAssignments };
+  window.auausaveDB = { client, load, save, signIn, signOut, session, uploadEmbeddedMedia, removeAwardAssignment, upsertAwardAssignments, upsertAwardSectionAssignments };
 })();
