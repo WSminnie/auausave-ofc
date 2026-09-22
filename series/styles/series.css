@@ -122,3 +122,7 @@
 .series-public .series-overview-layout>.series-cast{min-width:0;margin-top:0}
 .series-public .series-overview-layout>.series-cast>h3{margin-top:0}
 @media(min-width:1101px){.series-overview-layout.has-cast{grid-template-columns:minmax(0,1.65fr) minmax(320px,1fr);gap:clamp(28px,4vw,64px)}.series-public .series-overview-layout .series-cast-grid{grid-template-columns:minmax(0,1fr)}}
+
+.series-public .series-status.is-on-air,.series-public .series-status.is-available{background:#e1f3e8;color:#21603b}
+.series-public .series-status.is-upcoming{background:#fff0da;color:#805016}
+.series-public .series-status.is-ended{background:#eaeaea;color:#555}

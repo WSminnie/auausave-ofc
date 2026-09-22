@@ -1055,7 +1055,7 @@ const configs = {
       ["title", "ชื่องาน"],
       ["artistId", "ศิลปิน", "artist"],
       ["date", "วันที่", "date"],
-      ["place", "สถานที่"],
+      ["place", "เวลา | สถานที่", "text", false],
       ["type", "ประเภทงาน"],
       ["source", "ลิงก์ข้อมูลต้นทาง", "url", false],
     ],
@@ -1150,7 +1150,7 @@ function adminEventCalendar() {
     month: "long",
     year: "numeric",
   }).format(new Date(`${adminMonth}-01`));
-  app.innerHTML = `<div class="admin"><div class="admin-shell">${adminSidebarMarkup("#schedule","← ดูปฏิทินหน้าบ้าน")}<main class="admin-main"><div class="admin-top"><div><small style="color:var(--muted)">CALENDAR MANAGEMENT</small><h1>จัดการปฏิทินงาน</h1></div><button class="btn" onclick="openForm('events')">+ เพิ่มงานใหม่</button></div><section class="admin-cal-tools"><div><label>เลือกเดือน</label><input type="month" value="${adminMonth}" onchange="adminMonth=this.value;admin()"></div><div class="admin-filters"><button class="${adminEventFilter === "all" ? "active" : ""}" onclick="adminEventFilter='all';admin()">ทั้งหมด</button><button class="duo ${adminEventFilter === "duo" ? "active" : ""}" onclick="adminEventFilter='duo';admin()">#AUAUSAVE</button><button class="auau ${adminEventFilter === "auau" ? "active" : ""}" onclick="adminEventFilter='auau';admin()">AUAU</button><button class="save ${adminEventFilter === "save" ? "active" : ""}" onclick="adminEventFilter='save';admin()">SAVE</button></div></section><div class="admin-month-title"><h2>${monthLabel}</h2><span>${monthEvents.length} งาน</span></div><section class="admin-event-list">${monthEvents.map((e) => `<article class="admin-event-item ${e.artistId}"><div class="admin-event-date"><b>${day(e.date)}</b><span>${month(e.date)}</span></div><div class="admin-event-info"><small>${e.artistId === "duo" ? "#AUAUSAVE" : e.artistId.toUpperCase()} · ${e.type}</small><h3>${e.title}</h3><p>${e.place}</p></div><div class="actions"><button class="icon-btn" onclick="openForm('events','${e.id}')">✎ แก้ไข</button><button class="icon-btn" onclick="removeItem('events','${e.id}')">⌫</button></div></article>`).join("") || '<div class="empty">เดือนนี้ยังไม่มีตารางงาน<br><button class="btn" style="margin-top:15px" onclick="openForm(\'events\')">เพิ่มงานแรกของเดือน</button></div>'}</section></main></div></div>`;
+  app.innerHTML = `<div class="admin"><div class="admin-shell">${adminSidebarMarkup("#schedule","← ดูปฏิทินหน้าบ้าน")}<main class="admin-main"><div class="admin-top"><div><small style="color:var(--muted)">CALENDAR MANAGEMENT</small><h1>จัดการปฏิทินงาน</h1></div><button class="btn" onclick="openForm('events')">+ เพิ่มงานใหม่</button></div><section class="admin-cal-tools"><div><label>เลือกเดือน</label><input type="month" value="${adminMonth}" onchange="adminMonth=this.value;admin()"></div><div class="admin-filters"><button class="${adminEventFilter === "all" ? "active" : ""}" onclick="adminEventFilter='all';admin()">ทั้งหมด</button><button class="duo ${adminEventFilter === "duo" ? "active" : ""}" onclick="adminEventFilter='duo';admin()">#AUAUSAVE</button><button class="auau ${adminEventFilter === "auau" ? "active" : ""}" onclick="adminEventFilter='auau';admin()">AUAU</button><button class="save ${adminEventFilter === "save" ? "active" : ""}" onclick="adminEventFilter='save';admin()">SAVE</button></div></section><div class="admin-month-title"><h2>${monthLabel}</h2><span>${monthEvents.length} งาน</span></div><section class="admin-event-list">${monthEvents.map((e) => `<article class="admin-event-item ${e.artistId}"><div class="admin-event-date"><b>${day(e.date)}</b><span>${month(e.date)}</span></div><div class="admin-event-info"><small>${escapePageText(eventBadge(e))} · ${e.type}</small><h3>${e.title}</h3><p>${e.place}</p></div><div class="actions"><button class="icon-btn" onclick="openForm('events','${e.id}')">✎ แก้ไข</button><button class="icon-btn" onclick="removeItem('events','${e.id}')">⌫</button></div></article>`).join("") || '<div class="empty">เดือนนี้ยังไม่มีตารางงาน<br><button class="btn" style="margin-top:15px" onclick="openForm(\'events\')">เพิ่มงานแรกของเดือน</button></div>'}</section></main></div></div>`;
 }
 const renderBaseAdmin = admin;
 admin = function () {
@@ -1166,11 +1166,30 @@ calendarPage = function () {
   const legend = document.querySelector(".calendar-legend span");
   if (legend) legend.lastChild.textContent = "#AUAUSAVE";
 };
+function dashboardTypeIncluded(type) { return db.siteSettings?.dashboardTypeCounting?.[type.id] ?? (type.id !== 'series_broadcast'); }
+function dashboardEventIncluded(event) {
+ const matches=db.masterData.types.filter(t=>eventHasType(event,t.id)||(t.id==='series_broadcast'&&event.scheduleType==='series_broadcast'));
+ return !matches.length || matches.some(dashboardTypeIncluded);
+}
+async function setDashboardTypeCounting(input) {
+ const id=input.dataset.dashboardType;
+ if(!db.masterData.types.some(t=>t.id===id))return;
+ input.disabled=true;
+ const previous=db.siteSettings.dashboardTypeCounting;
+ try {
+  const {data,error}=await window.auausaveDB.session();
+  if(error||!data?.session||!adminAuthenticated)throw new Error('กรุณาเข้าสู่ระบบอีกครั้ง');
+  db.siteSettings.dashboardTypeCounting={...previous,[id]:input.checked};save(false);
+  if(!await syncDatabaseInBackground())throw new Error('บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง');
+  toast('บันทึกการนับยอด Dashboard แล้ว');
+ }catch(error){if(previous===undefined)delete db.siteSettings.dashboardTypeCounting;else db.siteSettings.dashboardTypeCounting=previous;save(false);input.checked=dashboardTypeIncluded({id});toast(error.message);}
+ finally{input.disabled=false;}
+}
 function dashboardAdmin() {
   const now = new Date(),
     year = now.getFullYear(),
     ym = now.toISOString().slice(0, 7),
-    yearEvents = db.events.filter((e) => e.date.startsWith(String(year))),
+    yearEvents = db.events.filter((e) => dashboardEventIncluded(e) && e.date.startsWith(String(year))),
     monthEvents = yearEvents.filter((e) => e.date.startsWith(ym)),
     upcoming = yearEvents
       .filter((e) => e.date >= now.toISOString().slice(0, 10))
@@ -1188,12 +1207,12 @@ function dashboardAdmin() {
       auau: yearEvents.filter((e) => e.artistId === "auau").length,
       save: yearEvents.filter((e) => e.artistId === "save").length,
     };
-  app.innerHTML = `<div class="admin"><div class="admin-shell">${adminSidebarMarkup("#home","← กลับหน้าเว็บไซต์")}<main class="admin-main dashboard-main"><div class="admin-top"><div><small style="color:var(--muted)">AUAUSAVE HOUSE · ${year}</small><h1>ภาพรวมหลังบ้าน</h1></div><button class="btn" onclick="adminTab='events';admin()">จัดการปฏิทิน </button></div><div class="dashboard-stats"><article><span>ตารางงานปีนี้</span><b>${yearEvents.length}</b><small>รายการทั้งหมดใน ${year}</small></article><article><span>งานเดือนนี้</span><b>${monthEvents.length}</b><small>${new Intl.DateTimeFormat("th-TH", { month: "long" }).format(now)}</small></article><article><span>งานที่กำลังจะมาถึง</span><b>${upcoming.length}</b><small>ตั้งแต่วันนี้เป็นต้นไป</small></article><article><span>ศิลปิน/พาส</span><b>${db.artists.length}</b><small>#AUAUSAVE · AUAU · SAVE</small></article></div><div class="dashboard-grid"><section class="dash-panel chart-panel"><div class="panel-head"><div><small>EVENT ACTIVITY</small><h2>ตารางงานรายเดือน</h2></div><b>${yearEvents.length} งาน</b></div><div class="bar-chart">${months.map((n, i) => `<div class="bar-col"><span>${n || ""}</span><div class="bar" style="height:${Math.max((n / max) * 180, n ? 8 : 2)}px"></div><small>${["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."][i]}</small></div>`).join("")}</div></section><section class="dash-panel path-panel"><div class="panel-head"><div><small>PATH SUMMARY</small><h2>แยกตามพาส</h2></div></div><div class="path-metric duo"><div><b>#AUAUSAVE</b><span>${paths.duo} งาน</span></div><div class="metric-track"><i style="width:${(paths.duo / yearEvents.length) * 100 || 0}%"></i></div></div><div class="path-metric auau"><div><b>AUAU</b><span>${paths.auau} งาน</span></div><div class="metric-track"><i style="width:${(paths.auau / yearEvents.length) * 100 || 0}%"></i></div></div><div class="path-metric save"><div><b>SAVE</b><span>${paths.save} งาน</span></div><div class="metric-track"><i style="width:${(paths.save / yearEvents.length) * 100 || 0}%"></i></div></div></section><section class="dash-panel upcoming-panel"><div class="panel-head"><div><small>NEXT SCHEDULE</small><h2>งานที่กำลังจะมาถึง</h2></div><button onclick="adminTab='events';admin()">ดูทั้งหมด</button></div>${
+  app.innerHTML = `<div class="admin"><div class="admin-shell">${adminSidebarMarkup("#home","← กลับหน้าเว็บไซต์")}<main class="admin-main dashboard-main"><div class="admin-top"><div><small style="color:var(--muted)">AUAUSAVE HOUSE · ${year}</small><h1>ภาพรวมหลังบ้าน</h1></div><button class="btn" onclick="adminTab='events';admin()">จัดการปฏิทิน </button></div><div class="dashboard-stats"><article><span>ตารางงานปีนี้</span><b>${yearEvents.length}</b><small>รายการทั้งหมดใน ${year}</small></article><article><span>งานที่กำลังจะมาถึง</span><b>${upcoming.length}</b><small>ตั้งแต่วันนี้เป็นต้นไป</small></article></div><div class="dashboard-grid"><section class="dash-panel chart-panel"><div class="panel-head"><div><small>EVENT ACTIVITY</small><h2>ตารางงานรายเดือน</h2></div><b>${yearEvents.length} งาน</b></div><div class="bar-chart">${months.map((n, i) => `<div class="bar-col"><span>${n || ""}</span><div class="bar" style="height:${Math.max((n / max) * 180, n ? 8 : 2)}px"></div><small>${["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."][i]}</small></div>`).join("")}</div></section><section class="dash-panel path-panel"><div class="panel-head"><div><small>PATH SUMMARY</small><h2>แยกตามพาส</h2></div></div><div class="path-metric duo"><div><b>#AUAUSAVE</b><span>${paths.duo} งาน</span></div><div class="metric-track"><i style="width:${(paths.duo / yearEvents.length) * 100 || 0}%"></i></div></div><div class="path-metric auau"><div><b>AUAU</b><span>${paths.auau} งาน</span></div><div class="metric-track"><i style="width:${(paths.auau / yearEvents.length) * 100 || 0}%"></i></div></div><div class="path-metric save"><div><b>SAVE</b><span>${paths.save} งาน</span></div><div class="metric-track"><i style="width:${(paths.save / yearEvents.length) * 100 || 0}%"></i></div></div></section><section class="dash-panel upcoming-panel"><div class="panel-head"><div><small>NEXT SCHEDULE</small><h2>งานที่กำลังจะมาถึง</h2></div><button onclick="adminTab='events';admin()">ดูทั้งหมด</button></div>${
     upcoming
       .slice(0, 5)
       .map(
         (e) =>
-          `<div class="dash-upcoming"><div><b>${day(e.date)}</b><span>${month(e.date)}</span></div><p><strong>${e.title}</strong><small>${e.artistId === "duo" ? "#AUAUSAVE" : e.artistId.toUpperCase()} · ${e.place}</small></p><button onclick="openForm('events','${e.id}')">✎</button></div>`,
+          `<div class="dash-upcoming"><div><b>${day(e.date)}</b><span>${month(e.date)}</span></div><p><strong>${e.title}</strong><small>${escapePageText(eventBadge(e))} · ${e.place}</small></p><button onclick="openForm('events','${e.id}')">✎</button></div>`,
       )
       .join("") || '<div class="empty">ยังไม่มีงานที่กำลังจะมาถึง</div>'
   }</section></div></main></div></div>`;
@@ -1287,7 +1306,7 @@ function applyDashboardRange() {
   const start = `${dashYearFrom}-${String(dashMonthFrom).padStart(2, "0")}-01`,
     endDate = new Date(dashYearTo, dashMonthTo, 0),
     end = `${dashYearTo}-${String(dashMonthTo).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`,
-    items = db.events.filter((e) => e.date >= start && e.date <= end),
+    items = db.events.filter((e) => dashboardEventIncluded(e) && e.date >= start && e.date <= end),
     now = new Date().toISOString().slice(0, 10),
     future = items
       .filter((e) => e.date >= now)
@@ -1300,29 +1319,23 @@ function applyDashboardRange() {
     stats = document.querySelectorAll(".dashboard-stats article b");
   const statTitles = document.querySelectorAll(".dashboard-stats article span");
   if (statTitles.length) {
-    statTitles[0].textContent = "ตารางงานในช่วงที่เลือก";
-    statTitles[1].textContent = "เดือนที่มีกิจกรรม";
-    statTitles[2].textContent = "งานที่กำลังจะมาถึง";
-    statTitles[3].textContent = "ศิลปิน/พาส";
+    statTitles[0].textContent = "งานทั้งหมดในช่วงที่เลือก";
+    statTitles[1].textContent = "งานที่กำลังจะมาถึง";
   }
   if (stats.length) {
     stats[0].textContent = items.length;
-    stats[1].textContent = new Set(items.map((e) => e.date.slice(0, 7))).size;
-    stats[2].textContent = future.length;
-    stats[3].textContent = new Set(items.flatMap(eventArtistIds)).size;
+    stats[1].textContent = future.length;
   }
   const statLabels = document.querySelectorAll(
     ".dashboard-stats article small",
   );
   if (statLabels.length) {
     statLabels[0].textContent = `${dashMonthFrom}/${dashYearFrom} – ${dashMonthTo}/${dashYearTo}`;
-    statLabels[1].textContent = "เดือนที่มีกิจกรรม";
-    statLabels[2].textContent = "ในช่วงที่เลือก";
-    statLabels[3].textContent = "#AUAUSAVE · AUAU · SAVE";
+    statLabels[1].textContent = "ในช่วงที่เลือก";
   }
   const rangeText = document.querySelector("#dashRangeText");
   if (rangeText)
-    rangeText.textContent = `พบ ${items.length} รายการ ระหว่าง ${dashMonthFrom}/${dashYearFrom} ถึง ${dashMonthTo}/${dashYearTo}`;
+    rangeText.textContent = `นับ ${items.length} งานตามการตั้งค่า Master · ระหว่าง ${dashMonthFrom}/${dashYearFrom} ถึง ${dashMonthTo}/${dashYearTo}`;
   const buckets = [];
   for (let y = dashYearFrom; y <= dashYearTo; y++)
     for (let m = 1; m <= 12; m++) {
@@ -1369,7 +1382,7 @@ function applyDashboardRange() {
         .slice(0, 5)
         .map(
           (e) =>
-            `<div class="dash-upcoming"><div><b>${day(e.date)}</b><span>${month(e.date)}</span></div><p><strong>${e.title}</strong><small>${e.artistId === "duo" ? "#AUAUSAVE" : e.artistId.toUpperCase()} · ${e.place}</small></p><button onclick="openForm('events','${e.id}')">✎</button></div>`,
+            `<div class="dash-upcoming"><div><b>${day(e.date)}</b><span>${month(e.date)}</span></div><p><strong>${e.title}</strong><small>${escapePageText(eventBadge(e))} · ${e.place}</small></p><button onclick="openForm('events','${e.id}')">✎</button></div>`,
         )
         .join("") || '<div class="empty">ไม่พบงานในช่วงที่เลือก</div>'
     }`;
@@ -1404,7 +1417,7 @@ function adminCalendarGrid() {
           ("all" === adminEventFilter || itemMatchesArtist(e, adminEventFilter)),
       );
     cells.push(
-      `<div class="admin-cal-day"><div class="admin-day-head"><b>${d}</b><button onclick="openForm('events')" title="เพิ่มงาน">+</button></div>${items.map((e) => `<button class="admin-cal-chip ${e.artistId}" onclick="openForm('events','${e.id}')"><small>${e.artistId === "duo" ? "#AUAUSAVE" : e.artistId.toUpperCase()}</small>${e.title}</button>`).join("")}</div>`,
+      `<div class="admin-cal-day"><div class="admin-day-head"><b>${d}</b><button onclick="openForm('events')" title="เพิ่มงาน">+</button></div>${items.map((e) => `<button class="admin-cal-chip ${e.artistId}" onclick="openForm('events','${e.id}')"><small>${escapePageText(eventBadge(e))}</small>${e.title}</button>`).join("")}</div>`,
     );
   }
   const total = offset + days;
@@ -1464,7 +1477,7 @@ adminEventCalendar = function () {
     );
 };
 function masterAdmin() {
-  app.innerHTML = `<div class="admin"><div class="admin-shell">${adminSidebarMarkup("#home","← กลับหน้าเว็บไซต์")}<main class="admin-main"><div class="admin-top"><div><small style="color:var(--muted)">SYSTEM SETTINGS</small><h1>ตั้งค่า Master Data</h1></div></div><div class="master-grid"><section class="panel"><div class="panel-head"><div><small>EVENT CLASSIFICATION</small><h2>ประเภทงาน</h2></div><button class="btn" onclick="addMaster('types')">+ เพิ่ม Type</button></div><p class="master-note">ใช้เป็นตัวเลือกมาตรฐานในปฏิทินและ Dashboard</p>${db.masterData.types.map((x) => `<div class="master-row"><span class="master-dot ${x.id}"></span><div><b>${x.label}</b><small>${x.id}</small></div><div class="actions"><button onclick="editMaster('types','${x.id}')">✎</button><button onclick="removeMaster('types','${x.id}')">⌫</button></div></div>`).join("")}</section><section class="panel"><div class="panel-head"><div><small>SERIES LIBRARY</small><h2>รายชื่อซีรีส์</h2></div><button class="btn" onclick="addMaster('series')">+ เพิ่มซีรีส์</button></div><p class="master-note">ใช้เมื่อเลือก Type เป็น Series</p>${db.masterData.series.map((x) => `<div class="master-row"><span class="master-dot series"></span><div><b>${x.label}</b><small>${x.id}</small></div><div class="actions"><button onclick="editMaster('series','${x.id}')">✎</button><button onclick="removeMaster('series','${x.id}')">⌫</button></div></div>`).join("")}</section></div></main></div></div>`;
+  app.innerHTML = `<div class="admin"><div class="admin-shell">${adminSidebarMarkup("#home","← กลับหน้าเว็บไซต์")}<main class="admin-main"><div class="admin-top"><div><small style="color:var(--muted)">SYSTEM SETTINGS</small><h1>ตั้งค่า Master Data</h1></div></div><div class="master-grid"><section class="panel"><div class="panel-head"><div><small>EVENT CLASSIFICATION</small><h2>ประเภทงาน</h2></div><button class="btn" onclick="addMaster('types')">+ เพิ่ม Type</button></div><p class="master-note">เลือกประเภทที่นำไปนับยอด Dashboard งานที่มีหลายประเภทจะนับเพียงครั้งเดียว</p>${db.masterData.types.map((x) => `<div class="master-row master-type-row"><span class="master-dot ${x.id}"></span><div><b>${x.label}</b><small>${x.id}</small></div><label class="master-dashboard-count"><input role="switch" aria-label="นับ ${escapePageText(x.label)} ใน Dashboard" type="checkbox" data-dashboard-type="${escapePageText(x.id)}" ${dashboardTypeIncluded(x)?'checked':''} onchange="setDashboardTypeCounting(this)"><span class="master-count-track" aria-hidden="true"></span><span class="master-count-state" aria-hidden="true"></span></label><div class="actions"><button onclick="editMaster('types','${x.id}')">✎</button><button onclick="removeMaster('types','${x.id}')">⌫</button></div></div>`).join("")}</section><section class="panel"><div class="panel-head"><div><small>SERIES LIBRARY</small><h2>รายชื่อซีรีส์</h2></div><button class="btn" onclick="addMaster('series')">+ เพิ่มซีรีส์</button></div><p class="master-note">ใช้เมื่อเลือก Type เป็น Series</p>${db.masterData.series.map((x) => `<div class="master-row"><span class="master-dot series"></span><div><b>${x.label}</b><small>${x.id}</small></div><div class="actions"><button onclick="editMaster('series','${x.id}')">✎</button><button onclick="removeMaster('series','${x.id}')">⌫</button></div></div>`).join("")}</section></div></main></div></div>`;
 }
 function addMaster(group) {
   const label = prompt(group === "types" ? "ชื่อประเภทงาน" : "ชื่อซีรีส์");
@@ -1504,7 +1517,7 @@ admin = function () {
 const renderDashboardWithFilters = dashboardAdmin;
 dashboardAdmin = function () {
   renderDashboardWithFilters();
-  const counts = sortedEventTypesForSummary().map((t) => ({
+  const counts = sortedEventTypesForSummary().filter(dashboardTypeIncluded).map((t) => ({
     t,
     n: dashboardCurrentRangeItems().filter((e) => eventHasType(e, t.id)).length,
   }));
@@ -1512,7 +1525,7 @@ dashboardAdmin = function () {
     .querySelector(".dashboard-stats")
     ?.insertAdjacentHTML(
       "afterend",
-      `<section class="dash-type-summary"><div class="dash-type-summary-head"><small>EVENT TYPES</small><h2>สรุปตาม Type</h2></div><div class="dash-type-table dash-type-table-horizontal" style="--type-count:${Math.max(counts.length, 1)}"><div class="dash-type-row head">${counts.map(({ t }) => `<span><i class="master-dot ${t.id}"></i>${escapePageText(t.label)}</span>`).join("")}</div><div class="dash-type-row values">${counts.map(({ t, n }) => `<div class="type-card ${t.id}"><b>${n}</b></div>`).join("")}</div></div></section>`,
+      `<section class="dash-type-summary"><div class="dash-type-summary-head"><small>EVENT TYPES</small><h2>สรุปตาม Type</h2><p>เฉพาะประเภทที่เปิดนับใน Master · งานหลายประเภทอาจปรากฏหลายช่อง แต่ยอดรวมนับครั้งเดียว</p></div><div class="dash-type-table dash-type-table-horizontal" style="--type-count:${Math.max(counts.length, 1)}"><div class="dash-type-row head">${counts.map(({ t }) => `<span><i class="master-dot ${t.id}"></i>${escapePageText(t.label)}</span>`).join("")}</div><div class="dash-type-row values">${counts.map(({ t, n }) => `<div class="type-card ${t.id}"><b>${n}</b></div>`).join("")}</div></div></section>`,
     );
 };
 let publicTypeFilter = "all";
@@ -2908,7 +2921,7 @@ openForm = function(type,id){
   if(type !== 'events') return;
   const item = id ? db.events.find(event => event.id === id) : {};
   const selected = eventArtistIds(item);
-  if(!selected.length && !id && db.artists[0]) selected.push(db.artists[0].id);
+
   const select = document.querySelector('#modal [name="artistId"]');
   if(select){
   select.closest('.field').outerHTML = `<div class="multi-artist-picker event-artist-picker"><p>เลือกศิลปินได้มากกว่า 1</p>${sortedArtists().map(artist=>`<label><input type="checkbox" name="eventArtistIds" value="${artist.id}" ${selected.map(canonicalArtistId).includes(canonicalArtistId(artist.id))?'checked':''}><span>${escapePageText(artist.name)}</span></label>`).join('')}</div>`;
@@ -3946,7 +3959,7 @@ function updateDashboardArtistSummary(items=db.events){
 function updateDashboardTypeSummary(items=db.events){
   const section=document.querySelector('.dash-type-summary');if(!section)return;
   const cards=section.querySelectorAll('.type-card');
-  sortedEventTypesForSummary().forEach((type,index)=>{
+  sortedEventTypesForSummary().filter(dashboardTypeIncluded).forEach((type,index)=>{
     const card=cards[index];if(!card)return;
     const count=items.filter(event=>eventHasType(event,type.id)).length;
     const value=card.querySelector('b');if(value)value.textContent=count;
@@ -3957,7 +3970,7 @@ function dashboardCurrentRangeItems(){
   const start=`${dashYearFrom}-${String(dashMonthFrom).padStart(2,'0')}-01`,
     endDate=new Date(dashYearTo,dashMonthTo,0),
     end=`${dashYearTo}-${String(dashMonthTo).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}`;
-  return db.events.filter(e=>e.date>=start&&e.date<=end);
+  return db.events.filter(e=>dashboardEventIncluded(e)&&e.date>=start&&e.date<=end);
 }
 dashboardAdmin=function(){dashboardAdminBeforeDynamicArtistSummary();const items=dashboardCurrentRangeItems();updateDashboardArtistSummary(items);updateDashboardTypeSummary(items);};
 const applyDashboardRangeBeforeDynamicArtistSummary=applyDashboardRange;
@@ -5154,7 +5167,7 @@ function openAdminEventForDate(date){
 }
 function openAdminEventDetail(id){
   const event=db.events.find(item=>item.id===id);if(!event)return;
-  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal planner-event-modal"><div class="modal-head"><div><small>${escapePageText(eventBadge(event))} · ${escapePageText(event.type||'EVENT')}</small><h2>${escapePageText(event.title||'ไม่ระบุชื่องาน')}</h2></div><button class="close" onclick="closeModal()" aria-label="ปิด">×</button></div><dl class="planner-event-facts"><div><dt>วันที่</dt><dd>${escapePageText(fmtDate(event.date))}</dd></div><div><dt>เวลา / สถานที่</dt><dd>${escapePageText(event.time||event.place||'ยังไม่ระบุ')}</dd></div>${event.source?`<div><dt>ข้อมูลต้นทาง</dt><dd><a href="${escapePageText(event.source)}" target="_blank" rel="noopener">เปิดลิงก์ข้อมูล</a></dd></div>`:''}</dl><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal();openForm('events','${event.id}')">แก้ไขข้อมูล</button><button type="button" class="btn" onclick="closeModal()">ปิด</button></div></div></div>`);
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal planner-event-modal"><div class="modal-head"><div><small>${escapePageText(eventBadge(event))} · ${escapePageText(event.type||'EVENT')}</small><h2>${escapePageText(event.title||'ไม่ระบุชื่องาน')}</h2></div><button class="close" onclick="closeModal()" aria-label="ปิด">×</button></div><dl class="planner-event-facts"><div><dt>วันที่</dt><dd>${escapePageText(fmtDate(event.date))}</dd></div><div><dt>เวลา | สถานที่</dt><dd>${escapePageText(event.place||'')}</dd></div>${event.source?`<div><dt>ข้อมูลต้นทาง</dt><dd><a href="${escapePageText(event.source)}" target="_blank" rel="noopener">เปิดลิงก์ข้อมูล</a></dd></div>`:''}</dl><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal();openForm('events','${event.id}')">แก้ไขข้อมูล</button><button type="button" class="btn" onclick="closeModal()">ปิด</button></div></div></div>`);
 }
 
 function adminCalendarWorkspace(){
@@ -5182,8 +5195,8 @@ function adminCalendarWorkspace(){
     const items=visible.filter(event=>event.date===key).slice(0,3),outside=cellDate.getMonth()!==monthNumber-1;
     cells.push(`<button class="admin-planner-day ${outside?'outside':''} ${key===todayKey?'today':''} ${key===adminSelectedDate?'selected':''}" onclick="selectAdminCalendarDate('${key}')"><span class="planner-date">${cellDate.getDate()}</span><span class="planner-events">${items.map(event=>{const artistId=eventPrimaryArtistId(event),artistIndex=Math.max(0,artists.findIndex(a=>sameArtistId(a.id,artistId)));return `<span class="planner-event" style="--event-color:${artistDisplayColor(artistId,artistIndex)}"><b>${escapePageText(event.title)}</b></span>`}).join('')}${visible.filter(event=>event.date===key).length>3?`<small>+${visible.filter(event=>event.date===key).length-3} งาน</small>`:''}</span></button>`);
   }
-  const eventCard=event=>{const artistId=eventPrimaryArtistId(event),artistIndex=Math.max(0,artists.findIndex(a=>sameArtistId(a.id,artistId)));return `<article class="planner-detail-card" style="--event-color:${artistDisplayColor(artistId,artistIndex)}"><div class="planner-event-meta"><span><i></i>${escapePageText(eventBadge(event))}</span><small>${escapePageText(event.type||'EVENT')}</small></div><h3>${escapePageText(event.title)}</h3><p>${escapePageText(event.time||'ยังไม่ระบุเวลา')}${event.place?` · ${escapePageText(event.place)}`:''}</p><div class="planner-card-actions"><button onclick="openForm('events','${event.id}')" aria-label="แก้ไข ${escapePageText(event.title)}">${adminCalendarIcon('edit')}</button><button class="planner-delete-event" onclick="removeItem('events','${event.id}')" aria-label="ลบ ${escapePageText(event.title)}" title="ลบงานนี้">${adminCalendarIcon('trash')}</button></div></article>`};
-  return `<div class="admin"><div class="admin-shell">${adminSidebarMarkup('#schedule','← ดูปฏิทินหน้าบ้าน')}<main class="admin-main admin-calendar-main"><header class="calendar-management-head"><div><h1>CALENDAR MANAGEMENT</h1><p>วางแผนและจัดการตารางงานทั้งหมดในที่เดียว</p></div><div class="calendar-head-actions"><button class="btn outline" onclick="openBulkEventForm()">${adminCalendarIcon('sheet')} วางตารางงานจาก Excel</button><button class="btn calendar-add" onclick="openAdminEventForDate('${adminSelectedDate}')">${adminCalendarIcon('plus')} เพิ่มงานใหม่</button></div></header><section class="calendar-planner-shell"><div class="calendar-planner-main"><div class="planner-toolbar"><div class="planner-navigation"><button onclick="changeAdminMonth(-1)" aria-label="เดือนก่อนหน้า">${adminCalendarIcon('left')}</button><button onclick="changeAdminMonth(1)" aria-label="เดือนถัดไป">${adminCalendarIcon('right')}</button><button class="planner-today" onclick="goToAdminCalendarToday()">วันนี้</button></div><h2>${escapePageText(monthLabel)}</h2><div class="planner-tools"><label class="planner-month-picker">${adminCalendarIcon('calendar')}<span>เลือกเดือนและปี</span><input type="month" value="${adminMonth}" onchange="setAdminCalendarMonth(this.value)" aria-label="เลือกเดือนและปี"></label><select onchange="adminTypeFilter=this.value;admin()" aria-label="กรองประเภทงาน"><option value="all">ทุกประเภท</option>${db.masterData.types.map(type=>`<option value="${type.id}" ${adminTypeFilter===type.id?'selected':''}>${escapePageText(type.label)}</option>`).join('')}</select></div></div><div class="planner-filters">${filters}<span>${monthEvents.length} งานในเดือนนี้</span></div><div class="admin-planner-grid"><div class="planner-weekdays">${['จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'].map(day=>`<span>${day}</span>`).join('')}</div><div class="planner-days">${cells.join('')}</div></div></div><aside class="calendar-day-rail"><header><div><h2>${escapePageText(selectedDay)}</h2><p>${escapePageText(selectedWeekday)}</p></div><button onclick="openAdminEventForDate('${adminSelectedDate}')" aria-label="เพิ่มงานในวันนี้">${adminCalendarIcon('plus')}</button></header><section class="day-rail-section"><div class="day-rail-label"><strong>งานในวันนี้</strong><span>${selectedEvents.length}</span></div>${selectedEvents.map(eventCard).join('')||`<div class="planner-empty">ยังไม่มีงานในวันนี้<br><button onclick="openAdminEventForDate('${adminSelectedDate}')">+ เพิ่มงาน</button></div>`}</section><section class="day-rail-section upcoming"><div class="day-rail-label"><strong>งานถัดไป</strong></div>${upcoming.map(event=>`<button class="planner-upcoming" onclick="openAdminEventDetail('${event.id}')"><time><b>${day(event.date)}</b><span>${month(event.date)}</span></time><i style="--event-color:${artistDisplayColor(eventPrimaryArtistId(event),0)}"></i><span><strong>${escapePageText(event.title)}</strong><small>${escapePageText(event.time||event.place||'ยังไม่ระบุเวลา')}</small></span>${adminCalendarIcon('right')}</button>`).join('')||'<div class="planner-empty compact">ยังไม่มีงานถัดไป</div>'}</section></aside></section></main></div></div>`;
+  const eventCard=event=>{const artistId=eventPrimaryArtistId(event),artistIndex=Math.max(0,artists.findIndex(a=>sameArtistId(a.id,artistId)));return `<article class="planner-detail-card" style="--event-color:${artistDisplayColor(artistId,artistIndex)}"><div class="planner-event-meta"><span><i></i>${escapePageText(eventBadge(event))}</span><small>${escapePageText(event.type||'EVENT')}</small></div><h3>${escapePageText(event.title)}</h3><p>${escapePageText(event.place||'')}</p><div class="planner-card-actions"><button onclick="openForm('events','${event.id}')" aria-label="แก้ไข ${escapePageText(event.title)}">${adminCalendarIcon('edit')}</button><button class="planner-delete-event" onclick="removeItem('events','${event.id}')" aria-label="ลบ ${escapePageText(event.title)}" title="ลบงานนี้">${adminCalendarIcon('trash')}</button></div></article>`};
+  return `<div class="admin"><div class="admin-shell">${adminSidebarMarkup('#schedule','← ดูปฏิทินหน้าบ้าน')}<main class="admin-main admin-calendar-main"><header class="calendar-management-head"><div><h1>CALENDAR MANAGEMENT</h1><p>วางแผนและจัดการตารางงานทั้งหมดในที่เดียว</p></div><div class="calendar-head-actions"><button class="btn outline" onclick="openBulkEventForm()">${adminCalendarIcon('sheet')} วางตารางงานจาก Excel</button><button class="btn calendar-add" onclick="openAdminEventForDate('${adminSelectedDate}')">${adminCalendarIcon('plus')} เพิ่มงานใหม่</button></div></header><section class="calendar-planner-shell"><div class="calendar-planner-main"><div class="planner-toolbar"><div class="planner-navigation"><button onclick="changeAdminMonth(-1)" aria-label="เดือนก่อนหน้า">${adminCalendarIcon('left')}</button><button onclick="changeAdminMonth(1)" aria-label="เดือนถัดไป">${adminCalendarIcon('right')}</button><button class="planner-today" onclick="goToAdminCalendarToday()">วันนี้</button></div><h2>${escapePageText(monthLabel)}</h2><div class="planner-tools"><label class="planner-month-picker">${adminCalendarIcon('calendar')}<span>เลือกเดือนและปี</span><input type="month" value="${adminMonth}" onchange="setAdminCalendarMonth(this.value)" aria-label="เลือกเดือนและปี"></label><select onchange="adminTypeFilter=this.value;admin()" aria-label="กรองประเภทงาน"><option value="all">ทุกประเภท</option>${db.masterData.types.map(type=>`<option value="${type.id}" ${adminTypeFilter===type.id?'selected':''}>${escapePageText(type.label)}</option>`).join('')}</select></div></div><div class="planner-filters">${filters}<span>${monthEvents.length} งานในเดือนนี้</span></div><div class="admin-planner-grid"><div class="planner-weekdays">${['จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'].map(day=>`<span>${day}</span>`).join('')}</div><div class="planner-days">${cells.join('')}</div></div></div><aside class="calendar-day-rail"><header><div><h2>${escapePageText(selectedDay)}</h2><p>${escapePageText(selectedWeekday)}</p></div><button onclick="openAdminEventForDate('${adminSelectedDate}')" aria-label="เพิ่มงานในวันนี้">${adminCalendarIcon('plus')}</button></header><section class="day-rail-section"><div class="day-rail-label"><strong>งานในวันนี้</strong><span>${selectedEvents.length}</span></div>${selectedEvents.map(eventCard).join('')||`<div class="planner-empty">ยังไม่มีงานในวันนี้<br><button onclick="openAdminEventForDate('${adminSelectedDate}')">+ เพิ่มงาน</button></div>`}</section><section class="day-rail-section upcoming"><div class="day-rail-label"><strong>งานถัดไป</strong></div>${upcoming.map(event=>`<button class="planner-upcoming" onclick="openAdminEventDetail('${event.id}')"><time><b>${day(event.date)}</b><span>${month(event.date)}</span></time><i style="--event-color:${artistDisplayColor(eventPrimaryArtistId(event),0)}"></i><span><strong>${escapePageText(event.title)}</strong><small>${escapePageText(event.place||'')}</small></span>${adminCalendarIcon('right')}</button>`).join('')||'<div class="planner-empty compact">ยังไม่มีงานถัดไป</div>'}</section></aside></section></main></div></div>`;
 }
 
 adminEventCalendar=function(){
@@ -5194,4 +5207,16 @@ adminEventCalendar=function(){
     console.error('Calendar management failed to render',error);
     app.innerHTML=`<div class="admin"><div class="admin-shell">${adminSidebarMarkup('#schedule','← ดูปฏิทินหน้าบ้าน')}<main class="admin-main admin-calendar-main"><section class="calendar-render-error"><h1>เปิดปฏิทินไม่สำเร็จ</h1><p>${escapePageText(error?.message||'ข้อมูลปฏิทินไม่อยู่ในรูปแบบที่รองรับ')}</p><button class="btn" onclick="adminEventFilter='all';adminTypeFilter='all';adminCalendarQuery='';admin()">ลองใหม่โดยล้างตัวกรอง</button></section></main></div></div>`;
   }
+};
+
+const openScheduleFormBeforeFieldLayout = openForm;
+openForm = function(type,id){
+ openScheduleFormBeforeFieldLayout(type,id);
+ if(type!=='events')return;
+ const form=document.querySelector('#modal form');if(!form)return;
+ const source=form.querySelector('[name="source"]')?.closest('.field');
+ const types=form.querySelector('[data-event-type-picker]')?.closest('.field');
+ if(source){source.classList.add('full');source.style.gridColumn='1 / -1';if(types){types.classList.add('full');types.style.gridColumn='1 / -1';source.after(types);}}
+ const place=form.querySelector('[name="place"]');if(place){place.required=false;place.placeholder='เช่น 18:00 | Siam Paragon';}
+ if(!id)form.querySelectorAll('[name="eventArtistIds"]').forEach(input=>input.checked=false);
 };

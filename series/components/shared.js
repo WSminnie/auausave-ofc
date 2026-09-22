@@ -6,6 +6,11 @@
     : C.e(part)).join('');
   C.date = value => value ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${value}T12:00:00`)) : '';
   C.text = value => value ? `<p class="series-copy">${C.e(value)}</p>` : '';
+  C.statusBadge = value => {
+    const statuses = { 'ON AIR': ['ON AIR', 'is-on-air'], UPCOMING: ['UPCOMING', 'is-upcoming'], COMPLETED: ['END', 'is-ended'] };
+    const status = statuses[value];
+    return status ? `<span class="series-status ${status[1]}">${status[0]}</span>` : C.badge(value);
+  };
   C.badge = value => value ? `<span class="series-status">${C.e(value)}</span>` : '';
   C.image = (url, title, hero = false) => {
     const safe = validTimelineUrl(url);
