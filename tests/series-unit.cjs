@@ -221,3 +221,11 @@ test('menu preference persists, rolls back on failure, and rejects unauthenticat
   await assert.rejects(ctx.SeriesFeature.admin.setMenuVisible(false));
   assert.equal(Object.hasOwn(ctx.db.siteSettings, 'seriesMenuVisible'), false);
 });
+
+test('related content sorts newest first across categories and places undated items last', () => {
+  const {SeriesFeature:S}=setup(['series/components/shared.js','series/components/related-content.js']);
+  const item={appearances:[{id:'old',date:'2026-01-01',display_order:0}],media:[{id:'undated',date:null},{id:'latest',date:'2026-09-23',display_order:99}],moments:[{id:'middle',date:'2026-05-01'}]};
+  const before=JSON.stringify(item);
+  assert.deepEqual(Array.from(S.components.relatedRows(item),row=>row.id),['latest','middle','old','undated']);
+  assert.equal(JSON.stringify(item),before);
+});

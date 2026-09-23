@@ -6,7 +6,7 @@
     ...(item.appearances || []).map(row => ({ ...row, category: row.type || 'Appearance', url: row.official_url })),
     ...(item.media || []).map(row => ({ ...row, category: row.type || 'Media', url: row.official_url })),
     ...(item.moments || []).map(row => ({ ...row, category: 'Moment', thumbnail_url: row.image_url, url: row.related_url }))
-  ];
+  ].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
   C.related = item => {
     const rows = C.relatedRows(item);
     if (!rows.length) return '';
