@@ -43,6 +43,7 @@
           // Only direct fields belong to the parent; repeatable rows remain relational.
           const fields = form.querySelector('.series-editor-fields > .form-grid');
           const record = { id: recordId, visible: Boolean(item.visible), display_order: item.display_order ?? null };
+          if (kind === 'episodes') record.status = item.status || 'UPCOMING';
           if (kind === 'series') record.cover_url = item.cover_url || null;
           fields.querySelectorAll('[name]').forEach(input => {
             if (input.type === 'file') return;
