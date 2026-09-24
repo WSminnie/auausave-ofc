@@ -229,3 +229,17 @@ test('related content sorts newest first across categories and places undated it
   assert.deepEqual(Array.from(S.components.relatedRows(item),row=>row.id),['latest','middle','old','undated']);
   assert.equal(JSON.stringify(item),before);
 });
+
+test('related filters position new media types and select OST by default',()=>{
+ const {SeriesFeature:S}=setup(['series/components/shared.js','series/components/related-content.js']);
+ assert.ok(S.types.media.types.includes('REACTION'));assert.ok(S.types.media.types.includes('PILOT'));
+ const html=S.components.related({media:['REACTION','PILOT','OST','BTS','TEASER'].map(type=>({type}))});
+ const filters=Array.from(html.matchAll(/data-related-filter="([^"]*)"/g),m=>m[1]);
+ assert.equal(filters[filters.indexOf('BTS')+1],'REACTION');assert.equal(filters[filters.indexOf('TEASER')+1],'PILOT');
+ assert.ok(html.includes('data-related-filter="OST" aria-pressed="true"'));
+ assert.ok(html.includes('data-related-category="REACTION" hidden'));
+ assert.ok(!html.includes('data-related-category="OST" hidden'));
+ const noOst=S.components.related({media:[{type:'BTS'},{type:'PILOT'}]});
+ assert.ok(noOst.includes('data-related-filter="" aria-pressed="true"'));
+ assert.ok(!noOst.includes(' hidden'));
+});

@@ -6,7 +6,7 @@ window.SeriesFeature = { components: {}, forms: {} };
     series: { table: 'series_archives', singular: 'Series', label: 'Series', statuses: ['UPCOMING', 'ON AIR', 'COMPLETED'] },
     episodes: { table: 'series_episodes', singular: 'Episode', label: 'Episodes', statuses: ['UPCOMING', 'AVAILABLE'] },
     appearances: { table: 'series_appearances', singular: 'Appearance', label: 'Appearances', types: ['INTERVIEW', 'TV', 'RADIO', 'LIVE', 'PRESS', 'EVENT', 'OTHER'] },
-    media: { table: 'series_media', singular: 'Media', label: 'Media', types: ['TRAILER', 'TEASER', 'OST', 'MV', 'BTS', 'SPECIAL', 'POSTER', 'OTHER'] },
+    media: { table: 'series_media', singular: 'Media', label: 'Media', types: ['TRAILER', 'TEASER', 'PILOT', 'OST', 'MV', 'BTS', 'REACTION', 'SPECIAL', 'POSTER', 'OTHER'] },
     moments: { table: 'series_moments', singular: 'Moment', label: 'Moments' }
   };
   S.linkTypes = ['WATCH', 'OFFICIAL POST', 'TRAILER', 'TEASER', 'OTHER'];
