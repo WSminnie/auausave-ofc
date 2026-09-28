@@ -5,7 +5,7 @@
     const english = /[a-z]/i.test(name);
     const slug = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const channels = normalizeBroadcasts(master.broadcasts);
-    const describe = row => [row.channel, row.time, row.mode === 'online_uncut' ? 'UNCUT' : ''].filter(Boolean).join(' · ');
+    const describe = row => [row.channel, formatBroadcastTime(row.time), row.mode === 'online_uncut' ? 'UNCUT' : ''].filter(Boolean).join(' · ');
     return {
       title_en: english ? name : '',
       title_th: english ? '' : name,

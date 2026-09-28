@@ -94,12 +94,12 @@ test('image crop presets match Series display aspect ratios', () => {
 test('Master defaults use existing broadcast normalization and preserve manual edits', () => {
   const ctx = setup(['series/admin/master-data.js']);
   const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
-  vm.runInContext(app.slice(app.indexOf('function normalizeBroadcasts('), app.indexOf('function seriesBroadcastRow(')), ctx);
+  vm.runInContext(app.slice(app.indexOf('function formatBroadcastTime('), app.indexOf('function seriesBroadcastRow(')), ctx);
   const master = { id: 'sample', label: 'Sample Series', broadcasts: [{channel:'TV',time:'22:30',mode:'live'}, {channel:'Stream',time:'23:30',mode:'online_uncut'}] };
   const values = ctx.SeriesFeature.master.defaults(master);
   assert.equal(values.slug, 'sample-series');
-  assert.equal(values.broadcast_info, 'TV · 22:30');
-  assert.equal(values.streaming_info, 'Stream · 23:30 · UNCUT');
+  assert.equal(values.broadcast_info, 'TV · 10:30 PM');
+  assert.equal(values.streaming_info, 'Stream · 11:30 PM · UNCUT');
   assert.equal(ctx.SeriesFeature.master.defaults({id:'thai_name',label:'ชื่อไทย'}).title_th, 'ชื่อไทย');
   assert.equal(ctx.SeriesFeature.master.defaults({id:'thai_name',label:'ชื่อไทย'}).slug, 'thai-name');
   let change;

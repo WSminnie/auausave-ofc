@@ -4642,7 +4642,7 @@ ensureHomePageSettings();
 function unifiedHomeScheduleMeta(event) {
   if (isSeriesBroadcast(event)) {
     return normalizeBroadcasts(event.broadcasts)
-      .map(row => `${row.mode==='online_uncut'?'UNCUT':'ON AIR'} - ${row.channel} · ${row.time}`)
+      .map(row => `${row.mode==='online_uncut'?'UNCUT':'ON AIR'} - ${row.channel} · ${formatBroadcastTime(row.time)}`)
       .join(' / ');
   }
   return String(event.place || '').trim();
@@ -5023,16 +5023,26 @@ function ensureSeriesBroadcastData(){
   (db.events||[]).forEach(event=>{if(event.scheduleType==='series_broadcast'&&!Array.isArray(event.broadcasts))event.broadcasts=[]});
 }
 function isSeriesBroadcast(event){return event?.scheduleType==='series_broadcast'||eventHasType(event,'series_broadcast')}
+function formatBroadcastTime(value){
+ const match=String(value||'').match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+ if(!match)return String(value||'');
+ const hour=Number(match[1]);return (hour%12||12)+':'+match[2]+' '+(hour>=12?'PM':'AM');
+}
+function parseBroadcastTime(value){
+ const text=String(value||'').trim();if(/^([01]\d|2[0-3]):[0-5]\d$/.test(text))return text;
+ const match=text.match(/^(0?[1-9]|1[0-2]):([0-5]\d)\s*(AM|PM)$/i);if(!match)return '';
+ return String(Number(match[1])%12+(match[3].toUpperCase()==='PM'?12:0)).padStart(2,'0')+':'+match[2];
+}
 function normalizeBroadcasts(items){
   return (Array.isArray(items)?items:[]).map(item=>{const label=String(item?.label||'').trim(),mode=item?.mode==='online_uncut'||/uncut/i.test(label)?'online_uncut':'live';return {channel:String(item?.channel||'').trim(),time:String(item?.time||'').trim(),mode,label:mode==='online_uncut'?'UNCUT':'',watchUrl:String(item?.watchUrl||'').trim()}}).filter(item=>item.channel||item.time||item.watchUrl);
 }
 function seriesBroadcastRow(item={}){
   const broadcast=normalizeBroadcasts([item])[0]||{mode:'live'};
-  return `<article class="series-broadcast-row"><div class="field series-broadcast-type-field"><label>รูปแบบ</label><select data-broadcast-mode required><option value="live" ${broadcast.mode==='live'?'selected':''}>ON AIR</option><option value="online_uncut" ${broadcast.mode==='online_uncut'?'selected':''}>ONLINE UNCUT</option></select></div><div class="field series-broadcast-channel-field"><label>Channel / Platform</label><input data-broadcast-channel value="${escapePageText(item.channel||'')}" placeholder="ONE31 หรือ iQIYI / iQ.com" required></div><div class="field series-broadcast-time-field"><label>Time</label><input data-broadcast-time type="time" value="${escapePageText(item.time||'')}" required></div><button type="button" class="series-broadcast-remove" onclick="removeSeriesBroadcastRow(this)" aria-label="ลบช่องทางออกอากาศ">ลบ</button><div class="field series-broadcast-url-field"><label>Watch URL <small>ไม่บังคับ</small></label><input data-broadcast-url type="url" value="${escapePageText(item.watchUrl||'')}" placeholder="https://..."></div></article>`;
+  return `<article class="series-broadcast-row"><div class="field series-broadcast-type-field"><label>รูปแบบ</label><select data-broadcast-mode required><option value="live" ${broadcast.mode==='live'?'selected':''}>ON AIR</option><option value="online_uncut" ${broadcast.mode==='online_uncut'?'selected':''}>ONLINE UNCUT</option></select></div><div class="field series-broadcast-channel-field"><label>Channel / Platform</label><input data-broadcast-channel value="${escapePageText(item.channel||'')}" placeholder="ONE31 หรือ iQIYI / iQ.com" required></div><div class="field series-broadcast-time-field"><label>Time</label><input data-broadcast-time type="text" value="${escapePageText(formatBroadcastTime(item.time))}" placeholder="10:30 PM" aria-label="Time (AM/PM)" pattern="(0?[1-9]|1[0-2]):[0-5][0-9] +([Aa][Mm]|[Pp][Mm])" required></div><button type="button" class="series-broadcast-remove" onclick="removeSeriesBroadcastRow(this)" aria-label="ลบช่องทางออกอากาศ">ลบ</button><div class="field series-broadcast-url-field"><label>Watch URL <small>ไม่บังคับ</small></label><input data-broadcast-url type="url" value="${escapePageText(item.watchUrl||'')}" placeholder="https://..."></div></article>`;
 }
 function addSeriesBroadcastRow(button,item={}){button.closest('[data-broadcast-editor]')?.querySelector('[data-broadcast-list]')?.insertAdjacentHTML('beforeend',seriesBroadcastRow(item))}
 function removeSeriesBroadcastRow(button){button.closest('.series-broadcast-row')?.remove()}
-function broadcastsFromEditor(root){return normalizeBroadcasts([...root.querySelectorAll('.series-broadcast-row')].map(row=>{const mode=row.querySelector('[data-broadcast-mode]')?.value||'live';return {channel:row.querySelector('[data-broadcast-channel]')?.value,time:row.querySelector('[data-broadcast-time]')?.value,mode,label:mode==='online_uncut'?'UNCUT':'',watchUrl:row.querySelector('[data-broadcast-url]')?.value}}))}
+function broadcastsFromEditor(root){return normalizeBroadcasts([...root.querySelectorAll('.series-broadcast-row')].map(row=>{const mode=row.querySelector('[data-broadcast-mode]')?.value||'live';return {channel:row.querySelector('[data-broadcast-channel]')?.value,time:parseBroadcastTime(row.querySelector('[data-broadcast-time]')?.value),mode,label:mode==='online_uncut'?'UNCUT':'',watchUrl:row.querySelector('[data-broadcast-url]')?.value}}))}
 function validateBroadcasts(items){
   if(!items.length)return 'กรุณาเพิ่มช่องทางออกอากาศอย่างน้อย 1 รายการ';
   if(items.some(item=>!item.channel||!/^([01]\d|2[0-3]):[0-5]\d$/.test(item.time)))return 'กรุณากรอก Channel และ Time ให้ครบ';
@@ -5098,7 +5108,7 @@ submitForm=function(event,type,id){
 
 function seriesBroadcastTitle(event){const series=db.masterData.series.find(item=>item.id===event.seriesId),name=String(series?.label||event.title||'Series').replace(/\s*Series\s*$/i,'').trim();return `${name.toUpperCase()} · EP.${Number(event.episode)||'—'}`}
 function seriesBroadcastModeLabel(row){return row.mode==='online_uncut'?'ONLINE UNCUT':'ON AIR'}
-function seriesBroadcastCompact(event){const rows=normalizeBroadcasts(event.broadcasts),first=rows[0];return first?`<small>${escapePageText(first.time)} · ${escapePageText(first.channel)} · ${escapePageText(seriesBroadcastModeLabel(first))}</small>${rows.length>1?`<small>+${rows.length-1} ช่องทาง</small>`:''}`:'<small>ยังไม่ระบุช่องทาง</small>'}
+function seriesBroadcastCompact(event){const rows=normalizeBroadcasts(event.broadcasts),first=rows[0];return first?`<small>${escapePageText(formatBroadcastTime(first.time))} · ${escapePageText(first.channel)} · ${escapePageText(seriesBroadcastModeLabel(first))}</small>${rows.length>1?`<small>+${rows.length-1} ช่องทาง</small>`:''}`:'<small>ยังไม่ระบุช่องทาง</small>'}
 const eventBadgeBeforeSeriesBroadcast=eventBadge;
 eventBadge=function(event){return isSeriesBroadcast(event)?'SERIES':eventBadgeBeforeSeriesBroadcast(event)};
 const calendarEventColorBeforeSeriesBroadcast=calendarEventColor;
@@ -5113,7 +5123,7 @@ calendarPage=function(){
 const showEventBeforeSeriesBroadcast=showEvent;
 showEvent=function(id){
   const event=db.events.find(item=>item.id===id);if(!isSeriesBroadcast(event)){showEventBeforeSeriesBroadcast(id);return}const series=db.masterData.series.find(item=>item.id===event.seriesId),dateLabel=new Intl.DateTimeFormat('en-US',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(`${event.date}T00:00:00`)),rows=normalizeBroadcasts(event.broadcasts);
-  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal event-modal series-broadcast-detail"><div class="modal-head"><div><small>SERIES · ON AIR</small><h2>${escapePageText(series?.label||'Series')}</h2></div><button class="close" onclick="closeModal()">×</button></div><strong class="series-episode">EP.${Number(event.episode)||'—'}</strong><p class="series-air-date">${escapePageText(dateLabel)}</p>${eventParticipationCopy(event)}<div class="series-on-air"><span>ช่องทางรับชม</span>${rows.map(row=>`<article><div>${row.watchUrl?`<a class="series-channel-link" href="${escapePageText(row.watchUrl)}" target="_blank" rel="noopener noreferrer">${escapePageText(row.channel)}</a>`:`<strong>${escapePageText(row.channel)}</strong>`}<small>${escapePageText(seriesBroadcastModeLabel(row))}</small></div><time>${escapePageText(row.time)}</time></article>`).join('')||'<div class="empty">ยังไม่ระบุช่องทางออกอากาศ</div>'}</div></div></div>`);
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal event-modal series-broadcast-detail"><div class="modal-head"><div><small>SERIES · ON AIR</small><h2>${escapePageText(series?.label||'Series')}</h2></div><button class="close" onclick="closeModal()">×</button></div><strong class="series-episode">EP.${Number(event.episode)||'—'}</strong><p class="series-air-date">${escapePageText(dateLabel)}</p>${eventParticipationCopy(event)}<div class="series-on-air"><span>ช่องทางรับชม</span>${rows.map(row=>`<article><div>${row.watchUrl?`<a class="series-channel-link" href="${escapePageText(row.watchUrl)}" target="_blank" rel="noopener noreferrer">${escapePageText(row.channel)}</a>`:`<strong>${escapePageText(row.channel)}</strong>`}<small>${escapePageText(seriesBroadcastModeLabel(row))}</small></div><time>${escapePageText(formatBroadcastTime(row.time))}</time></article>`).join('')||'<div class="empty">ยังไม่ระบุช่องทางออกอากาศ</div>'}</div></div></div>`);
 };
 const openAdminEventDetailBeforeSeriesBroadcast=openAdminEventDetail;
 openAdminEventDetail=function(id){const event=db.events.find(item=>item.id===id);if(isSeriesBroadcast(event))showEvent(id);else openAdminEventDetailBeforeSeriesBroadcast(id)};
