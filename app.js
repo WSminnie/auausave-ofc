@@ -2906,7 +2906,7 @@ rowCells = function(type,x){
 };
 const scheduleRowsBeforeDynamicEventArtists = scheduleRows;
 scheduleRows = function(items = db.events){
-  return items.length ? orderedEvents(items).map(e=>`<div class="schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div><h3>${escapePageText(e.title)}</h3><p>${escapePageText(eventArtistNames(e))} · ${escapePageText(e.place||'')}</p>${eventParticipationCopy(e)}</div><span class="event-type">${escapePageText(e.type||'')}</span>${e.source ? `<a class="round-arrow" href="${escapePageText(e.source)}" target="_blank" title="ดูต้นทาง">ดูต้นทาง</a>` : "<span></span>"}</div>`).join("") : `<div class="empty">ยังไม่มีข้อมูลในขณะนี้</div>`;
+  return items.length ? orderedEvents(items).map(e=>`<div class="schedule-row artist-schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div class="artist-schedule-copy"><h3>${escapePageText(e.title)}</h3><p>${escapePageText(eventArtistNames(e))} · ${escapePageText(e.place||'')}</p>${eventParticipationCopy(e)}<div class="artist-schedule-links"><span class="artist-schedule-type">${escapePageText(e.type||'')}</span>${e.source ? `<a class="artist-schedule-source" href="${escapePageText(e.source)}" target="_blank" rel="noopener noreferrer">View source</a>` : ""}</div></div></div>`).join("") : `<div class="empty">ยังไม่มีข้อมูลในขณะนี้</div>`;
 };
 function eventBadge(item){
   return eventArtistIds(item).map(id => sameArtistId(id,'duo') ? '#AUAUSAVE' : artistName(id)).join(' · ') || 'ไม่ระบุ';
