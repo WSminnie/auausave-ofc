@@ -37,6 +37,8 @@ alter table public.events add column if not exists artist_ids text[] not null de
 alter table public.events add column if not exists schedule_type text;
 alter table public.events add column if not exists episode integer;
 alter table public.events add column if not exists broadcasts jsonb not null default '[]'::jsonb;
+alter table public.events add column if not exists participation jsonb not null default '{}'::jsonb;
+alter table public.events add column if not exists event_status text not null default 'scheduled' check (event_status in ('scheduled','postponed','canceled'));
 update public.events set artist_ids = array[artist_id] where cardinality(artist_ids) = 0 and artist_id is not null;
 create index if not exists events_date_idx on public.events(event_date);
 create index if not exists events_artist_idx on public.events(artist_id);
@@ -197,3 +199,5 @@ drop policy if exists "Admin media update" on storage.objects;
 create policy "Admin media update" on storage.objects for update to authenticated using (bucket_id='media');
 drop policy if exists "Admin media delete" on storage.objects;
 create policy "Admin media delete" on storage.objects for delete to authenticated using (bucket_id='media');
+
+alter table public.events add column if not exists status_source_url text;

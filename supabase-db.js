@@ -87,7 +87,7 @@
   };
   const mapFromDb = {
     artists: r => ({ id:r.id,name:r.nickname ?? r.name,realName:r.name_TH ?? r.real_name,nameEN:r.name_EN||'',role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image:r.image_url,socialLinks:Array.isArray(r.social_links)?r.social_links:[] }),
-    events: r => ({ id:r.id,artistId:r.artist_id||'',artistIds:Array.isArray(r.artist_ids)&&r.artist_ids.length?r.artist_ids:[r.artist_id].filter(Boolean),date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'',scheduleType:r.schedule_type||'',episode:r.episode??null,broadcasts:Array.isArray(r.broadcasts)?r.broadcasts:[] }),
+    events: r => ({ id:r.id,artistId:r.artist_id||'',artistIds:Array.isArray(r.artist_ids)&&r.artist_ids.length?r.artist_ids:[r.artist_id].filter(Boolean),eventStatus:r.event_status||'scheduled',statusSource:r.status_source_url||'',date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'',scheduleType:r.schedule_type||'',episode:r.episode??null,broadcasts:Array.isArray(r.broadcasts)?r.broadcasts:[],participation:r.participation&&typeof r.participation==='object'&&!Array.isArray(r.participation)?r.participation:{} }),
     award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parentId:r.parent_id||'',displayOrder:Number(r.display_order)||0,active:r.active!==false }),
     awards: r => ({ id:r.id,artistId:r.artist_id,year:String(r.award_year||''),day:String(r.award_day||''),month:String(r.award_month||''),title:r.title,org:r.organization,source:r.source_url||'',image:r.image_url||'',mainSectionId:r.main_section_id||'',subsectionId:r.subsection_id||'',displayOrder:Number(r.display_order)||0 }),
     award_section_assignments: r => ({ id:r.id,awardId:r.award_id,mainSectionId:r.main_section_id,subsectionId:r.subsection_id||'',displayOrder:Number(r.display_order)||0 }),
@@ -96,7 +96,7 @@
   };
   const mapToDb = {
     artists: r => ({ id:r.id,nickname:r.name,name_TH:r.realName||null,name_EN:r.nameEN||null,role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image_url:r.image||null,social_links:Array.isArray(r.socialLinks)?r.socialLinks:[] }),
-    events: r => ({ id:r.id,artist_id:r.artistId||null,artist_ids:Array.isArray(r.artistIds)&&r.artistIds.length?[...new Set(r.artistIds.map(String))]:[r.artistId].filter(Boolean),event_date:r.date,title:r.title,place:r.place||null,event_type:r.type,series_id:r.seriesId||null,source_url:r.source||null,schedule_type:r.scheduleType||null,episode:r.episode==null?null:Number(r.episode),broadcasts:Array.isArray(r.broadcasts)?r.broadcasts:[] }),
+    events: r => ({ id:r.id,artist_id:r.artistId||null,artist_ids:Array.isArray(r.artistIds)&&r.artistIds.length?[...new Set(r.artistIds.map(String))]:[r.artistId].filter(Boolean),event_status:['postponed','canceled'].includes(r.eventStatus)?r.eventStatus:'scheduled',status_source_url:r.statusSource||null,event_date:r.date,title:r.title,place:r.place||null,event_type:r.type,series_id:r.seriesId||null,source_url:r.source||null,schedule_type:r.scheduleType||null,episode:r.episode==null?null:Number(r.episode),broadcasts:Array.isArray(r.broadcasts)?r.broadcasts:[],participation:r.participation&&typeof r.participation==='object'&&!Array.isArray(r.participation)?r.participation:{} }),
     award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parent_id:r.parentId||null,display_order:Number(r.displayOrder)||0,active:r.active!==false }),
     awards: r => ({ id:r.id,artist_id:r.artistId,award_year:Number(r.year)||null,award_day:Number(r.day)||null,award_month:Number(r.month)||null,title:r.title,organization:r.org,source_url:r.source||null,image_url:r.image||null,main_section_id:r.mainSectionId||null,subsection_id:r.subsectionId||null,display_order:Number(r.displayOrder)||0 }),
     award_section_assignments: r => ({ id:r.id,award_id:r.awardId,main_section_id:r.mainSectionId,subsection_id:r.subsectionId||null,display_order:Number(r.displayOrder)||0 }),
@@ -133,6 +133,9 @@
     knownIds.series = new Set(series.map(row => row.id));
     const {data:settings} = await client.from('site_settings').select('settings').eq('id','homepage').maybeSingle();
     result.siteSettings = settings?.settings || {};
+    const {data:orders,error:orderError}=await client.from('site_settings').select('id,settings').like('id','event-order:%');
+    if(orderError)throw orderError;
+    result.eventOrderByDate=Object.fromEntries((orders||[]).filter(row=>Array.isArray(row.settings?.eventIds)).map(row=>[row.id.slice('event-order:'.length),row.settings.eventIds]));
     return result;
   }
 
@@ -239,5 +242,12 @@
     return (data||[]).map(mapFromDb.award_section_assignments);
   }
 
-  window.auausaveDB = { client, load, save, signIn, signOut, session, uploadEmbeddedMedia, removeAwardAssignment, upsertAwardAssignments, upsertAwardSectionAssignments };
+  async function saveEventOrder(date,eventIds){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Array.isArray(eventIds)||eventIds.some(id=>typeof id!=='string')||new Set(eventIds).size!==eventIds.length)throw new Error('Invalid schedule order');
+    const {data,error}=await client.from('site_settings').upsert({id:`event-order:${date}`,settings:{eventIds}},{onConflict:'id'}).select('id').single();
+    if(error)throw error;
+    if(!data)throw new Error('Schedule order was not saved');
+  }
+
+  window.auausaveDB = { client, load, save, signIn, signOut, session, uploadEmbeddedMedia, removeAwardAssignment, upsertAwardAssignments, upsertAwardSectionAssignments, saveEventOrder };
 })();

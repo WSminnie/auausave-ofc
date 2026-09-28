@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-html = html.replace(/(src|href)="((?:series\/|styles\.css|data\.js|app\.js)[^"]*)"/g, '$1="/$2"');
+html = html.replace(/(src|href)="((?:series\/|styles\.css|data\.js|event-participation\.js|app\.js)[^"]*)"/g, '$1="/$2"');
 html = html.replace(/<script src="(?:https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase[^\"]*|supabase-[^\"]*)"><\/script>/g, '');
 html = html.replace('</body>', '<script src="/tests/series-browser-fixture.js"></script></body>');
 fs.mkdirSync(path.join(root, 'tmp'), { recursive: true });
