@@ -507,7 +507,7 @@ function artistCards() {
 }
 function scheduleRows(items = db.events) {
   return items.length
-    ? orderedEvents(items)
+    ? publicOrderedEvents(items)
         .map(
           (e) =>
             `<div class="schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div><h3>${e.title}</h3><p>${artistName(e.artistId)} · ${e.place}</p></div><span class="event-type">${e.type}</span>${e.source ? `<a class="round-arrow" href="${e.source}" target="_blank" title="ดูต้นทาง">ดูต้นทาง</a>` : "<span></span>"}</div>`,
@@ -544,8 +544,8 @@ function listing(type) {
   if (type === "schedule") {
     title = "ตารางงาน";
     sub = "ไม่พลาดทุกเวทีและทุกช่วงเวลาสำคัญ";
-    const upcoming = orderedEvents().filter((e) => e.date >= today),
-      past = orderedEvents().filter((e) => e.date < today);
+    const upcoming = publicOrderedEvents().filter((e) => e.date >= today),
+      past = publicOrderedEvents().filter((e) => e.date < today);
     body = `<div class="schedule-wrap"><span class="eyebrow" style="color:var(--yellow)">Upcoming schedule</span>${scheduleRows(upcoming)}</div><h2 style="margin-top:55px">งานที่ผ่านมา</h2><div class="schedule-wrap archive-schedule">${scheduleRows(past)}</div>`;
   }
   if (type === "awards") {
@@ -578,7 +578,7 @@ function profile(id) {
   }
   const now = new Date(),
     currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
-    ev = orderedEvents().filter((e) => itemMatchesArtist(e, id) && e.date.startsWith(currentMonth)),
+    ev = publicOrderedEvents().filter((e) => itemMatchesArtist(e, id) && e.date.startsWith(currentMonth)),
     aw = db.awards.filter((r) => awardMatchesArtist(r, id)),
     vid = db.videos.filter((v) => v.artistId === id);
   app.innerHTML =
@@ -694,7 +694,7 @@ function filterArtistTimeline(button,artist){const section=button.closest('.arti
 
 function coupleArchivePage() {
   const artist = artistById('duo') || {};
-  const events = orderedEvents().sort((a,b) => a.date.localeCompare(b.date));
+  const events = publicOrderedEvents().sort((a,b) => a.date.localeCompare(b.date));
   const awards = db.awards.filter(item => {
     const label=String(artistName(item?.artistId)||'').trim().toUpperCase();
     return awardMatchesArtist(item,'AT01')||sameArtistId(item?.artistId,'AT01')||label==='AUAUSAVE';
@@ -790,7 +790,7 @@ profile = function (id) {
 };
 function compactSchedule(items) {
   return items.length
-    ? orderedEvents(items)
+    ? publicOrderedEvents(items)
         .map(
           (e) =>
             `<div class="mini-event"><div class="mini-date"><b>${day(e.date)}</b><span>${month(e.date)}</span></div><div><span class="mini-type">${e.type}</span><h4>${e.title}</h4><p>${e.place}</p>${eventParticipationCopy(e)}</div></div>`,
@@ -800,7 +800,7 @@ function compactSchedule(items) {
 }
 function homeScheduleSection() {
   const ym = new Date().toISOString().slice(0, 7),
-    monthly = orderedEvents().filter((e) => e.date.startsWith(ym));
+    monthly = publicOrderedEvents().filter((e) => e.date.startsWith(ym));
   const monthLabel = new Intl.DateTimeFormat(route === "admin" ? "th-TH" : "en-US", {
     month: "long",
     year: "numeric",
@@ -836,7 +836,7 @@ function calendarPage() {
     cells.push('<div class="calendar-day muted"></div>');
   for (let d = 1; d <= days; d++) {
     const date = `${key}-${String(d).padStart(2, "0")}`,
-      items = orderedEvents().filter((e) => e.date === date);
+      items = publicOrderedEvents().filter((e) => e.date === date);
     cells.push(
       `<div class="calendar-day ${date === new Date().toISOString().slice(0, 10) ? "today" : ""}"><b>${d}</b><div class="day-events">${items.map((e) => `<button class="cal-event ${e.artistId}" onclick="showEvent('${e.id}')"><span>${e.artistId === "duo" ? "คู่" : e.artistId.toUpperCase()}</span>${e.title}</button>`).join("")}</div></div>`,
     );
@@ -2906,7 +2906,7 @@ rowCells = function(type,x){
 };
 const scheduleRowsBeforeDynamicEventArtists = scheduleRows;
 scheduleRows = function(items = db.events){
-  return items.length ? orderedEvents(items).map(e=>`<div class="schedule-row artist-schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div class="artist-schedule-copy"><h3>${escapePageText(e.title)}</h3><p>${escapePageText(eventArtistNames(e))} · ${escapePageText(e.place||'')}</p>${eventParticipationCopy(e)}<div class="artist-schedule-links"><span class="artist-schedule-type">${escapePageText(e.type||'')}</span>${e.source ? `<a class="artist-schedule-source" href="${escapePageText(e.source)}" target="_blank" rel="noopener noreferrer">View source</a>` : ""}</div></div></div>`).join("") : `<div class="empty">ยังไม่มีข้อมูลในขณะนี้</div>`;
+  return items.length ? publicOrderedEvents(items).map(e=>`<div class="schedule-row artist-schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div class="artist-schedule-copy"><h3>${escapePageText(e.title)}</h3><p>${escapePageText(eventArtistNames(e))} · ${escapePageText(e.place||'')}</p>${eventParticipationCopy(e)}<div class="artist-schedule-links"><span class="artist-schedule-type">${escapePageText(e.type||'')}</span>${e.source ? `<a class="artist-schedule-source" href="${escapePageText(e.source)}" target="_blank" rel="noopener noreferrer">View source</a>` : ""}</div></div></div>`).join("") : `<div class="empty">ยังไม่มีข้อมูลในขณะนี้</div>`;
 };
 function eventBadge(item){
   return eventArtistIds(item).map(id => sameArtistId(id,'duo') ? '#AUAUSAVE' : artistName(id)).join(' · ') || 'ไม่ระบุ';
@@ -2962,7 +2962,7 @@ function artistScheduleCardClass(artistId,index){
 }
 const homeScheduleSectionBeforeDynamicArtists = homeScheduleSection;
 homeScheduleSection = function(){
-  const now = new Date(), ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`, monthLabel = new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(now), monthly = orderedEvents().filter(e => e.date.startsWith(ym));
+  const now = new Date(), ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`, monthLabel = new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(now), monthly = publicOrderedEvents().filter(e => e.date.startsWith(ym));
   const cards = sortedArtists().map((artist,index)=>{
     const title = sameArtistId(artist.id,'duo') ? '#AUAUSAVE' : artist.name;
     const description = sameArtistId(artist.id,'duo') ? '#AuauSave' : (artist.role || artist.name);
@@ -2998,7 +2998,7 @@ function homepageScheduleArtists(){ensureHomepageFrontDisplaySettings();const ma
 const homeScheduleSectionBeforeFrontDisplaySettings=homeScheduleSection;
 homeScheduleSection=function(){
   ensureHomepageFrontDisplaySettings();
-  const now=new Date(),ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,monthLabel=new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(now),monthly=orderedEvents().filter(e=>e.date.startsWith(ym));
+  const now=new Date(),ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,monthLabel=new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(now),monthly=publicOrderedEvents().filter(e=>e.date.startsWith(ym));
   const cards=homepageScheduleArtists().filter(artist=>db.siteSettings.homeScheduleCards[artist.id]?.visible!==false).map((artist,index)=>{const card=db.siteSettings.homeScheduleCards[artist.id]||{},color=artistDisplayColor(artist.id,index);return `<article class="schedule-card ${artistScheduleCardClass(artist.id,index)}"><div class="schedule-card-head" style="background:${color};color:#fff"><span>${escapePageText(card.eyebrow||'ARTIST PATH')}</span><h3>${escapePageText(card.title||artist.name)}</h3><p>${escapePageText(card.description||'')}</p></div>${compactSchedule(monthly.filter(e=>itemMatchesArtist(e,artist.id)))}</article>`;}).join('');
   return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><span class="eyebrow">This month · ${monthLabel}</span><h2>This Month Schedule</h2></div><a class="btn outline" href="#schedule">View calendar </a></div><div class="schedule-columns dynamic-schedule-columns">${cards||'<div class="empty">No schedule cards selected.</div>'}</div></div></section>`;
 };
@@ -3635,7 +3635,7 @@ calendarPage=function(){
   const year=calendarDate.getFullYear(),mon=calendarDate.getMonth(),first=new Date(year,mon,1),days=new Date(year,mon+1,0).getDate(),offset=(first.getDay()+6)%7,label=new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(first),key=`${year}-${String(mon+1).padStart(2,'0')}`,cells=[],artistIndex=new Map(calendarArtists.map((artist,index)=>[artist.id,index]));
   for(let i=0;i<offset;i++)cells.push('<div class="calendar-day muted"></div>');
   for(let d=1;d<=days;d++){
-    const date=`${key}-${String(d).padStart(2,'0')}`,items=orderedEvents().filter(e=>e.date===date);
+    const date=`${key}-${String(d).padStart(2,'0')}`,items=publicOrderedEvents().filter(e=>e.date===date);
     cells.push(`<div class="calendar-day ${date===new Date().toISOString().slice(0,10)?'today':''}"><b>${d}</b><div class="day-events">${items.map(e=>{const ids=calendarEventArtistIds(e),primary=ids[0]||'',color=calendarArtistColor(primary,artistIndex.get(primary)||0),label=ids.map(calendarArtistLabel).join(' · ')||'Unknown';return `<button class="cal-event" style="border-left-color:${color}" onclick="showEvent('${e.id}')"><span>${escapePageText(label)}${eventParticipationIcons(e)}</span>${escapePageText(e.title)}</button>`;}).join('')}</div></div>`);
   }
   const total=offset+days;for(let i=total;i<Math.ceil(total/7)*7;i++)cells.push('<div class="calendar-day muted"></div>');
@@ -3930,7 +3930,7 @@ calendarPage = function(){
   const year=calendarDate.getFullYear(),mon=calendarDate.getMonth(),first=new Date(year,mon,1);
   const todayKey=localDateKey(new Date()),monthKey=`${year}-${String(mon+1).padStart(2,"0")}`;
   if(!mobileCalendarSelectedDate || !mobileCalendarSelectedDate.startsWith(monthKey)) mobileCalendarSelectedDate=todayKey.startsWith(monthKey)?todayKey:`${monthKey}-01`;
-  const filteredEvents=orderedEvents().filter(event=>publicTypeFilter==="all" || eventHasType(event,publicTypeFilter));
+  const filteredEvents=publicOrderedEvents().filter(event=>publicTypeFilter==="all" || eventHasType(event,publicTypeFilter));
   const cells=[],gridStart=new Date(year,mon,1-first.getDay());
   for(let index=0;index<42;index++){
     const cellDate=new Date(gridStart.getFullYear(),gridStart.getMonth(),gridStart.getDate()+index);
@@ -4254,7 +4254,7 @@ renderHomepageScheduleOrderEditor=function(){
 };
 homeScheduleSection=function(){
   ensureHomepageFrontDisplaySettings();
-  const now=new Date(),monthKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,monthly=orderedEvents().filter(event=>event.date.startsWith(monthKey)),title=db.siteSettings.homeSections.find(section=>section.id==='schedule')?.title||'This Month Schedule';
+  const now=new Date(),monthKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,monthly=publicOrderedEvents().filter(event=>event.date.startsWith(monthKey)),title=db.siteSettings.homeSections.find(section=>section.id==='schedule')?.title||'This Month Schedule';
   const cards=homepageScheduleArtists().map((artist,index)=>`<article class="schedule-card ${artistScheduleCardClass(artist.id,index)}"><div class="schedule-card-head" style="background:${artistDisplayColor(artist.id,index)};color:#fff"><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div>${compactSchedule(monthly.filter(event=>itemMatchesArtist(event,artist.id)))}</article>`).join('');
   return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><h2>${escapePageText(title)}</h2></div><a class="btn outline" href="#schedule">View calendar </a></div><div class="schedule-columns dynamic-schedule-columns">${cards}</div></div></section>`;
 };
@@ -4651,7 +4651,7 @@ function unifiedHomeScheduleSection() {
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const monthLabel = new Intl.DateTimeFormat('en-US', {month:'long'}).format(now);
-  const events = orderedEvents()
+  const events = publicOrderedEvents()
     .filter(event => event.date.startsWith(monthKey))
     .sort((a, b) => a.date.localeCompare(b.date));
   const artists = homepageScheduleArtists();
@@ -5309,3 +5309,35 @@ openForm = function(type,id){
  if(eventTitle)eventTitle.insertAdjacentHTML('beforebegin',eventStatusField(id?db.events.find(item=>item.id===id):{}));
  if(!id)form.querySelectorAll('[name="eventArtistIds"]').forEach(input=>input.checked=false);
 };
+
+const openFormBeforeEventReference=openForm;
+openForm=function(type,id){openFormBeforeEventReference(type,id);if(type==='events')document.querySelector('#modal .form-grid')?.insertAdjacentHTML('beforeend',eventReferenceField(db.events.find(item=>item.id===id)||{}))};
+const submitFormBeforeEventReference=submitForm;
+submitForm=async function(event,type,id){
+ const form=event.currentTarget||event.target,existing=db.events.find(item=>item.id===id);
+ if(type!=='events')return submitFormBeforeEventReference(event,type,id);
+ const data=new FormData(form),ref=String(data.get('rescheduledFrom')||'');
+ const replacement=existing&&eventReplacement(existing);
+ if(replacement&&data.get('eventStatus')!=='postponed'){event.preventDefault();toast('งานนี้มีวันใหม่แล้ว กรุณาคงสถานะเลื่อนของงานเดิม');return}
+ if(!ref&&!existing?.rescheduledFrom)return submitFormBeforeEventReference(event,type,id);
+ event.preventDefault();if(form.dataset.savingReference)return;
+ const item={...existing,id:id||`e${Date.now()}`,title:String(data.get('title')||''),date:String(data.get('date')||''),place:String(data.get('place')||''),source:String(data.get('source')||''),seriesId:String(data.get('seriesId')||''),eventStatus:normalizeEventStatus(data.get('eventStatus')),statusSource:statusSourceValue(data.get('statusSource')),participation:participationFromForm(data),rescheduledFrom:ref};
+ if(scheduleFormIsSeriesBroadcast(form)){
+  const series=db.masterData.series.find(entry=>entry.id===item.seriesId);item.episode=Number(data.get('episode'));item.broadcasts=broadcastsFromEditor(form);
+  const error=validateBroadcasts(item.broadcasts);if(!series||!Number.isInteger(item.episode)||item.episode<1||error){toast(error||'กรุณาระบุ Series และ Episode');return}
+  Object.assign(item,{title:`${series.label} · EP.${item.episode}`,scheduleType:'series_broadcast',type:'Series Broadcast',artistId:'',artistIds:[]});
+ }else{
+  item.artistIds=data.getAll('eventArtistIds');item.artistId=item.artistIds[0]||'';item.type=data.getAll('eventType').join(' | ');item.scheduleType='';item.broadcasts=[];item.episode=null;
+  if(!item.artistIds.length||!item.type||!item.title.trim()){toast('กรุณาระบุชื่อ ศิลปิน และประเภทงาน');return}
+ }
+ const error=validateEventReference(item);if(error){toast(error);return}
+ const button=form.querySelector('[type="submit"]');form.dataset.savingReference='1';if(button)button.disabled=true;
+ try{
+  const saved=await window.auausaveDB.saveReferencedEvent(item);
+  if(existing)Object.assign(existing,saved);else db.events.push(saved);
+  save(false);closeModal();admin();toast('บันทึกงานและ Ref วันเดิมแล้ว');
+ }catch(error){toast('บันทึกไม่สำเร็จ: '+(error.message||'กรุณาลองอีกครั้ง'))}
+ finally{delete form.dataset.savingReference;if(button)button.disabled=false}
+};
+
+function publicOrderedEvents(items=db.events){return orderedEvents(items).filter(eventPublicVisible)}

@@ -40,12 +40,15 @@ function eventParticipationOptions(event){
 function eventParticipationText(event){return eventParticipationOptions(event).map(option=>option.label).join(' · ')}
 function eventParticipationInline(event){
   const text=eventParticipationLabeled(event);
-  return eventStatusBadge(event)+(text?`<span class="event-participation-inline"> · ${text}</span>`:'');
+  const parent=typeof db!=='undefined'?db.events.find(item=>item.id===event?.rescheduledFrom):null;
+  const origin=parent?`<span class="event-rescheduled-from">เลื่อนมาจากวันที่ <b>${statusSourceEscape(eventReferenceDate(parent.date))}</b></span>`:'';
+  return origin+eventStatusBadge(event)+(text?`<span class="event-participation-inline"> · ${text}</span>`:'');
 }
 function eventParticipationCopy(event){
   const text=eventParticipationLabeled(event);
   const status=eventStatusBadge(event);
-  return status||text?`<p class="event-participation-copy">${status?status+eventStatusAnnouncement(event):text}</p>`:'';
+  const reference=eventRescheduleCopy(event);
+  return status||text||reference?`<p class="event-participation-copy">${status?status+eventStatusAnnouncement(event):text}${reference}</p>`:'';
 }
 function eventParticipationIcon(option){return `<span class="event-participation-icon" title="${option.label}" style="--participation-color:${option.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${option.path}</svg></span>`}
 function eventParticipationLabeled(event){return eventParticipationOptions(event).map(option=>`<span class="event-participation-item">${eventParticipationIcon(option)}<span>${option.label}</span></span>`).join(' ')}
@@ -61,3 +64,26 @@ function eventParticipationFields(event){
   const data=normalizeEventParticipation(event?.participation);
   return `<fieldset class="field full event-participation-fields"><legend>การเข้าร่วมงาน</legend><label for="event-participation-access">เงื่อนไขการเข้าร่วม</label><select id="event-participation-access" name="participationAccess"><option value="" ${!data.access?'selected':''}>ยังไม่ระบุ</option>${EVENT_PARTICIPATION_OPTIONS.slice(0,4).map(option=>`<option value="${option.id}" ${data.access===option.id?'selected':''}>${option.label}</option>`).join('')}</select><div class="event-participation-extras"><label><input type="checkbox" name="participationGathering" ${data.gathering?'checked':''}><span>มีรวมพลหลังจบงาน</span></label><label><input type="checkbox" name="participationGifts" ${data.gifts?'checked':''}><span>รับของขวัญ</span></label></div></fieldset>`;
 }
+function eventReplacement(event){return event?.id&&typeof db!=='undefined'?db.events.find(item=>item.rescheduledFrom===event?.id&&item.id!==event?.id):null}
+function validateEventReference(item){
+ if(!item.rescheduledFrom)return '';
+ const parent=db.events.find(event=>event.id===item.rescheduledFrom);
+ if(!parent||parent.id===item.id||parent.eventStatus!=='postponed')return 'กรุณาเลือกงานเดิมที่มีสถานะเลื่อน';
+ if(item.date<=parent.date)return 'วันจัดใหม่ต้องอยู่หลังวันเดิม';
+ if(db.events.some(event=>event.id!==item.id&&event.rescheduledFrom===parent.id))return 'งานเดิมนี้มีงานใหม่อ้างอิงแล้ว';
+ let cursor=parent,seen=new Set([item.id]);while(cursor){if(seen.has(cursor.id))return 'ไม่สามารถอ้างอิงงานวนกลับได้';seen.add(cursor.id);cursor=db.events.find(event=>event.id===cursor.rescheduledFrom)}
+ return '';
+}
+function eventRescheduleCopy(event){
+ if(typeof db==='undefined')return '';
+ const parent=db.events.find(item=>item.id===event?.rescheduledFrom),next=eventReplacement(event);
+ const link=(item,label,showDate=true)=>`<button type="button" class="event-ref-link" data-event-ref="${statusSourceEscape(item.id)}" onclick="event.stopPropagation();closeModal();showEvent(this.dataset.eventRef)">${label}${showDate?' '+statusSourceEscape(item.date):''}</button>`;
+ return (parent?`<span class="event-rescheduled-from">เลื่อนมาจากวันที่ <b>${statusSourceEscape(eventReferenceDate(parent.date))}</b></span>${eventStatusAnnouncement(parent)}`:'')+(next?'<span class="event-reschedule-confirmed">'+link(next,'กำหนดการใหม่ยืนยันแล้ว',false)+'</span>':'');
+}
+function eventReferenceField(event={}){
+ const options=db.events.filter(item=>item.id!==event.id&&item.eventStatus==='postponed'&&(!eventReplacement(item)||eventReplacement(item)?.id===event.id));
+ return `<div class="field full"><label for="event-reference">Ref งานเดิมที่เลื่อน</label><select id="event-reference" name="rescheduledFrom"><option value="">ไม่อ้างอิงงานเดิม</option>${options.map(item=>`<option value="${statusSourceEscape(item.id)}" ${event.rescheduledFrom===item.id?'selected':''}>${statusSourceEscape(item.date)} · ${statusSourceEscape(item.title)}</option>`).join('')}</select></div>`;
+}
+
+function eventPublicVisible(event){return !eventReplacement(event)}
+function eventReferenceDate(value){const [year,month,day]=String(value||'').split('-');const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return months[Number(month)-1]?`${months[Number(month)-1]} ${Number(day)}, ${year}`:String(value||'')}
