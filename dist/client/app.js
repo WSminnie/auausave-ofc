@@ -507,8 +507,7 @@ function artistCards() {
 }
 function scheduleRows(items = db.events) {
   return items.length
-    ? items
-        .sort((a, b) => a.date.localeCompare(b.date))
+    ? publicOrderedEvents(items)
         .map(
           (e) =>
             `<div class="schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div><h3>${e.title}</h3><p>${artistName(e.artistId)} · ${e.place}</p></div><span class="event-type">${e.type}</span>${e.source ? `<a class="round-arrow" href="${e.source}" target="_blank" title="ดูต้นทาง">ดูต้นทาง</a>` : "<span></span>"}</div>`,
@@ -545,8 +544,8 @@ function listing(type) {
   if (type === "schedule") {
     title = "ตารางงาน";
     sub = "ไม่พลาดทุกเวทีและทุกช่วงเวลาสำคัญ";
-    const upcoming = db.events.filter((e) => e.date >= today),
-      past = db.events.filter((e) => e.date < today);
+    const upcoming = publicOrderedEvents().filter((e) => e.date >= today),
+      past = publicOrderedEvents().filter((e) => e.date < today);
     body = `<div class="schedule-wrap"><span class="eyebrow" style="color:var(--yellow)">Upcoming schedule</span>${scheduleRows(upcoming)}</div><h2 style="margin-top:55px">งานที่ผ่านมา</h2><div class="schedule-wrap archive-schedule">${scheduleRows(past)}</div>`;
   }
   if (type === "awards") {
@@ -579,7 +578,7 @@ function profile(id) {
   }
   const now = new Date(),
     currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
-    ev = db.events.filter((e) => itemMatchesArtist(e, id) && e.date.startsWith(currentMonth)),
+    ev = publicOrderedEvents().filter((e) => itemMatchesArtist(e, id) && e.date.startsWith(currentMonth)),
     aw = db.awards.filter((r) => awardMatchesArtist(r, id)),
     vid = db.videos.filter((v) => v.artistId === id);
   app.innerHTML =
@@ -695,7 +694,7 @@ function filterArtistTimeline(button,artist){const section=button.closest('.arti
 
 function coupleArchivePage() {
   const artist = artistById('duo') || {};
-  const events = [...db.events].sort((a,b) => a.date.localeCompare(b.date));
+  const events = publicOrderedEvents().sort((a,b) => a.date.localeCompare(b.date));
   const awards = db.awards.filter(item => {
     const label=String(artistName(item?.artistId)||'').trim().toUpperCase();
     return awardMatchesArtist(item,'AT01')||sameArtistId(item?.artistId,'AT01')||label==='AUAUSAVE';
@@ -791,18 +790,17 @@ profile = function (id) {
 };
 function compactSchedule(items) {
   return items.length
-    ? items
-        .sort((a, b) => a.date.localeCompare(b.date))
+    ? publicOrderedEvents(items)
         .map(
           (e) =>
-            `<div class="mini-event"><div class="mini-date"><b>${day(e.date)}</b><span>${month(e.date)}</span></div><div><span class="mini-type">${e.type}</span><h4>${e.title}</h4><p>${e.place}</p></div></div>`,
+            `<div class="mini-event"><div class="mini-date"><b>${day(e.date)}</b><span>${month(e.date)}</span></div><div><span class="mini-type">${e.type}</span><h4>${e.title}</h4><p>${e.place}</p>${eventParticipationCopy(e)}</div></div>`,
         )
         .join("")
     : '<div class="empty">ยังไม่มีตารางงาน</div>';
 }
 function homeScheduleSection() {
   const ym = new Date().toISOString().slice(0, 7),
-    monthly = db.events.filter((e) => e.date.startsWith(ym));
+    monthly = publicOrderedEvents().filter((e) => e.date.startsWith(ym));
   const monthLabel = new Intl.DateTimeFormat(route === "admin" ? "th-TH" : "en-US", {
     month: "long",
     year: "numeric",
@@ -838,7 +836,7 @@ function calendarPage() {
     cells.push('<div class="calendar-day muted"></div>');
   for (let d = 1; d <= days; d++) {
     const date = `${key}-${String(d).padStart(2, "0")}`,
-      items = db.events.filter((e) => e.date === date);
+      items = publicOrderedEvents().filter((e) => e.date === date);
     cells.push(
       `<div class="calendar-day ${date === new Date().toISOString().slice(0, 10) ? "today" : ""}"><b>${d}</b><div class="day-events">${items.map((e) => `<button class="cal-event ${e.artistId}" onclick="showEvent('${e.id}')"><span>${e.artistId === "duo" ? "คู่" : e.artistId.toUpperCase()}</span>${e.title}</button>`).join("")}</div></div>`,
     );
@@ -1168,6 +1166,7 @@ calendarPage = function () {
 };
 function dashboardTypeIncluded(type) { return db.siteSettings?.dashboardTypeCounting?.[type.id] ?? (type.id !== 'series_broadcast'); }
 function dashboardEventIncluded(event) {
+ if(normalizeEventStatus(event.eventStatus)!=='scheduled')return false;
  const matches=db.masterData.types.filter(t=>eventHasType(event,t.id)||(t.id==='series_broadcast'&&event.scheduleType==='series_broadcast'));
  return !matches.length || matches.some(dashboardTypeIncluded);
 }
@@ -1411,7 +1410,7 @@ function adminCalendarGrid() {
     cells.push('<div class="admin-cal-day blank"></div>');
   for (let d = 1; d <= days; d++) {
     const date = `${adminMonth}-${String(d).padStart(2, "0")}`,
-      items = db.events.filter(
+      items = orderedEvents().filter(
         (e) =>
           e.date === date &&
           ("all" === adminEventFilter || itemMatchesArtist(e, adminEventFilter)),
@@ -1663,8 +1662,9 @@ openForm = function (type, id) {
 };
 function imageUploadTemplate(field, label, value = "") {
   const previewUrl = field === 'thumbnail' ? videoThumbnailUrl({thumbnail:value}) : value;
+  const uploadHelp = field === 'banner' ? 'รองรับ JPG, PNG, WebP · ไม่จำกัดขนาดหรือสัดส่วนรูป · ไฟล์ไม่เกิน 8 MB' : 'รองรับ JPG, PNG, WebP · ระบบจะย่อรูปให้อัตโนมัติ';
   const previewImage = previewUrl ? `<img src="${escapePageText(previewUrl)}" alt="preview"${field === 'thumbnail' ? ' data-video-thumbnail' : ''}>` : "<span>＋<small>เลือกรูปภาพ</small></span>";
-  return `<div class="field full image-upload-field"><label>${label}</label><div class="image-uploader"><div class="upload-preview ${previewUrl ? "has-image" : ""}" id="uploadPreview_${field}">${previewImage}</div><div><input type="file" accept="image/jpeg,image/png,image/webp" onchange="handleImageUpload(this,'${field}')"><input type="hidden" name="${field}" value="${escapePageText(value)}"><p>รองรับ JPG, PNG, WebP · ระบบจะย่อรูปให้อัตโนมัติ</p>${value ? `<button type="button" class="remove-image" onclick="removeUploadedImage('${field}')">ลบรูปนี้</button>` : ""}</div></div></div>`;
+  return `<div class="field full image-upload-field"><label>${label}</label><div class="image-uploader"><div class="upload-preview ${previewUrl ? "has-image" : ""}" id="uploadPreview_${field}">${previewImage}</div><div><input type="file" accept="image/jpeg,image/png,image/webp" onchange="handleImageUpload(this,'${field}')"><input type="hidden" name="${field}" value="${escapePageText(value)}"><p>${uploadHelp}</p>${value ? `<button type="button" class="remove-image" onclick="removeUploadedImage('${field}')">ลบรูปนี้</button>` : ""}</div></div></div>`;
 }
 const renderFormWithPrimaryImage = openForm;
 openForm = function (type, id) {
@@ -1762,7 +1762,14 @@ function closeModal() {
 }
 function submitForm(e, type, id) {
   e.preventDefault();
-  const data = Object.fromEntries(new FormData(e.target));
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData);
+  if(type==='events'){
+    data.eventStatus=normalizeEventStatus(formData.get('eventStatus'));
+    data.statusSource=statusSourceValue(formData.get('statusSource'));
+    data.participation=participationFromForm(formData);
+    delete data.participationAccess;delete data.participationGathering;delete data.participationGifts;
+  }
   if (id) {
     Object.assign(
       db[type].find((x) => x.id === id),
@@ -2729,7 +2736,18 @@ function openCropImage(input,field,image,preset){
   cropImageState={input,field,image,preset,orientation:preset.orientation,zoom:1,panX:0,panY:0};const submit=input.closest('form')?.querySelector('[type="submit"]');if(submit)submit.disabled=true;
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop crop-image-backdrop" id="cropImageModal"><div class="modal crop-image-modal"><div class="modal-head"><div><small>ADJUST IMAGE</small><h2>Crop Image / Adjust Image</h2><p>ลากรูปด้วยเมาส์หรือนิ้วเพื่อจัดตำแหน่งให้พอดีกับกรอบหน้าบ้าน</p></div><button class="close" onclick="closeCropImage()">×</button></div>${preset.canChoose?`<div class="crop-orientation"><b>เลือกรูปแบบรูปก่อนปรับ</b><div><button type="button" class="${preset.orientation==='portrait'?'active':''}" onclick="this.parentElement.querySelectorAll('button').forEach(button=>button.classList.remove('active'));this.classList.add('active');changeCropOrientation('portrait')">▯ แนวตั้ง</button><button type="button" class="${preset.orientation==='landscape'?'active':''}" onclick="this.parentElement.querySelectorAll('button').forEach(button=>button.classList.remove('active'));this.classList.add('active');changeCropOrientation('landscape')">▭ แนวนอน</button></div></div>`:''}<div class="crop-stage"><canvas id="cropImageCanvas" onpointerdown="cropDragStart(event)" onpointermove="cropDragMove(event)" onpointerup="cropDragEnd(event)" onpointercancel="cropDragEnd(event)"></canvas><span id="cropRatioLabel"></span></div><div class="crop-controls"><label><span>ซูมเข้า–ออก</span><input id="cropZoom" type="range" min="1" max="3" value="1" step="0.01" oninput="updateCropControl('zoom',this.value)"></label><label><span>เลื่อนซ้าย–ขวา</span><input id="cropPanX" type="range" min="-100" max="100" value="0" oninput="updateCropControl('panX',this.value)"></label><label><span>เลื่อนขึ้น–ลง</span><input id="cropPanY" type="range" min="-100" max="100" value="0" oninput="updateCropControl('panY',this.value)"></label></div><div class="form-actions"><button type="button" class="btn outline" onclick="closeCropImage()">ยกเลิก</button><button type="button" class="btn" onclick="applyCroppedImage()">ใช้รูปที่ปรับแล้ว</button></div></div></div>`);drawCropPreview();
 }
-handleImageUpload=function(input,field){const file=input.files?.[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type)){toast('รองรับเฉพาะไฟล์ JPG, JPEG, PNG และ WebP');input.value='';return;}if(file.size>8*1024*1024){toast('กรุณาเลือกรูปขนาดไม่เกิน 8 MB');input.value='';return;}const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>openCropImage(input,field,image,imageCropPreset(field));image.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};image.src=reader.result;};reader.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};reader.readAsDataURL(file);};
+handleImageUpload=function(input,field){const file=input.files?.[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type)){toast('รองรับเฉพาะไฟล์ JPG, JPEG, PNG และ WebP');input.value='';return;}if(file.size>8*1024*1024){toast('กรุณาเลือกรูปขนาดไม่เกิน 8 MB');input.value='';return;}const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>{
+  if(field==='banner'){
+    const hidden=document.querySelector('#modal [name="banner"]'),preview=document.querySelector('#uploadPreview_banner');
+    if(!hidden||!preview){input.value='';toast('ไม่พบช่องบันทึกรูป กรุณาปิดฟอร์มแล้วลองใหม่');return;}
+    hidden.value=reader.result;
+    preview.classList.add('has-image');
+    preview.innerHTML=`<img src="${reader.result}" alt="preview">`;
+    toast('เตรียมรูปเรียบร้อย กดบันทึกเพื่อยืนยัน');
+    return;
+  }
+  openCropImage(input,field,image,imageCropPreset(field));
+};image.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};image.src=reader.result;};reader.onerror=()=>{input.value='';toast('ไม่สามารถอ่านไฟล์รูปนี้ได้ กรุณาเลือกไฟล์ใหม่');};reader.readAsDataURL(file);};
 
 const openHomeSettingsWithOverlay=openHomeSettings;
 openHomeSettings=function(){openHomeSettingsWithOverlay();const grid=document.querySelector('#modal .form-grid'),settings=db.siteSettings;if(!grid)return;grid.querySelector('[name="heroFit"]')?.closest('.field')?.remove();grid.querySelector('[name="heroPosition"]')?.closest('.field')?.remove();grid.insertAdjacentHTML('beforeend',`<div class="field full hero-overlay-settings"><label>ข้อความบนรูปหน้าหลัก</label><input name="heroOverlayText" value="${escapePageText(settings.heroOverlayText??'STAY CLOSE. STAY INSPIRED.')}" placeholder="STAY CLOSE. STAY INSPIRED."><label class="hero-overlay-toggle"><input type="checkbox" name="heroOverlayVisible" ${settings.heroOverlayVisible!==false?'checked':''}><span>แสดงข้อความบนรูปหน้าบ้าน</span></label></div>`);};
@@ -2900,7 +2918,7 @@ rowCells = function(type,x){
 };
 const scheduleRowsBeforeDynamicEventArtists = scheduleRows;
 scheduleRows = function(items = db.events){
-  return items.length ? [...items].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>`<div class="schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div><h3>${escapePageText(e.title)}</h3><p>${escapePageText(eventArtistNames(e))} · ${escapePageText(e.place||'')}</p></div><span class="event-type">${escapePageText(e.type||'')}</span>${e.source ? `<a class="round-arrow" href="${escapePageText(e.source)}" target="_blank" title="ดูต้นทาง">ดูต้นทาง</a>` : "<span></span>"}</div>`).join("") : `<div class="empty">ยังไม่มีข้อมูลในขณะนี้</div>`;
+  return items.length ? publicOrderedEvents(items).map(e=>`<div class="schedule-row artist-schedule-row"><div class="date-box"><strong>${day(e.date)}</strong><span>${month(e.date)} ${new Date(e.date).getFullYear()}</span></div><div class="artist-schedule-copy"><h3>${escapePageText(e.title)}</h3><p>${escapePageText(eventArtistNames(e))} · ${escapePageText(e.place||'')}</p>${eventParticipationCopy(e)}<div class="artist-schedule-links"><span class="artist-schedule-type">${escapePageText(e.type||'')}</span>${e.source ? `<a class="artist-schedule-source" href="${escapePageText(e.source)}" target="_blank" rel="noopener noreferrer">View source</a>` : ""}</div></div></div>`).join("") : `<div class="empty">ยังไม่มีข้อมูลในขณะนี้</div>`;
 };
 function eventBadge(item){
   return eventArtistIds(item).map(id => sameArtistId(id,'duo') ? '#AUAUSAVE' : artistName(id)).join(' · ') || 'ไม่ระบุ';
@@ -2909,7 +2927,7 @@ const adminEventCalendarBeforeDynamicArtists = adminEventCalendar;
 adminEventCalendar = function(){
   const currentFilter = db.artists.some(artist => sameArtistId(artist.id, adminEventFilter)) ? canonicalArtistId(adminEventFilter) : 'all';
   adminEventFilter = currentFilter;
-  const monthEvents = db.events.filter(e => e.date.startsWith(adminMonth) && itemMatchesArtist(e, adminEventFilter)).sort((a,b)=>a.date.localeCompare(b.date));
+  const monthEvents = orderedEvents().filter(e => e.date.startsWith(adminMonth) && itemMatchesArtist(e, adminEventFilter)).sort((a,b)=>a.date.localeCompare(b.date));
   const monthLabel = new Intl.DateTimeFormat(route === "admin" ? "th-TH" : "en-US", {month:"long",year:"numeric"}).format(new Date(`${adminMonth}-01`));
   const filters = [`<button class="${adminEventFilter==='all'?'active':''}" onclick="adminEventFilter='all';admin()">ทั้งหมด</button>`, ...sortedArtists().map(artist=>`<button class="${artist.id} ${sameArtistId(adminEventFilter,artist.id)?'active':''}" onclick="adminEventFilter='${artist.id}';admin()">${escapePageText(sameArtistId(artist.id,'duo')?'#AUAUSAVE':artist.name)}</button>`)].join('');
   const eventRows = monthEvents.map(e=>`<article class="admin-event-item ${escapePageText(eventPrimaryArtistId(e))}"><div class="admin-event-date"><b>${day(e.date)}</b><span>${month(e.date)}</span></div><div class="admin-event-info"><small>${escapePageText(eventBadge(e))} · ${escapePageText(e.type||'')}</small><h3>${escapePageText(e.title)}</h3><p>${escapePageText(e.place||'')}</p></div><div class="actions"><button class="icon-btn" onclick="openForm('events','${e.id}')">✎ แก้ไข</button><button class="icon-btn" onclick="removeItem('events','${e.id}')">⌫</button></div></article>`).join("") || `<div class="empty">เดือนนี้ยังไม่มีตารางงาน<br><button class="btn" style="margin-top:15px" onclick="openForm('events')">เพิ่มงานแรกของเดือน</button></div>`;
@@ -2956,7 +2974,7 @@ function artistScheduleCardClass(artistId,index){
 }
 const homeScheduleSectionBeforeDynamicArtists = homeScheduleSection;
 homeScheduleSection = function(){
-  const now = new Date(), ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`, monthLabel = new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(now), monthly = db.events.filter(e => e.date.startsWith(ym));
+  const now = new Date(), ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`, monthLabel = new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(now), monthly = publicOrderedEvents().filter(e => e.date.startsWith(ym));
   const cards = sortedArtists().map((artist,index)=>{
     const title = sameArtistId(artist.id,'duo') ? '#AUAUSAVE' : artist.name;
     const description = sameArtistId(artist.id,'duo') ? '#AuauSave' : (artist.role || artist.name);
@@ -2992,7 +3010,7 @@ function homepageScheduleArtists(){ensureHomepageFrontDisplaySettings();const ma
 const homeScheduleSectionBeforeFrontDisplaySettings=homeScheduleSection;
 homeScheduleSection=function(){
   ensureHomepageFrontDisplaySettings();
-  const now=new Date(),ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,monthLabel=new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(now),monthly=db.events.filter(e=>e.date.startsWith(ym));
+  const now=new Date(),ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,monthLabel=new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(now),monthly=publicOrderedEvents().filter(e=>e.date.startsWith(ym));
   const cards=homepageScheduleArtists().filter(artist=>db.siteSettings.homeScheduleCards[artist.id]?.visible!==false).map((artist,index)=>{const card=db.siteSettings.homeScheduleCards[artist.id]||{},color=artistDisplayColor(artist.id,index);return `<article class="schedule-card ${artistScheduleCardClass(artist.id,index)}"><div class="schedule-card-head" style="background:${color};color:#fff"><span>${escapePageText(card.eyebrow||'ARTIST PATH')}</span><h3>${escapePageText(card.title||artist.name)}</h3><p>${escapePageText(card.description||'')}</p></div>${compactSchedule(monthly.filter(e=>itemMatchesArtist(e,artist.id)))}</article>`;}).join('');
   return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><span class="eyebrow">This month · ${monthLabel}</span><h2>This Month Schedule</h2></div><a class="btn outline" href="#schedule">View calendar </a></div><div class="schedule-columns dynamic-schedule-columns">${cards||'<div class="empty">No schedule cards selected.</div>'}</div></div></section>`;
 };
@@ -3405,7 +3423,7 @@ function projectDetailPage(slug){
     const amount=new Intl.NumberFormat('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Math.max(0,Number(project.finalDonationAmount)||0));
     const closedDate=project.closedAt?new Intl.DateTimeFormat('th-TH',{dateStyle:'long'}).format(new Date(project.closedAt)):'';
     const paymentGrid=document.querySelector('.project-payment-grid');
-    paymentGrid?.insertAdjacentHTML('beforebegin',`<section class="project-closed-message"><span>PROJECT CLOSED</span><h2>โปรเจกต์นี้สิ้นสุดการรับโดเนทแล้ว</h2><p>ขอบคุณสำหรับทุกแรงสนับสนุน และขอบคุณที่มาร่วมเป็นส่วนหนึ่งของโปรเจกต์นี้นะคะ<br>Thank you for all your support and for being a part of this journey with us.</p><div class="project-closed-total"><small>FINAL DONATION AMOUNT</small><strong>฿${amount}</strong>${closedDate?`<time>ปิดโปรเจกต์เมื่อ ${closedDate}</time>`:''}</div></section>`);
+    paymentGrid?.insertAdjacentHTML('beforebegin',`<section class="project-closed-message"><span>PROJECT CLOSED</span><h2>โปรเจกต์นี้สิ้นสุดการรับโดเนทแล้ว</h2><p>ขอบคุณที่มาร่วมเป็นส่วนหนึ่งของโปรเจกต์นี้นะคะ<br>Thank you for all your support and for being a part of this journey with us.</p><div class="project-closed-total"><small>FINAL DONATION AMOUNT</small><strong>฿${amount}</strong>${closedDate?`<time>ปิดโปรเจกต์เมื่อ ${closedDate}</time>`:''}</div></section>`);
     paymentGrid?.remove();document.querySelector('.project-form-callout')?.remove();
   }
   document.querySelector('.project-detail-hero')?.remove();
@@ -3629,8 +3647,8 @@ calendarPage=function(){
   const year=calendarDate.getFullYear(),mon=calendarDate.getMonth(),first=new Date(year,mon,1),days=new Date(year,mon+1,0).getDate(),offset=(first.getDay()+6)%7,label=new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(first),key=`${year}-${String(mon+1).padStart(2,'0')}`,cells=[],artistIndex=new Map(calendarArtists.map((artist,index)=>[artist.id,index]));
   for(let i=0;i<offset;i++)cells.push('<div class="calendar-day muted"></div>');
   for(let d=1;d<=days;d++){
-    const date=`${key}-${String(d).padStart(2,'0')}`,items=db.events.filter(e=>e.date===date);
-    cells.push(`<div class="calendar-day ${date===new Date().toISOString().slice(0,10)?'today':''}"><b>${d}</b><div class="day-events">${items.map(e=>{const ids=calendarEventArtistIds(e),primary=ids[0]||'',color=calendarArtistColor(primary,artistIndex.get(primary)||0),label=ids.map(calendarArtistLabel).join(' · ')||'Unknown';return `<button class="cal-event" style="border-left-color:${color}" onclick="showEvent('${e.id}')"><span>${escapePageText(label)}</span>${escapePageText(e.title)}</button>`;}).join('')}</div></div>`);
+    const date=`${key}-${String(d).padStart(2,'0')}`,items=publicOrderedEvents().filter(e=>e.date===date);
+    cells.push(`<div class="calendar-day ${date===new Date().toISOString().slice(0,10)?'today':''}"><b>${d}</b><div class="day-events">${items.map(e=>{const ids=calendarEventArtistIds(e),primary=ids[0]||'',color=calendarArtistColor(primary,artistIndex.get(primary)||0),label=ids.map(calendarArtistLabel).join(' · ')||'Unknown';return `<button class="cal-event" style="border-left-color:${color}" onclick="showEvent('${e.id}')"><span>${escapePageText(label)}${eventParticipationIcons(e)}</span>${escapePageText(e.title)}</button>`;}).join('')}</div></div>`);
   }
   const total=offset+days;for(let i=total;i<Math.ceil(total/7)*7;i++)cells.push('<div class="calendar-day muted"></div>');
   const legend=calendarArtists.map((artist,index)=>`<span><i style="background:${calendarArtistColor(artist.id,index)}"></i>${escapePageText(calendarArtistLabel(artist.id))}</span>`).join('');
@@ -3764,7 +3782,7 @@ function renderCompletedProject(project){
   const valueCard=(type,title,thai,value,attribute='')=>`<article class="completed-summary-card is-${type}"><span>${title}</span><small>${thai}</small><strong ${attribute}>${value}</strong></article>`;
   const showExpenseCoverageNote=project.showExpenseCoverageNote===true,expenseNote=showExpenseCoverageNote?`<div class="completed-expense-note"><p>ค่าใช้จ่ายส่วนที่เกินจากยอดโดเนท ทางบ้านเป็นผู้ออกค่าใช้จ่ายเองทั้งหมด</p><small>Any expenses exceeding the total donations were fully covered by the fanbase.</small></div>`:'';
   const expenseCard=`<article class="completed-summary-card is-expense${showExpenseCoverageNote?' has-note':''}"><span>Actual expense</span><small>ค่าใช้จ่ายจริง</small><strong>${projectSummaryMoney(project.actualExpense)}</strong>${expenseNote}</article>`;
-  app.innerHTML=nav('projects')+`<main class="completed-project-page"><section class="section project-media-section"><div class="container"><a class="completed-project-back" href="#projects">← Our Projects</a>${project.banner||project.cardImage?`<div class="project-banner-placeholder has-image"><img src="${escapePageText(project.banner||project.cardImage)}" alt="${escapePageText(project.title)}"></div>`:''}<section class="project-closed-message completed-project-hero"><span>PROJECT CLOSED</span><h1>${escapePageText(project.title)}</h1>${closedDate?`<time class="completed-project-date">CLOSED · ${closedDate}</time>`:''}<p><span>ขอบคุณสำหรับทุกแรงสนับสนุน และขอบคุณที่มาร่วมเป็นส่วนหนึ่งของโปรเจกต์นี้ไปด้วยกันนะคะ</span><small>Thank you for all your support and for being a part of this journey with us.</small></p>${report?`<a class="btn completed-report-link" href="${escapePageText(report)}" target="_blank" rel="noopener noreferrer"><b>View Project Summary</b></a>`:''}</section></div></section><section class="section completed-summary-section"><div class="container"><header class="completed-section-head"><h2>FINAL SUMMARY</h2></header><article class="completed-total-raised"><div class="completed-total-head"><span>Total funds</span><em>${goalAchieved?'✓ Goal achieved':'Project closed'}</em></div><strong data-donation-total>${projectSummaryMoney(project.finalDonationAmount)}</strong><small>Project goal <b>${projectSummaryMoney(project.goal)}</b></small></article><section class="completed-summary-group" aria-labelledby="funds-received-title"><h3 id="funds-received-title">Funds received</h3><div class="completed-summary-grid completed-funds-grid">${valueCard('carry-over','Carry-over','ยอดยกมา',projectSummaryMoney(openingBalance))}${valueCard('form-donations','Form donations','ยอดโดเนทผ่านแบบฟอร์ม',project.sheetUrl?'กำลังคำนวณ…':'—','data-completed-form-donations')}${valueCard('anonymous','Anonymous donations','ยอดโดเนทไม่ระบุชื่อ',project.sheetUrl?'กำลังคำนวณ…':'—','data-completed-anonymous')}</div></section><section class="completed-summary-group completed-closing-group" aria-labelledby="project-closing-title"><h3 id="project-closing-title">Project closing</h3><div class="completed-closing-grid">${expenseCard}${valueCard('closing-balance','Closing balance','ยอดคงเหลือหลังปิดโปรเจกต์',projectSummaryMoney(closingBalance))}</div></section><section class="donation-recent-card donation-ledger is-final completed-donation-ledger" aria-labelledby="completed-donation-title"><div class="donation-card-head"><div><span>FINAL PROJECT RECORD</span><h3 id="completed-donation-title">DONATION SUMMARY</h3></div></div><div class="donation-ledger-head"><span>Date</span><span>Time</span><span>Amount</span></div><div class="donation-ledger-list" data-donation-list><div class="empty">${project.sheetUrl?'กำลังโหลดรายการ...':'ยังไม่มีข้อมูลรายการบริจาค'}</div></div><p class="donation-disclaimer">ยอดแสดงก่อนหักค่าธรรมเนียมการโอนต่างประเทศ / Amount shown before international transfer fees.</p></section></div></section></main>`+footer();
+  app.innerHTML=nav('projects')+`<main class="completed-project-page"><section class="section project-media-section"><div class="container"><a class="completed-project-back" href="#projects">← Our Projects</a>${project.banner||project.cardImage?`<div class="project-banner-placeholder has-image"><img src="${escapePageText(project.banner||project.cardImage)}" alt="${escapePageText(project.title)}"></div>`:''}<section class="project-closed-message completed-project-hero"><span>PROJECT CLOSED</span><h1>${escapePageText(project.title)}</h1>${closedDate?`<time class="completed-project-date">CLOSED · ${closedDate}</time>`:''}<p><span>ขอบคุณที่มาร่วมเป็นส่วนหนึ่งของโปรเจกต์นี้ไปด้วยกันนะคะ</span><small>Thank you for all your support and for being a part of this journey with us.</small></p>${report?`<a class="btn completed-report-link" href="${escapePageText(report)}" target="_blank" rel="noopener noreferrer"><b>View Project Summary</b></a>`:''}</section></div></section><section class="section completed-summary-section"><div class="container"><header class="completed-section-head"><h2>FINAL SUMMARY</h2></header><article class="completed-total-raised"><div class="completed-total-head"><span>Total funds</span><em>${goalAchieved?'✓ Goal achieved':'Project closed'}</em></div><strong data-donation-total>${projectSummaryMoney(project.finalDonationAmount)}</strong><small>Project goal <b>${projectSummaryMoney(project.goal)}</b></small></article><section class="completed-summary-group" aria-labelledby="funds-received-title"><h3 id="funds-received-title">Funds received</h3><div class="completed-summary-grid completed-funds-grid">${valueCard('carry-over','Carry-over','ยอดยกมา',projectSummaryMoney(openingBalance))}${valueCard('form-donations','Form donations','ยอดโดเนทผ่านแบบฟอร์ม',project.sheetUrl?'กำลังคำนวณ…':'—','data-completed-form-donations')}${valueCard('anonymous','Anonymous donations','ยอดโดเนทไม่ระบุชื่อ',project.sheetUrl?'กำลังคำนวณ…':'—','data-completed-anonymous')}</div></section><section class="completed-summary-group completed-closing-group" aria-labelledby="project-closing-title"><h3 id="project-closing-title">Project closing</h3><div class="completed-closing-grid">${expenseCard}${valueCard('closing-balance','Closing balance','ยอดคงเหลือหลังปิดโปรเจกต์',projectSummaryMoney(closingBalance))}</div></section><section class="donation-recent-card donation-ledger is-final completed-donation-ledger" aria-labelledby="completed-donation-title"><div class="donation-card-head"><div><span>FINAL PROJECT RECORD</span><h3 id="completed-donation-title">DONATION SUMMARY</h3></div></div><div class="donation-ledger-head"><span>Date</span><span>Time</span><span>Amount</span></div><div class="donation-ledger-list" data-donation-list><div class="empty">${project.sheetUrl?'กำลังโหลดรายการ...':'ยังไม่มีข้อมูลรายการบริจาค'}</div></div><p class="donation-disclaimer">ยอดแสดงก่อนหักค่าธรรมเนียมการโอนต่างประเทศ / Amount shown before international transfer fees.</p></section></div></section></main>`+footer();
   if(project.sheetUrl)setTimeout(()=>refreshProjectDonations(project.id),0);
 }
 function organizeProjectDetails(form,item){
@@ -3924,7 +3942,7 @@ calendarPage = function(){
   const year=calendarDate.getFullYear(),mon=calendarDate.getMonth(),first=new Date(year,mon,1);
   const todayKey=localDateKey(new Date()),monthKey=`${year}-${String(mon+1).padStart(2,"0")}`;
   if(!mobileCalendarSelectedDate || !mobileCalendarSelectedDate.startsWith(monthKey)) mobileCalendarSelectedDate=todayKey.startsWith(monthKey)?todayKey:`${monthKey}-01`;
-  const filteredEvents=db.events.filter(event=>publicTypeFilter==="all" || eventHasType(event,publicTypeFilter));
+  const filteredEvents=publicOrderedEvents().filter(event=>publicTypeFilter==="all" || eventHasType(event,publicTypeFilter));
   const cells=[],gridStart=new Date(year,mon,1-first.getDay());
   for(let index=0;index<42;index++){
     const cellDate=new Date(gridStart.getFullYear(),gridStart.getMonth(),gridStart.getDate()+index);
@@ -3934,9 +3952,9 @@ calendarPage = function(){
   }
   const selectedEvents=filteredEvents.filter(event=>event.date===mobileCalendarSelectedDate);
   const selectedLabel=new Intl.DateTimeFormat("en-US",{weekday:"short",month:"short",day:"numeric"}).format(new Date(`${mobileCalendarSelectedDate}T00:00:00`));
-  const detail=selectedEvents.length?selectedEvents.map(event=>`<button class="mobile-event-row" style="--event-color:${calendarEventColor(event,artistIndex)}" onclick="showEvent('${event.id}')"><span><small>${escapePageText(calendarTypeLabel(event))}</small><strong>${escapePageText(event.title)}</strong></span><b>›</b></button>`).join(""):`<div class="mobile-calendar-empty"><b>○</b><p>No schedule to display.<br>Please select another date.</p></div>`;
-  const nextEvent=filteredEvents.filter(event=>event.date>mobileCalendarSelectedDate).sort((a,b)=>a.date.localeCompare(b.date)||(a.time||"").localeCompare(b.time||""))[0];
-  const nextCard=nextEvent?`<section class="mobile-calendar-detail next"><header><strong>${new Intl.DateTimeFormat("en-US",{weekday:"short",month:"short",day:"numeric"}).format(new Date(`${nextEvent.date}T00:00:00`))}</strong><span>Next schedule</span></header><button class="mobile-next-event" style="--event-color:${calendarEventColor(nextEvent,artistIndex)}" onclick="showEvent('${nextEvent.id}')"><small>${escapePageText(calendarTypeLabel(nextEvent))}</small><strong>${escapePageText(nextEvent.title)}</strong></button></section>`:"";
+  const detail=selectedEvents.length?selectedEvents.map(event=>`<button class="mobile-event-row" style="--event-color:${calendarEventColor(event,artistIndex)}" onclick="showEvent('${event.id}')"><span><small>${escapePageText(calendarTypeLabel(event))}${eventParticipationInline(event)}</small><strong>${escapePageText(event.title)}</strong></span><b>›</b></button>`).join(""):`<div class="mobile-calendar-empty"><b>○</b><p>No schedule to display.<br>Please select another date.</p></div>`;
+  const nextEvent=filteredEvents.filter(event=>event.date>mobileCalendarSelectedDate).sort((a,b)=>a.date.localeCompare(b.date))[0];
+  const nextCard=nextEvent?`<section class="mobile-calendar-detail next"><header><strong>${new Intl.DateTimeFormat("en-US",{weekday:"short",month:"short",day:"numeric"}).format(new Date(`${nextEvent.date}T00:00:00`))}</strong><span>Next schedule</span></header><button class="mobile-next-event" style="--event-color:${calendarEventColor(nextEvent,artistIndex)}" onclick="showEvent('${nextEvent.id}')"><small>${escapePageText(calendarTypeLabel(nextEvent))}${eventParticipationInline(nextEvent)}</small><strong>${escapePageText(nextEvent.title)}</strong></button></section>`:"";
   const typeOptions=db.masterData.types.map(type=>`<option value="${type.id}" ${publicTypeFilter===type.id?"selected":""}>${escapePageText(type.label)}</option>`).join("");
   const mobile=`<section class="mobile-calendar-view"><header class="mobile-calendar-title"><a href="#home" aria-label="Back">‹</a><h1>Calendar</h1><span></span></header><div class="mobile-calendar-card"><div class="mobile-month-head"><div><h2>${new Intl.DateTimeFormat("en-US",{month:"short"}).format(first)}, <span>${year}</span></h2><button title="Calendar information" aria-label="Calendar information">i</button></div><nav><button onclick="moveCalendar(-1)" aria-label="Previous month">‹</button><button onclick="moveCalendar(1)" aria-label="Next month">›</button></nav></div><div class="mobile-calendar-controls"><select aria-label="Filter schedules by type" onchange="filterMobileCalendar(this.value)"><option value="all">All</option>${typeOptions}</select><button onclick="mobileCalendarToday()">Today</button></div><div class="mobile-calendar-grid">${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day=>`<span class="mobile-weekday">${day}</span>`).join("")}${cells.join("")}</div></div><section class="mobile-calendar-detail"><header><strong>${selectedLabel}</strong>${mobileCalendarSelectedDate===todayKey?"<span>Today</span>":""}</header>${detail}</section>${nextCard}</section>`;
   document.querySelector(".calendar-section")?.insertAdjacentHTML("afterend",mobile);
@@ -3945,7 +3963,7 @@ showEvent=function(id){
   const e=db.events.find(x=>x.id===id);if(!e)return;
   const dateLabel=new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric'}).format(new Date(`${e.date}T00:00:00`));
   const rawTime=String(e.time||e.place||'').trim(),timeLabel=rawTime.replace(/^(\d{1,2})[.:](\d{2})/,(_,hour,minute)=>`${String(hour).padStart(2,'0')}:${minute}`);
-  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal event-modal event-modal-detail"><div class="modal-head"><span class="eyebrow">${escapePageText(eventBadge(e))} · ${escapePageText(e.type||'')}</span><button class="close" onclick="closeModal()">×</button></div><h2>${escapePageText(e.title)}</h2><p class="event-date-time"><span>${escapePageText(dateLabel)}</span>${timeLabel?`<b>·</b><time>${escapePageText(timeLabel)}</time>`:''}</p>${e.source?`<a class="btn" target="_blank" href="${escapePageText(e.source)}">View source </a>`:''}</div></div>`);
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal event-modal event-modal-detail"><div class="modal-head"><span class="eyebrow">${escapePageText(eventBadge(e))} · ${escapePageText(e.type||'')}</span><button class="close" onclick="closeModal()">×</button></div><h2>${escapePageText(e.title)}</h2><p class="event-date-time"><span>${escapePageText(dateLabel)}</span>${timeLabel?`<b>·</b><time>${escapePageText(timeLabel)}</time>`:''}</p>${eventParticipationCopy(e)}${e.source?`<a class="btn" target="_blank" href="${escapePageText(e.source)}">View source </a>`:''}</div></div>`);
 };
 function updateDashboardArtistSummary(items=db.events){
   const panel=document.querySelector('.path-panel');if(!panel)return;
@@ -4248,7 +4266,7 @@ renderHomepageScheduleOrderEditor=function(){
 };
 homeScheduleSection=function(){
   ensureHomepageFrontDisplaySettings();
-  const now=new Date(),monthKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,monthly=db.events.filter(event=>event.date.startsWith(monthKey)),title=db.siteSettings.homeSections.find(section=>section.id==='schedule')?.title||'This Month Schedule';
+  const now=new Date(),monthKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,monthly=publicOrderedEvents().filter(event=>event.date.startsWith(monthKey)),title=db.siteSettings.homeSections.find(section=>section.id==='schedule')?.title||'This Month Schedule';
   const cards=homepageScheduleArtists().map((artist,index)=>`<article class="schedule-card ${artistScheduleCardClass(artist.id,index)}"><div class="schedule-card-head" style="background:${artistDisplayColor(artist.id,index)};color:#fff"><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role||'')}</p></div>${compactSchedule(monthly.filter(event=>itemMatchesArtist(event,artist.id)))}</article>`).join('');
   return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><h2>${escapePageText(title)}</h2></div><a class="btn outline" href="#schedule">View calendar </a></div><div class="schedule-columns dynamic-schedule-columns">${cards}</div></div></section>`;
 };
@@ -4636,7 +4654,7 @@ ensureHomePageSettings();
 function unifiedHomeScheduleMeta(event) {
   if (isSeriesBroadcast(event)) {
     return normalizeBroadcasts(event.broadcasts)
-      .map(row => `${row.mode==='online_uncut'?'UNCUT':'ON AIR'} - ${row.channel} · ${row.time}`)
+      .map(row => `${row.mode==='online_uncut'?'UNCUT':'ON AIR'} - ${row.channel} · ${formatBroadcastTime(row.time)}`)
       .join(' / ');
   }
   return String(event.place || '').trim();
@@ -4645,7 +4663,7 @@ function unifiedHomeScheduleSection() {
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const monthLabel = new Intl.DateTimeFormat('en-US', {month:'long'}).format(now);
-  const events = db.events
+  const events = publicOrderedEvents()
     .filter(event => event.date.startsWith(monthKey))
     .sort((a, b) => a.date.localeCompare(b.date));
   const artists = homepageScheduleArtists();
@@ -4665,7 +4683,7 @@ function unifiedHomeScheduleSection() {
     const meta = unifiedHomeScheduleMeta(event);
     return `<article class="unified-schedule-row">
       <time datetime="${escapePageText(event.date)}"><b>${day(event.date)}</b><span>${month(event.date)}</span><small>${weekday}</small></time>
-      <div class="unified-schedule-detail"><div class="unified-schedule-badges">${badges}</div><h3>${escapePageText(event.title)}</h3>${meta?`<p>${escapePageText(meta)}</p>`:''}</div>
+      <div class="unified-schedule-detail"><div class="unified-schedule-badges">${badges}</div><h3>${escapePageText(event.title)}</h3>${meta?`<p>${escapePageText(meta)}</p>`:''}${eventParticipationCopy(event)}</div>
       <span class="unified-schedule-type">${escapePageText(event.type || 'EVENT')}</span>
     </article>`;
   }).join('');
@@ -5017,16 +5035,26 @@ function ensureSeriesBroadcastData(){
   (db.events||[]).forEach(event=>{if(event.scheduleType==='series_broadcast'&&!Array.isArray(event.broadcasts))event.broadcasts=[]});
 }
 function isSeriesBroadcast(event){return event?.scheduleType==='series_broadcast'||eventHasType(event,'series_broadcast')}
+function formatBroadcastTime(value){
+ const match=String(value||'').match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+ if(!match)return String(value||'');
+ const hour=Number(match[1]);return (hour%12||12)+':'+match[2]+' '+(hour>=12?'PM':'AM');
+}
+function parseBroadcastTime(value){
+ const text=String(value||'').trim();if(/^([01]\d|2[0-3]):[0-5]\d$/.test(text))return text;
+ const match=text.match(/^(0?[1-9]|1[0-2]):([0-5]\d)\s*(AM|PM)$/i);if(!match)return '';
+ return String(Number(match[1])%12+(match[3].toUpperCase()==='PM'?12:0)).padStart(2,'0')+':'+match[2];
+}
 function normalizeBroadcasts(items){
   return (Array.isArray(items)?items:[]).map(item=>{const label=String(item?.label||'').trim(),mode=item?.mode==='online_uncut'||/uncut/i.test(label)?'online_uncut':'live';return {channel:String(item?.channel||'').trim(),time:String(item?.time||'').trim(),mode,label:mode==='online_uncut'?'UNCUT':'',watchUrl:String(item?.watchUrl||'').trim()}}).filter(item=>item.channel||item.time||item.watchUrl);
 }
 function seriesBroadcastRow(item={}){
   const broadcast=normalizeBroadcasts([item])[0]||{mode:'live'};
-  return `<article class="series-broadcast-row"><div class="field series-broadcast-type-field"><label>รูปแบบ</label><select data-broadcast-mode required><option value="live" ${broadcast.mode==='live'?'selected':''}>ON AIR</option><option value="online_uncut" ${broadcast.mode==='online_uncut'?'selected':''}>ONLINE UNCUT</option></select></div><div class="field series-broadcast-channel-field"><label>Channel / Platform</label><input data-broadcast-channel value="${escapePageText(item.channel||'')}" placeholder="ONE31 หรือ iQIYI / iQ.com" required></div><div class="field series-broadcast-time-field"><label>Time</label><input data-broadcast-time type="time" value="${escapePageText(item.time||'')}" required></div><button type="button" class="series-broadcast-remove" onclick="removeSeriesBroadcastRow(this)" aria-label="ลบช่องทางออกอากาศ">ลบ</button><div class="field series-broadcast-url-field"><label>Watch URL <small>ไม่บังคับ</small></label><input data-broadcast-url type="url" value="${escapePageText(item.watchUrl||'')}" placeholder="https://..."></div></article>`;
+  return `<article class="series-broadcast-row"><div class="field series-broadcast-type-field"><label>รูปแบบ</label><select data-broadcast-mode required><option value="live" ${broadcast.mode==='live'?'selected':''}>ON AIR</option><option value="online_uncut" ${broadcast.mode==='online_uncut'?'selected':''}>ONLINE UNCUT</option></select></div><div class="field series-broadcast-channel-field"><label>Channel / Platform</label><input data-broadcast-channel value="${escapePageText(item.channel||'')}" placeholder="ONE31 หรือ iQIYI / iQ.com" required></div><div class="field series-broadcast-time-field"><label>Time</label><input data-broadcast-time type="text" value="${escapePageText(formatBroadcastTime(item.time))}" placeholder="10:30 PM" aria-label="Time (AM/PM)" pattern="(0?[1-9]|1[0-2]):[0-5][0-9] +([Aa][Mm]|[Pp][Mm])" required></div><button type="button" class="series-broadcast-remove" onclick="removeSeriesBroadcastRow(this)" aria-label="ลบช่องทางออกอากาศ">ลบ</button><div class="field series-broadcast-url-field"><label>Watch URL <small>ไม่บังคับ</small></label><input data-broadcast-url type="url" value="${escapePageText(item.watchUrl||'')}" placeholder="https://..."></div></article>`;
 }
 function addSeriesBroadcastRow(button,item={}){button.closest('[data-broadcast-editor]')?.querySelector('[data-broadcast-list]')?.insertAdjacentHTML('beforeend',seriesBroadcastRow(item))}
 function removeSeriesBroadcastRow(button){button.closest('.series-broadcast-row')?.remove()}
-function broadcastsFromEditor(root){return normalizeBroadcasts([...root.querySelectorAll('.series-broadcast-row')].map(row=>{const mode=row.querySelector('[data-broadcast-mode]')?.value||'live';return {channel:row.querySelector('[data-broadcast-channel]')?.value,time:row.querySelector('[data-broadcast-time]')?.value,mode,label:mode==='online_uncut'?'UNCUT':'',watchUrl:row.querySelector('[data-broadcast-url]')?.value}}))}
+function broadcastsFromEditor(root){return normalizeBroadcasts([...root.querySelectorAll('.series-broadcast-row')].map(row=>{const mode=row.querySelector('[data-broadcast-mode]')?.value||'live';return {channel:row.querySelector('[data-broadcast-channel]')?.value,time:parseBroadcastTime(row.querySelector('[data-broadcast-time]')?.value),mode,label:mode==='online_uncut'?'UNCUT':'',watchUrl:row.querySelector('[data-broadcast-url]')?.value}}))}
 function validateBroadcasts(items){
   if(!items.length)return 'กรุณาเพิ่มช่องทางออกอากาศอย่างน้อย 1 รายการ';
   if(items.some(item=>!item.channel||!/^([01]\d|2[0-3]):[0-5]\d$/.test(item.time)))return 'กรุณากรอก Channel และ Time ให้ครบ';
@@ -5084,12 +5112,15 @@ submitForm=function(event,type,id){
   event.preventDefault();const form=event.currentTarget,data=new FormData(form),series=db.masterData.series.find(item=>item.id===data.get('seriesId')),episode=Number(data.get('episode')),broadcasts=broadcastsFromEditor(form),error=validateBroadcasts(broadcasts);
   if(!series){toast('กรุณาเลือก Series');return}if(!Number.isInteger(episode)||episode<1){toast('กรุณากรอก Episode เป็นเลขตั้งแต่ 1 ขึ้นไป');return}if(error){toast(error);return}
   const item={id:id||`e${Date.now()}`,scheduleType:'series_broadcast',seriesId:series.id,episode,date:String(data.get('date')||''),broadcasts:structuredClone(broadcasts),title:`${series.label} · EP.${episode}`,type:'Series Broadcast',artistId:'',artistIds:[],place:'',source:''};
+  item.participation=participationFromForm(data);
+  item.eventStatus=normalizeEventStatus(data.get('eventStatus'));
+  item.statusSource=statusSourceValue(data.get('statusSource'));
   if(!item.date){toast('กรุณาเลือกวันที่');return}const existing=id?db.events.find(event=>event.id===id):null;if(existing)Object.assign(existing,item);else db.events.push(item);save();closeModal();admin();toast('บันทึก Series Broadcast แล้ว');
 };
 
 function seriesBroadcastTitle(event){const series=db.masterData.series.find(item=>item.id===event.seriesId),name=String(series?.label||event.title||'Series').replace(/\s*Series\s*$/i,'').trim();return `${name.toUpperCase()} · EP.${Number(event.episode)||'—'}`}
 function seriesBroadcastModeLabel(row){return row.mode==='online_uncut'?'ONLINE UNCUT':'ON AIR'}
-function seriesBroadcastCompact(event){const rows=normalizeBroadcasts(event.broadcasts),first=rows[0];return first?`<small>${escapePageText(first.time)} · ${escapePageText(first.channel)} · ${escapePageText(seriesBroadcastModeLabel(first))}</small>${rows.length>1?`<small>+${rows.length-1} ช่องทาง</small>`:''}`:'<small>ยังไม่ระบุช่องทาง</small>'}
+function seriesBroadcastCompact(event){const rows=normalizeBroadcasts(event.broadcasts),first=rows[0];return first?`<small>${escapePageText(formatBroadcastTime(first.time))} · ${escapePageText(first.channel)} · ${escapePageText(seriesBroadcastModeLabel(first))}</small>${rows.length>1?`<small>+${rows.length-1} ช่องทาง</small>`:''}`:'<small>ยังไม่ระบุช่องทาง</small>'}
 const eventBadgeBeforeSeriesBroadcast=eventBadge;
 eventBadge=function(event){return isSeriesBroadcast(event)?'SERIES':eventBadgeBeforeSeriesBroadcast(event)};
 const calendarEventColorBeforeSeriesBroadcast=calendarEventColor;
@@ -5097,14 +5128,14 @@ calendarEventColor=function(event,artistIndex){return isSeriesBroadcast(event)?'
 const calendarPageBeforeSeriesBroadcast=calendarPage;
 calendarPage=function(){
   ensureSeriesBroadcastData();calendarPageBeforeSeriesBroadcast();
-  document.querySelectorAll('.cal-event').forEach(card=>{const id=(card.getAttribute('onclick')||'').match(/'([^']+)'/)?.[1],event=db.events.find(item=>item.id===id);if(!isSeriesBroadcast(event))return;card.classList.add('series-broadcast-card');card.removeAttribute('style');card.innerHTML=`<span>SERIES</span><strong>${escapePageText(seriesBroadcastTitle(event))}</strong>${seriesBroadcastCompact(event)}`});
+  document.querySelectorAll('.cal-event').forEach(card=>{const id=(card.getAttribute('onclick')||'').match(/'([^']+)'/)?.[1],event=db.events.find(item=>item.id===id);if(!isSeriesBroadcast(event))return;card.classList.add('series-broadcast-card');card.removeAttribute('style');card.innerHTML=`<span>SERIES${eventParticipationIcons(event)}</span><strong>${escapePageText(seriesBroadcastTitle(event))}</strong>${seriesBroadcastCompact(event)}`});
   const legend=document.querySelector('.dynamic-calendar-legend');if(legend&&!legend.querySelector('.series-legend'))legend.insertAdjacentHTML('afterbegin','<span class="series-legend"><i></i>SERIES</span>');
   document.querySelectorAll('.mobile-event-row,.mobile-next-event').forEach(card=>{const id=(card.getAttribute('onclick')||'').match(/'([^']+)'/)?.[1],event=db.events.find(item=>item.id===id);if(!isSeriesBroadcast(event))return;card.classList.add('series-broadcast-mobile');card.querySelector('time,.mobile-next-event>span')?.remove();const title=card.querySelector('strong');if(title)title.textContent=seriesBroadcastTitle(event)});
 };
 const showEventBeforeSeriesBroadcast=showEvent;
 showEvent=function(id){
   const event=db.events.find(item=>item.id===id);if(!isSeriesBroadcast(event)){showEventBeforeSeriesBroadcast(id);return}const series=db.masterData.series.find(item=>item.id===event.seriesId),dateLabel=new Intl.DateTimeFormat('en-US',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(`${event.date}T00:00:00`)),rows=normalizeBroadcasts(event.broadcasts);
-  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal event-modal series-broadcast-detail"><div class="modal-head"><div><small>SERIES · ON AIR</small><h2>${escapePageText(series?.label||'Series')}</h2></div><button class="close" onclick="closeModal()">×</button></div><strong class="series-episode">EP.${Number(event.episode)||'—'}</strong><p class="series-air-date">${escapePageText(dateLabel)}</p><div class="series-on-air"><span>ช่องทางรับชม</span>${rows.map(row=>`<article><div>${row.watchUrl?`<a class="series-channel-link" href="${escapePageText(row.watchUrl)}" target="_blank" rel="noopener noreferrer">${escapePageText(row.channel)}</a>`:`<strong>${escapePageText(row.channel)}</strong>`}<small>${escapePageText(seriesBroadcastModeLabel(row))}</small></div><time>${escapePageText(row.time)}</time></article>`).join('')||'<div class="empty">ยังไม่ระบุช่องทางออกอากาศ</div>'}</div></div></div>`);
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal event-modal series-broadcast-detail"><div class="modal-head"><div><small>SERIES · ON AIR</small><h2>${escapePageText(series?.label||'Series')}</h2></div><button class="close" onclick="closeModal()">×</button></div><strong class="series-episode">EP.${Number(event.episode)||'—'}</strong><p class="series-air-date">${escapePageText(dateLabel)}</p>${eventParticipationCopy(event)}<div class="series-on-air"><span>ช่องทางรับชม</span>${rows.map(row=>`<article><div>${row.watchUrl?`<a class="series-channel-link" href="${escapePageText(row.watchUrl)}" target="_blank" rel="noopener noreferrer">${escapePageText(row.channel)}</a>`:`<strong>${escapePageText(row.channel)}</strong>`}<small>${escapePageText(seriesBroadcastModeLabel(row))}</small></div><time>${escapePageText(formatBroadcastTime(row.time))}</time></article>`).join('')||'<div class="empty">ยังไม่ระบุช่องทางออกอากาศ</div>'}</div></div></div>`);
 };
 const openAdminEventDetailBeforeSeriesBroadcast=openAdminEventDetail;
 openAdminEventDetail=function(id){const event=db.events.find(item=>item.id===id);if(isSeriesBroadcast(event))showEvent(id);else openAdminEventDetailBeforeSeriesBroadcast(id)};
@@ -5142,6 +5173,73 @@ function adminCalendarIcon(name){
   return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]||''}</svg>`;
 }
 
+// Shared schedule order: a separate settings row per day keeps unrelated edits isolated.
+function orderedEvents(items=db.events){
+  const ranks=new Map();
+  Object.entries(db.eventOrderByDate||{}).forEach(([date,ids])=>{
+    if(Array.isArray(ids))ids.forEach((id,index)=>{const key=`${date}|${id}`;if(!ranks.has(key))ranks.set(key,index)});
+  });
+  return [...items].sort((a,b)=>String(a.date).localeCompare(String(b.date))||
+    (ranks.get(`${a.date}|${a.id}`)??Number.MAX_SAFE_INTEGER)-(ranks.get(`${b.date}|${b.id}`)??Number.MAX_SAFE_INTEGER)||
+    String(a.time||'').localeCompare(String(b.time||'')));
+}
+let eventOrderSaving=false;
+let draggedScheduleEventId='';
+function adminOrderedDayEvents(){
+  return orderedEvents().filter(event=>event.date===adminSelectedDate&&itemMatchesArtist(event,adminEventFilter)&&matchesAdminType(event));
+}
+async function reorderAdminEvent(sourceId,targetId){
+  if(!adminAuthenticated||eventOrderSaving||sourceId===targetId)return;
+  const visible=adminOrderedDayEvents().map(event=>event.id),from=visible.indexOf(sourceId),to=visible.indexOf(targetId);
+  if(from<0||to<0)return;
+  const date=adminSelectedDate,visibleIds=new Set(visible);
+  visible.splice(to,0,visible.splice(from,1)[0]);
+  let index=0;
+  const next=orderedEvents().filter(event=>event.date===date).map(event=>visibleIds.has(event.id)?visible[index++]:event.id);
+  db.eventOrderByDate ||= {};
+  const previous=db.eventOrderByDate[date];
+  eventOrderSaving=true;
+  db.eventOrderByDate[date]=next;
+  admin();
+  try{
+    if(!window.auausaveDB?.saveEventOrder)throw new Error('ไม่พบการเชื่อมต่อฐานข้อมูล');
+    await window.auausaveDB.saveEventOrder(date,next);
+    save(false);
+  }catch(error){
+    if(previous===undefined)delete db.eventOrderByDate[date];else db.eventOrderByDate[date]=previous;
+    save(false);
+    console.error('Schedule order save failed:',error);
+    toast('บันทึกลำดับงานไม่สำเร็จ คืนลำดับเดิมแล้ว กรุณาลองอีกครั้ง');
+  }finally{
+    eventOrderSaving=false;
+    if(location.hash==='#admin'&&adminTab==='events'){
+      admin();
+    }
+  }
+}
+async function moveAdminEvent(id,direction){
+  const items=adminOrderedDayEvents(),index=items.findIndex(event=>event.id===id),target=items[index+direction];
+  if(index>=0&&target)return reorderAdminEvent(id,target.id);
+}
+function scheduleEventDragStart(event,id){
+  if(eventOrderSaving||event.target.closest('button')){event.preventDefault();return}
+  draggedScheduleEventId=id;event.dataTransfer.setData('text/plain',id);event.dataTransfer.effectAllowed='move';
+  event.currentTarget.classList.add('is-dragging');
+}
+function scheduleEventDragOver(event){
+  if(!draggedScheduleEventId||eventOrderSaving)return;
+  event.preventDefault();event.dataTransfer.dropEffect='move';event.currentTarget.classList.add('is-drop-target');
+}
+function scheduleEventDragEnd(){
+  draggedScheduleEventId='';
+  document.querySelectorAll('.planner-detail-card.is-dragging,.planner-detail-card.is-drop-target').forEach(card=>card.classList.remove('is-dragging','is-drop-target'));
+}
+function scheduleEventDrop(event,targetId){
+  event.preventDefault();const sourceId=draggedScheduleEventId;scheduleEventDragEnd();
+  if(sourceId)return reorderAdminEvent(sourceId,targetId);
+}
+// End shared schedule order
+
 function selectAdminCalendarDate(date){adminSelectedDate=date;admin();}
 function goToAdminCalendarToday(){
   const today=new Date(),key=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
@@ -5167,7 +5265,7 @@ function openAdminEventForDate(date){
 }
 function openAdminEventDetail(id){
   const event=db.events.find(item=>item.id===id);if(!event)return;
-  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal planner-event-modal"><div class="modal-head"><div><small>${escapePageText(eventBadge(event))} · ${escapePageText(event.type||'EVENT')}</small><h2>${escapePageText(event.title||'ไม่ระบุชื่องาน')}</h2></div><button class="close" onclick="closeModal()" aria-label="ปิด">×</button></div><dl class="planner-event-facts"><div><dt>วันที่</dt><dd>${escapePageText(fmtDate(event.date))}</dd></div><div><dt>เวลา | สถานที่</dt><dd>${escapePageText(event.place||'')}</dd></div>${event.source?`<div><dt>ข้อมูลต้นทาง</dt><dd><a href="${escapePageText(event.source)}" target="_blank" rel="noopener">เปิดลิงก์ข้อมูล</a></dd></div>`:''}</dl><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal();openForm('events','${event.id}')">แก้ไขข้อมูล</button><button type="button" class="btn" onclick="closeModal()">ปิด</button></div></div></div>`);
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal planner-event-modal"><div class="modal-head"><div><small>${escapePageText(eventBadge(event))} · ${escapePageText(event.type||'EVENT')}</small><h2>${escapePageText(event.title||'ไม่ระบุชื่องาน')}</h2></div><button class="close" onclick="closeModal()" aria-label="ปิด">×</button></div>${eventStatusBadge(event)}<dl class="planner-event-facts"><div><dt>วันที่</dt><dd>${escapePageText(fmtDate(event.date))}</dd></div><div><dt>เวลา | สถานที่</dt><dd>${escapePageText(event.place||'')}</dd></div>${event.source?`<div><dt>ข้อมูลต้นทาง</dt><dd><a href="${escapePageText(event.source)}" target="_blank" rel="noopener">เปิดลิงก์ข้อมูล</a></dd></div>`:''}</dl><div class="form-actions"><button type="button" class="btn outline" onclick="closeModal();openForm('events','${event.id}')">แก้ไขข้อมูล</button><button type="button" class="btn" onclick="closeModal()">ปิด</button></div></div></div>`);
 }
 
 function adminCalendarWorkspace(){
@@ -5180,9 +5278,9 @@ function adminCalendarWorkspace(){
   if(!adminSelectedDate.startsWith(adminMonth)) adminSelectedDate=todayKey.startsWith(adminMonth)?todayKey:`${adminMonth}-01`;
   const monthStart=new Date(year,monthNumber-1,1),gridStart=new Date(year,monthNumber-1,1-((monthStart.getDay()+6)%7));
   const query='';
-  const visible=db.events.filter(event=>itemMatchesArtist(event,adminEventFilter)&&matchesAdminType(event));
+  const visible=orderedEvents().filter(event=>itemMatchesArtist(event,adminEventFilter)&&matchesAdminType(event));
   const monthEvents=visible.filter(event=>event.date.startsWith(adminMonth)).sort((a,b)=>a.date.localeCompare(b.date));
-  const selectedEvents=visible.filter(event=>event.date===adminSelectedDate).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  const selectedEvents=visible.filter(event=>event.date===adminSelectedDate);
   const upcoming=visible.filter(event=>event.date>adminSelectedDate).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,4);
   const monthLabel=new Intl.DateTimeFormat('th-TH',{month:'long',year:'numeric'}).format(monthStart);
   const selectedObj=new Date(`${adminSelectedDate}T00:00:00`),selectedDay=new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'long'}).format(selectedObj),selectedWeekday=new Intl.DateTimeFormat('th-TH',{weekday:'long'}).format(selectedObj);
@@ -5193,10 +5291,10 @@ function adminCalendarWorkspace(){
     const cellDate=new Date(gridStart);cellDate.setDate(gridStart.getDate()+index);
     const key=`${cellDate.getFullYear()}-${String(cellDate.getMonth()+1).padStart(2,'0')}-${String(cellDate.getDate()).padStart(2,'0')}`;
     const items=visible.filter(event=>event.date===key).slice(0,3),outside=cellDate.getMonth()!==monthNumber-1;
-    cells.push(`<button class="admin-planner-day ${outside?'outside':''} ${key===todayKey?'today':''} ${key===adminSelectedDate?'selected':''}" onclick="selectAdminCalendarDate('${key}')"><span class="planner-date">${cellDate.getDate()}</span><span class="planner-events">${items.map(event=>{const artistId=eventPrimaryArtistId(event),artistIndex=Math.max(0,artists.findIndex(a=>sameArtistId(a.id,artistId)));return `<span class="planner-event" style="--event-color:${artistDisplayColor(artistId,artistIndex)}"><b>${escapePageText(event.title)}</b></span>`}).join('')}${visible.filter(event=>event.date===key).length>3?`<small>+${visible.filter(event=>event.date===key).length-3} งาน</small>`:''}</span></button>`);
+    cells.push(`<button class="admin-planner-day ${outside?'outside':''} ${key===todayKey?'today':''} ${key===adminSelectedDate?'selected':''}" onclick="selectAdminCalendarDate('${key}')"><span class="planner-date">${cellDate.getDate()}</span><span class="planner-events">${items.map(event=>{const artistId=eventPrimaryArtistId(event),artistIndex=Math.max(0,artists.findIndex(a=>sameArtistId(a.id,artistId)));return `<span class="planner-event planner-event-${normalizeEventStatus(event.eventStatus)}" title="${escapePageText(eventStatusLabel(event)?eventStatusLabel(event)+': '+event.title:event.title)}" style="--event-color:${artistDisplayColor(artistId,artistIndex)}"><b>${eventStatusLabel(event)?eventStatusLabel(event)+': ':''}${escapePageText(event.title)}</b></span>`}).join('')}${visible.filter(event=>event.date===key).length>3?`<small>+${visible.filter(event=>event.date===key).length-3} งาน</small>`:''}</span></button>`);
   }
-  const eventCard=event=>{const artistId=eventPrimaryArtistId(event),artistIndex=Math.max(0,artists.findIndex(a=>sameArtistId(a.id,artistId)));return `<article class="planner-detail-card" style="--event-color:${artistDisplayColor(artistId,artistIndex)}"><div class="planner-event-meta"><span><i></i>${escapePageText(eventBadge(event))}</span><small>${escapePageText(event.type||'EVENT')}</small></div><h3>${escapePageText(event.title)}</h3><p>${escapePageText(event.place||'')}</p><div class="planner-card-actions"><button onclick="openForm('events','${event.id}')" aria-label="แก้ไข ${escapePageText(event.title)}">${adminCalendarIcon('edit')}</button><button class="planner-delete-event" onclick="removeItem('events','${event.id}')" aria-label="ลบ ${escapePageText(event.title)}" title="ลบงานนี้">${adminCalendarIcon('trash')}</button></div></article>`};
-  return `<div class="admin"><div class="admin-shell">${adminSidebarMarkup('#schedule','← ดูปฏิทินหน้าบ้าน')}<main class="admin-main admin-calendar-main"><header class="calendar-management-head"><div><h1>CALENDAR MANAGEMENT</h1><p>วางแผนและจัดการตารางงานทั้งหมดในที่เดียว</p></div><div class="calendar-head-actions"><button class="btn outline" onclick="openBulkEventForm()">${adminCalendarIcon('sheet')} วางตารางงานจาก Excel</button><button class="btn calendar-add" onclick="openAdminEventForDate('${adminSelectedDate}')">${adminCalendarIcon('plus')} เพิ่มงานใหม่</button></div></header><section class="calendar-planner-shell"><div class="calendar-planner-main"><div class="planner-toolbar"><div class="planner-navigation"><button onclick="changeAdminMonth(-1)" aria-label="เดือนก่อนหน้า">${adminCalendarIcon('left')}</button><button onclick="changeAdminMonth(1)" aria-label="เดือนถัดไป">${adminCalendarIcon('right')}</button><button class="planner-today" onclick="goToAdminCalendarToday()">วันนี้</button></div><h2>${escapePageText(monthLabel)}</h2><div class="planner-tools"><label class="planner-month-picker">${adminCalendarIcon('calendar')}<span>เลือกเดือนและปี</span><input type="month" value="${adminMonth}" onchange="setAdminCalendarMonth(this.value)" aria-label="เลือกเดือนและปี"></label><select onchange="adminTypeFilter=this.value;admin()" aria-label="กรองประเภทงาน"><option value="all">ทุกประเภท</option>${db.masterData.types.map(type=>`<option value="${type.id}" ${adminTypeFilter===type.id?'selected':''}>${escapePageText(type.label)}</option>`).join('')}</select></div></div><div class="planner-filters">${filters}<span>${monthEvents.length} งานในเดือนนี้</span></div><div class="admin-planner-grid"><div class="planner-weekdays">${['จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'].map(day=>`<span>${day}</span>`).join('')}</div><div class="planner-days">${cells.join('')}</div></div></div><aside class="calendar-day-rail"><header><div><h2>${escapePageText(selectedDay)}</h2><p>${escapePageText(selectedWeekday)}</p></div><button onclick="openAdminEventForDate('${adminSelectedDate}')" aria-label="เพิ่มงานในวันนี้">${adminCalendarIcon('plus')}</button></header><section class="day-rail-section"><div class="day-rail-label"><strong>งานในวันนี้</strong><span>${selectedEvents.length}</span></div>${selectedEvents.map(eventCard).join('')||`<div class="planner-empty">ยังไม่มีงานในวันนี้<br><button onclick="openAdminEventForDate('${adminSelectedDate}')">+ เพิ่มงาน</button></div>`}</section><section class="day-rail-section upcoming"><div class="day-rail-label"><strong>งานถัดไป</strong></div>${upcoming.map(event=>`<button class="planner-upcoming" onclick="openAdminEventDetail('${event.id}')"><time><b>${day(event.date)}</b><span>${month(event.date)}</span></time><i style="--event-color:${artistDisplayColor(eventPrimaryArtistId(event),0)}"></i><span><strong>${escapePageText(event.title)}</strong><small>${escapePageText(event.place||'')}</small></span>${adminCalendarIcon('right')}</button>`).join('')||'<div class="planner-empty compact">ยังไม่มีงานถัดไป</div>'}</section></aside></section></main></div></div>`;
+  const eventCard=(event,index)=>{const artistId=eventPrimaryArtistId(event),artistIndex=Math.max(0,artists.findIndex(a=>sameArtistId(a.id,artistId)));return `<article class="planner-detail-card" data-event-order-id="${escapePageText(event.id)}" draggable="${!eventOrderSaving&&selectedEvents.length>1}" ondragstart="scheduleEventDragStart(event,this.dataset.eventOrderId)" ondragover="scheduleEventDragOver(event)" ondragleave="this.classList.remove('is-drop-target')" ondrop="scheduleEventDrop(event,this.dataset.eventOrderId)" ondragend="scheduleEventDragEnd()" style="--event-color:${artistDisplayColor(artistId,artistIndex)}"><div class="planner-event-meta"><span><i></i>${escapePageText(eventBadge(event))}</span><small>${escapePageText(event.type||'EVENT')}</small><small class="planner-order-number">No.${index+1}</small></div>${eventStatusBadge(event)}<h3>${escapePageText(event.title)}</h3><p>${escapePageText(event.place||'')}</p><div class="planner-card-actions"><button ${eventOrderSaving?'disabled':''} onclick="openForm('events','${event.id}')" aria-label="แก้ไข ${escapePageText(event.title)}">${adminCalendarIcon('edit')}</button><button class="planner-delete-event" ${eventOrderSaving?'disabled':''} onclick="removeItem('events','${event.id}')" aria-label="ลบ ${escapePageText(event.title)}" title="ลบงานนี้">${adminCalendarIcon('trash')}</button></div></article>`};
+  return `<div class="admin"><div class="admin-shell">${adminSidebarMarkup('#schedule','← ดูปฏิทินหน้าบ้าน')}<main class="admin-main admin-calendar-main"><header class="calendar-management-head"><div><h1>CALENDAR MANAGEMENT</h1><p>วางแผนและจัดการตารางงานทั้งหมดในที่เดียว</p></div><div class="calendar-head-actions"><button class="btn outline" onclick="openBulkEventForm()">${adminCalendarIcon('sheet')} วางตารางงานจาก Excel</button><button class="btn calendar-add" onclick="openAdminEventForDate('${adminSelectedDate}')">${adminCalendarIcon('plus')} เพิ่มงานใหม่</button></div></header><section class="calendar-planner-shell"><div class="calendar-planner-main"><div class="planner-toolbar"><div class="planner-navigation"><button onclick="changeAdminMonth(-1)" aria-label="เดือนก่อนหน้า">${adminCalendarIcon('left')}</button><button onclick="changeAdminMonth(1)" aria-label="เดือนถัดไป">${adminCalendarIcon('right')}</button><button class="planner-today" onclick="goToAdminCalendarToday()">วันนี้</button></div><h2>${escapePageText(monthLabel)}</h2><div class="planner-tools"><label class="planner-month-picker">${adminCalendarIcon('calendar')}<span>เลือกเดือนและปี</span><input type="month" value="${adminMonth}" onchange="setAdminCalendarMonth(this.value)" aria-label="เลือกเดือนและปี"></label><select onchange="adminTypeFilter=this.value;admin()" aria-label="กรองประเภทงาน"><option value="all">ทุกประเภท</option>${db.masterData.types.map(type=>`<option value="${type.id}" ${adminTypeFilter===type.id?'selected':''}>${escapePageText(type.label)}</option>`).join('')}</select></div></div><div class="planner-filters">${filters}<span>${monthEvents.length} งานในเดือนนี้</span></div><div class="admin-planner-grid"><div class="planner-weekdays">${['จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์'].map(day=>`<span>${day}</span>`).join('')}</div><div class="planner-days">${cells.join('')}</div></div></div><aside class="calendar-day-rail"><header><div><h2>${escapePageText(selectedDay)}</h2><p>${escapePageText(selectedWeekday)}</p></div><button onclick="openAdminEventForDate('${adminSelectedDate}')" aria-label="เพิ่มงานในวันนี้">${adminCalendarIcon('plus')}</button></header><section class="day-rail-section"><div class="day-rail-label"><strong>งานในวันนี้</strong><span>${selectedEvents.length}</span></div>${selectedEvents.map(eventCard).join('')||`<div class="planner-empty">ยังไม่มีงานในวันนี้<br><button onclick="openAdminEventForDate('${adminSelectedDate}')">+ เพิ่มงาน</button></div>`}</section><section class="day-rail-section upcoming"><div class="day-rail-label"><strong>งานถัดไป</strong></div>${upcoming.map(event=>`<button class="planner-upcoming" onclick="openAdminEventDetail('${event.id}')"><time><b>${day(event.date)}</b><span>${month(event.date)}</span></time><i style="--event-color:${artistDisplayColor(eventPrimaryArtistId(event),0)}"></i><span><strong>${eventStatusBadge(event)}${escapePageText(event.title)}</strong><small>${escapePageText(event.place||'')}</small></span>${adminCalendarIcon('right')}</button>`).join('')||'<div class="planner-empty compact">ยังไม่มีงานถัดไป</div>'}</section></aside></section></main></div></div>`;
 }
 
 adminEventCalendar=function(){
@@ -5218,5 +5316,40 @@ openForm = function(type,id){
  const types=form.querySelector('[data-event-type-picker]')?.closest('.field');
  if(source){source.classList.add('full');source.style.gridColumn='1 / -1';if(types){types.classList.add('full');types.style.gridColumn='1 / -1';source.after(types);}}
  const place=form.querySelector('[name="place"]');if(place){place.required=false;place.placeholder='เช่น 18:00 | Siam Paragon';}
+ form.querySelector('.form-grid')?.insertAdjacentHTML('beforeend',eventParticipationFields(id?db.events.find(item=>item.id===id):{}));
+ const eventTitle=form.querySelector('[name="title"]')?.closest('.field');
+ if(eventTitle)eventTitle.insertAdjacentHTML('beforebegin',eventStatusField(id?db.events.find(item=>item.id===id):{}));
  if(!id)form.querySelectorAll('[name="eventArtistIds"]').forEach(input=>input.checked=false);
 };
+
+const openFormBeforeEventReference=openForm;
+openForm=function(type,id){openFormBeforeEventReference(type,id);if(type==='events')document.querySelector('#modal .form-grid')?.insertAdjacentHTML('beforeend',eventReferenceField(db.events.find(item=>item.id===id)||{}))};
+const submitFormBeforeEventReference=submitForm;
+submitForm=async function(event,type,id){
+ const form=event.currentTarget||event.target,existing=db.events.find(item=>item.id===id);
+ if(type!=='events')return submitFormBeforeEventReference(event,type,id);
+ const data=new FormData(form),ref=String(data.get('rescheduledFrom')||'');
+ const replacement=existing&&eventReplacement(existing);
+ if(replacement&&data.get('eventStatus')!=='postponed'){event.preventDefault();toast('งานนี้มีวันใหม่แล้ว กรุณาคงสถานะเลื่อนของงานเดิม');return}
+ if(!ref&&!existing?.rescheduledFrom)return submitFormBeforeEventReference(event,type,id);
+ event.preventDefault();if(form.dataset.savingReference)return;
+ const item={...existing,id:id||`e${Date.now()}`,title:String(data.get('title')||''),date:String(data.get('date')||''),place:String(data.get('place')||''),source:String(data.get('source')||''),seriesId:String(data.get('seriesId')||''),eventStatus:normalizeEventStatus(data.get('eventStatus')),statusSource:statusSourceValue(data.get('statusSource')),participation:participationFromForm(data),rescheduledFrom:ref};
+ if(scheduleFormIsSeriesBroadcast(form)){
+  const series=db.masterData.series.find(entry=>entry.id===item.seriesId);item.episode=Number(data.get('episode'));item.broadcasts=broadcastsFromEditor(form);
+  const error=validateBroadcasts(item.broadcasts);if(!series||!Number.isInteger(item.episode)||item.episode<1||error){toast(error||'กรุณาระบุ Series และ Episode');return}
+  Object.assign(item,{title:`${series.label} · EP.${item.episode}`,scheduleType:'series_broadcast',type:'Series Broadcast',artistId:'',artistIds:[]});
+ }else{
+  item.artistIds=data.getAll('eventArtistIds');item.artistId=item.artistIds[0]||'';item.type=data.getAll('eventType').join(' | ');item.scheduleType='';item.broadcasts=[];item.episode=null;
+  if(!item.artistIds.length||!item.type||!item.title.trim()){toast('กรุณาระบุชื่อ ศิลปิน และประเภทงาน');return}
+ }
+ const error=validateEventReference(item);if(error){toast(error);return}
+ const button=form.querySelector('[type="submit"]');form.dataset.savingReference='1';if(button)button.disabled=true;
+ try{
+  const saved=await window.auausaveDB.saveReferencedEvent(item);
+  if(existing)Object.assign(existing,saved);else db.events.push(saved);
+  save(false);closeModal();admin();toast('บันทึกงานและ Ref วันเดิมแล้ว');
+ }catch(error){toast('บันทึกไม่สำเร็จ: '+(error.message||'กรุณาลองอีกครั้ง'))}
+ finally{delete form.dataset.savingReference;if(button)button.disabled=false}
+};
+
+function publicOrderedEvents(items=db.events){return orderedEvents(items).filter(eventPublicVisible)}

@@ -2012,3 +2012,9 @@ main > .project-hub-section{
 .event-reschedule-confirmed{display:block;flex-basis:100%;margin-top:4px}.event-reschedule-confirmed .event-ref-link{display:inline-block;padding:6px 10px;border:1px solid currentColor;border-radius:6px;font-size:12px;line-height:1.5;text-decoration:none}.event-reschedule-confirmed .event-ref-link:hover{text-decoration:underline}.event-ref-link:focus-visible{outline:2px solid currentColor;outline-offset:3px}
 
 .event-rescheduled-from{display:block;flex-basis:100%;padding:5px 8px;border-left:3px solid #b78939;background:rgba(190,145,62,.1);font-size:12px;line-height:1.5}.mobile-event-row .event-rescheduled-from,.mobile-next-event .event-rescheduled-from{display:block;margin:5px 0;font-size:inherit}
+
+/* Project banners retain their original proportions at every screen size. */
+.project-banner-placeholder.has-image,
+.project-admin-modal #uploadPreview_banner.has-image{aspect-ratio:auto;height:auto;min-height:0}
+.project-banner-placeholder.has-image img,
+.project-admin-modal #uploadPreview_banner.has-image img{display:block;width:100%;height:auto;object-fit:contain}
