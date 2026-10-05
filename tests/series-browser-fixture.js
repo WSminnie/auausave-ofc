@@ -15,6 +15,8 @@
   rows.series[0].cover_url = sampleImage;
   rows.series[0].banner_url = sampleImage;
   rows.episodes[0].thumbnail_url = sampleImage;
+  rows.episodes[0].description = 'เรื่องย่อ EP.01  ช่องว่างสองช่อง\nบรรทัดที่สอง\n\n  ย่อหน้าถัดไป <ข้อความตัวอย่าง>\n\n' + 'เรื่องราวของตัวละครและการเริ่มต้นครั้งใหม่ '.repeat(180) + '\nจบเรื่องย่อ';
+  rows.episodes[1].description = 'เรื่องย่อสั้นของ EP.02';
   rows.media[0].thumbnail_url = sampleImage;
   const cast = [{ artist_name: 'Artist A', character_name: 'Character A', image_url: sampleImage, description: 'Character information supplied by the admin.' }, { artist_name: 'Artist B', character_name: 'Character B' }];
   const links = [{ label: 'Official page', url: 'https://example.com', display_order: 0 }];

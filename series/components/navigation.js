@@ -22,20 +22,35 @@
       root.querySelectorAll('[data-related-filter]').forEach(filter => filter.setAttribute('aria-pressed', String(filter === button)));
       root.querySelectorAll('[data-related-category]').forEach(card => { card.hidden = Boolean(button.dataset.relatedFilter) && card.dataset.relatedCategory !== button.dataset.relatedFilter; });
     }));
-    const synopsisButtons = [...root.querySelectorAll('[data-synopsis-toggle]')];
-    const measure = () => synopsisButtons.forEach(button => {
-      const text = button.previousElementSibling;
-      button.hidden = button.getAttribute('aria-expanded') !== 'true' && text.scrollHeight <= text.clientHeight + 1;
+    let activeDialog, previousOverflow;
+    const releaseScroll = () => {
+      if (!activeDialog) return;
+      document.documentElement.style.overflow = previousOverflow;
+      activeDialog = null;
+    };
+    root.querySelectorAll('[data-synopsis-open]').forEach(button => {
+      const dialog = root.querySelector(`#${CSS.escape(button.getAttribute('aria-controls'))}`);
+      button.addEventListener('click', () => {
+        if (activeDialog) return;
+        dialog.showModal();
+        activeDialog = dialog;
+        previousOverflow = document.documentElement.style.overflow;
+        document.documentElement.style.overflow = 'hidden';
+      });
+      dialog.querySelector('[data-synopsis-close]').addEventListener('click', () => dialog.close());
+      dialog.addEventListener('close', () => {
+        if (activeDialog === dialog) releaseScroll();
+      });
+      dialog.addEventListener('click', event => {
+        if (event.target !== dialog) return;
+        const bounds = dialog.getBoundingClientRect();
+        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dialog.close();
+      });
     });
-    synopsisButtons.forEach(button => button.addEventListener('click', () => {
-      const expanded = button.getAttribute('aria-expanded') !== 'true';
-      button.setAttribute('aria-expanded', String(expanded));
-      button.previousElementSibling.classList.toggle('is-collapsed', !expanded);
-      button.textContent = expanded ? 'Show less' : 'Read synopsis';
-    }));
-    const resizeObserver = new ResizeObserver(measure);
-    synopsisButtons.forEach(button => resizeObserver.observe(button.previousElementSibling));
-    measure();
-    return () => { observer.disconnect(); resizeObserver.disconnect(); };
+    return () => {
+      observer.disconnect();
+      activeDialog?.close();
+      releaseScroll();
+    };
   };
 })();

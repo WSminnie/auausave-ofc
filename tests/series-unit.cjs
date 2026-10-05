@@ -12,20 +12,25 @@ function setup(files) {
 }
 test('long episode synopsis stays complete and metadata follows in keyword-first order', () => {
   const { SeriesFeature: S } = setup(['series/components/shared.js', 'series/components/episodes.js']);
-  const description = 'A long official synopsis. '.repeat(200) + '<final paragraph>';
+  const description = 'A long official synopsis. '.repeat(200) + '\n\n  <final paragraph>  บรรทัดสุดท้าย';
   const html = S.components.episodeCard({ episode_number: 1, description, keyword: 'CHAPTER ONE', hashtag: '#Episode1', links: [] });
   assert.ok(html.includes('A long official synopsis. '.repeat(200)));
   assert.ok(html.includes('&lt;final paragraph&gt;'));
   assert.ok(!html.includes('<dt>'));
   assert.ok(html.indexOf('CHAPTER ONE') < html.indexOf('#Episode1'));
   assert.ok(html.includes('series-episode-placeholder'));
-  assert.ok(html.includes('aria-expanded="false"'));
+  assert.ok(html.includes('aria-haspopup="dialog"'));
+  assert.ok(html.includes('<dialog '));
+  assert.ok(html.includes('\n\n  &lt;final paragraph&gt;  บรรทัดสุดท้าย'));
+  assert.ok(!html.includes('is-collapsed'));
+  assert.ok(!html.includes('data-synopsis-toggle'));
 });
 
 test('empty related content and unavailable watch links do not create actions', () => {
   const { SeriesFeature: S } = setup(['series/components/shared.js', 'series/components/episodes.js', 'series/components/related-content.js']);
   assert.equal(S.components.related({ appearances: [], media: [], moments: [] }), '');
   assert.ok(!S.components.episodeCard({ episode_number: 4, links: [] }).includes('<a '));
+  assert.ok(!S.components.episodeCard({ episode_number: 4, links: [] }).includes('<dialog '));
 });
 
 test('related adapter preserves each source record and its URL without mutating input', () => {

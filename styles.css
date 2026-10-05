@@ -2018,3 +2018,5 @@ main > .project-hub-section{
 .project-admin-modal #uploadPreview_banner.has-image{aspect-ratio:auto;height:auto;min-height:0}
 .project-banner-placeholder.has-image img,
 .project-admin-modal #uploadPreview_banner.has-image img{display:block;width:100%;height:auto;object-fit:contain}
+
+.personal-profile-title{min-width:0}.personal-profile-updated{display:block;margin-top:8px;font-size:12px;line-height:1.5;color:var(--muted);letter-spacing:normal}.personal-profile-heading>p{text-align:right;justify-self:end}
