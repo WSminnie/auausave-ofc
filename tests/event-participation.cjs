@@ -22,9 +22,20 @@ test('form supports clearing all values without retaining old settings',()=>{
 });
 test('editor restores saved access and options and leaves legacy events unspecified',()=>{
  const c=setup();const html=c.eventParticipationFields({participation:{access:'surrounding',gifts:true}});
- assert.match(html,/value="surrounding" selected/);assert.match(html,/name="participationGifts"[^>]*checked/);
+ assert.match(html,/value="surrounding"[^>]*checked/);assert.match(html,/name="participationGifts"[^>]*checked/);
  assert.doesNotMatch(html,/name="participationGathering"[^>]*checked/);
- assert.match(c.eventParticipationFields({}),/value="" selected/);
+ assert.doesNotMatch(c.eventParticipationFields({}),/checked/);
+});
+
+test('multiple access conditions roundtrip, render and restore together',()=>{
+ const c=setup();const data={getAll:()=>['private','surrounding','private','invalid'],get:()=>null};
+ const result=c.participationFromForm(data);
+ assert.deepEqual(JSON.parse(JSON.stringify(result)),{access:['private','surrounding'],gathering:false,gifts:false});
+ const event={participation:result};
+ assert.equal(c.eventParticipationText(event),'เฉพาะผู้มีสิทธิ์เข้าร่วมงาน · สามารถไปให้กำลังใจรอบๆงานได้');
+ assert.equal((c.eventParticipationIcons(event).match(/<svg /g)||[]).length,2);
+ const html=c.eventParticipationFields(event);
+ for(const id of ['private','surrounding'])assert.match(html,new RegExp('value="'+id+'"[^>]*checked'));
 });
 
 test('event create and edit include participation in the first save and allow clearing it',()=>{
