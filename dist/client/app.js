@@ -1104,6 +1104,7 @@ const yearlyAdminTabs = {presenters:'content', awards:'content'};
 let previousYearlyAdminTab = "dashboard";
 const ADMIN_MENU_ITEMS = [
   ['dashboard','⌂','Dashboard'],
+  ['analytics','▥','Analytics'],
   ['pagecontent','▤','Homepage'],
   ['artists','◉','Artist'],
   ['events','▦','Schedule'],
@@ -1396,7 +1397,8 @@ dashboardAdmin = function () {
 };
 const renderAdminWithEvents = admin;
 admin = function () {
-  if (adminTab === "dashboard") dashboardAdmin();
+  if (adminTab === "analytics") { if (adminAuthenticated) Analytics.render(adminSidebarMarkup('#home','← กลับหน้าเว็บไซต์')); }
+  else if (adminTab === "dashboard") dashboardAdmin();
   else renderAdminWithEvents();
 };
 let adminCalendarView = "list";
