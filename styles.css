@@ -1741,8 +1741,8 @@ main:has(> .home-media-banner) > .unified-home-schedule{
   .unified-home-schedule .unified-schedule-clock b{font-size:clamp(18px,5vw,23px);line-height:1.15;letter-spacing:-.03em}
   .unified-home-schedule .unified-schedule-clock small{font-size:11px;line-height:1.4;color:#666;overflow-wrap:anywhere;text-align:center}
   .unified-home-schedule .unified-schedule-artist{font-size:10px;line-height:1.5}
-  .unified-home-schedule .unified-schedule-detail h3{font-size:14px;line-height:1.5}
-  .unified-home-schedule .unified-schedule-detail p{margin-top:4px;font-size:12px;line-height:1.5;margin-bottom:0}
+  .unified-home-schedule .unified-schedule-detail h3{font-size:15px;line-height:1.45}
+  .unified-home-schedule .unified-schedule-detail p{margin-top:4px;font-size:11px;line-height:1.5;margin-bottom:0}
   .unified-home-schedule .event-participation-item{padding:0;border:0;border-radius:0;background:transparent;color:var(--muted);font-size:11px;line-height:1.5;gap:4px}
   .unified-home-schedule .event-participation-item .event-participation-icon{flex-basis:13px;width:13px;height:13px}
   .unified-home-schedule .event-participation-item .event-participation-icon svg{width:13px;height:13px}
@@ -2113,9 +2113,9 @@ main > .project-hub-section{
   .mobile-calendar-agenda .mobile-home-schedule-row time span{grid-row:3;font-size:10px;letter-spacing:0}
   .mobile-home-schedule-row .unified-schedule-detail{display:block;min-width:0;position:relative;padding-left:10px}
   .mobile-home-schedule-row .unified-schedule-detail:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:999px;background:var(--event-color)}
-  .mobile-home-schedule-title{display:block;font-size:14px;line-height:1.4;font-weight:700;overflow-wrap:anywhere}
+  .mobile-home-schedule-title{display:block;font-size:15px;line-height:1.45;font-weight:700;overflow-wrap:anywhere}
   .mobile-home-schedule-origin{display:block;font-size:11px;line-height:1.6;color:var(--muted);margin-top:4px}
-  .mobile-home-schedule-meta{display:block;font-size:clamp(11px,2.8vw,13px);line-height:1.6;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
+  .mobile-home-schedule-meta{display:block;font-size:11px;line-height:1.5;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
   .mobile-calendar-agenda .mobile-home-schedule-row:not(.is-day-end){border-bottom:0}
   .mobile-home-schedule-participation{display:block;font-size:12px;line-height:1.6;color:var(--muted);margin-top:6px;white-space:normal;overflow-wrap:anywhere}
   .mobile-home-schedule-participation:empty{display:none}
