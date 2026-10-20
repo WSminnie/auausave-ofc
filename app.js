@@ -3898,8 +3898,33 @@ projectsAdmin=function(){
   groups.forEach(group=>{const projects=items.map((project,index)=>({project,card:cards[index]})).filter(entry=>(entry.project.sectionId||'')===group.id);const section=document.createElement('section');section.className=`project-admin-section ${group.id?'':'is-unassigned'}`;const controls=group.id?`<div class="project-section-actions"><button class="btn outline" onclick="moveProjectSection('${group.id}',-1)" ${group.index===0?'disabled':''}>↑</button><button class="btn outline" onclick="moveProjectSection('${group.id}',1)" ${group.index===sections.length-1?'disabled':''}>↓</button><button class="btn outline" onclick="renameProjectSection('${group.id}')">แก้ชื่อ</button><button class="icon-btn" onclick="removeProjectSection('${group.id}')">⌫</button></div>`:'<span>โปรเจกต์กลุ่มนี้จะไม่แสดงในหน้า Projects</span>';section.innerHTML=`<header><div><small>${group.id?'PROJECT SECTION':'NOT PUBLISHED IN PROJECTS'}</small><h2>${escapePageText(group.title)}</h2></div>${controls}</header><div class="project-admin-section-list"></div>`;const sectionList=section.querySelector('.project-admin-section-list');projects.forEach(entry=>sectionList.appendChild(entry.card));if(!projects.length)sectionList.innerHTML='<div class="empty">ยังไม่มีโปรเจกต์ใน Section นี้</div>';list.appendChild(section)});
 };
 let mobileCalendarSelectedDate = "";
+let mobileCalendarView = "month";
+function setMobileCalendarView(view) {
+  if(!["month","list"].includes(view))return;
+  mobileCalendarView=view;
+  calendarPage();
+  document.querySelector(`.mobile-calendar-switch button[data-view="${view}"]`)?.focus?.({preventScroll:true});
+}
+function mobileCalendarEventRow(event,artistIndex) {
+  const participation=eventParticipationInline(event);
+  const origin=participation.match(/<span class="event-rescheduled-from">[\s\S]*?<\/span>/)?.[0]||'';
+  return `<button class="mobile-agenda-event" style="--event-color:${calendarEventColor(event,artistIndex)}" onclick="showEvent('${event.id}')"><i aria-hidden="true"></i><span class="mobile-agenda-copy"><span class="mobile-agenda-topline"><span>${escapePageText(calendarEventArtistIds(event).map(calendarArtistLabel).join(' · '))}</span><span>${escapePageText(calendarTypeLabel(event))}</span></span><strong>${escapePageText(event.title)}</strong>${origin?`<span class="mobile-agenda-origin">${origin}</span>`:''}<span class="mobile-agenda-participation">${participation.replace(origin,'').replace(/(<span class="event-participation-inline">)\s*·\s*/, '$1')}</span></span></button>`;
+}
+function mobileCalendarListRow(event,artistIndex,showDate=true,endOfDay=true) {
+  const isToday=event.date===localDateKey(new Date());
+  const date=new Date(`${event.date}T00:00:00`);
+  const badges=calendarEventArtistIds(event).map(id=>`<span class="unified-schedule-artist" style="--artist-color:${calendarArtistColor(id,artistIndex.get(id)||0)}"><i aria-hidden="true"></i>${escapePageText(calendarArtistLabel(id))}</span>`).join('');
+  const meta=typeof unifiedHomeScheduleMeta==='function'?unifiedHomeScheduleMeta(event):String(event.place||event.time||'').trim();
+  const participation=eventParticipationInline(event);
+  const origin=participation.match(/<span class="event-rescheduled-from">[\s\S]*?<\/span>/)?.[0]||'';
+  return `<button class="mobile-home-schedule-row unified-schedule-row ${endOfDay?'is-day-end':''} ${isToday?'is-today':''}" style="--event-color:${calendarEventColor(event,artistIndex)}" onclick="showEvent('${event.id}')">${showDate?`<time datetime="${event.date}"${isToday?' aria-current="date"':''}><b>${date.getDate()}</b><small>${new Intl.DateTimeFormat('en-US',{weekday:'short'}).format(date)}</small></time>`:'<span class="mobile-list-date-spacer" aria-hidden="true"></span>'}<span class="unified-schedule-detail">${badges?`<span class="unified-schedule-badges">${badges}</span>`:''}<strong class="mobile-home-schedule-title">${escapePageText(event.title)}</strong>${origin?`<span class="mobile-home-schedule-origin">${origin}</span>`:''}${meta?`<span class="mobile-home-schedule-meta">${escapePageText(meta)}</span>`:''}<span class="mobile-home-schedule-participation">${participation.replace(origin,'').replace(/(<span class="event-participation-inline">)\s*·\s*/, '$1')}</span></span></button>`;
+}
 function localDateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+}
+function mobileCalendarDayGroup(date,events,artistIndex) {
+  const value=new Date(`${date}T00:00:00`);
+  return `<div class="mobile-calendar-day-group"><time class="mobile-calendar-date-rail" datetime="${date}"><small>${new Intl.DateTimeFormat('en-US',{weekday:'short'}).format(value)}</small><strong>${value.getDate()}</strong></time><div class="mobile-calendar-day-events">${events.length?events.map(event=>mobileCalendarEventRow(event,artistIndex)).join(''):'<div class="mobile-calendar-empty"><p>No schedule to display.<br>Please select another date.</p></div>'}</div></div>`;
 }
 function presenterMediaAspectRatio(){
   const value=getComputedStyle(document.documentElement).getPropertyValue('--presenter-media-ratio').trim();
@@ -3924,6 +3949,8 @@ function calendarEventColor(event,artistIndex) {
 }
 function selectMobileCalendarDate(date) {
   mobileCalendarSelectedDate = date;
+  const selected=new Date(`${date}T00:00:00`);
+  calendarDate=new Date(selected.getFullYear(),selected.getMonth(),1);
   calendarPage();
 }
 function mobileCalendarToday() {
@@ -3946,19 +3973,24 @@ calendarPage = function(){
   if(!mobileCalendarSelectedDate || !mobileCalendarSelectedDate.startsWith(monthKey)) mobileCalendarSelectedDate=todayKey.startsWith(monthKey)?todayKey:`${monthKey}-01`;
   const filteredEvents=publicOrderedEvents().filter(event=>publicTypeFilter==="all" || eventHasType(event,publicTypeFilter));
   const cells=[],gridStart=new Date(year,mon,1-first.getDay());
-  for(let index=0;index<42;index++){
+  const cellCount=Math.ceil((first.getDay()+new Date(year,mon+1,0).getDate())/7)*7;
+  for(let index=0;index<cellCount;index++){
     const cellDate=new Date(gridStart.getFullYear(),gridStart.getMonth(),gridStart.getDate()+index);
     const key=localDateKey(cellDate),items=filteredEvents.filter(event=>event.date===key);
     const dots=items.slice(0,3).map(event=>`<i style="background:${calendarEventColor(event,artistIndex)}"></i>`).join("");
-    cells.push(`<button class="mobile-calendar-day ${cellDate.getMonth()!==mon?"outside":""} ${key===todayKey?"today":""} ${key===mobileCalendarSelectedDate?"selected":""}" onclick="selectMobileCalendarDate('${key}')" aria-label="${key}"><span>${cellDate.getDate()}</span><b>${dots}${items.length>3?'<i class="more"></i>':""}</b></button>`);
+    cells.push(`<button class="mobile-calendar-day ${cellDate.getMonth()!==mon?"outside":""} ${key===todayKey?"today":""} ${key===mobileCalendarSelectedDate?"selected":""}" onclick="selectMobileCalendarDate('${key}')" aria-pressed="${key===mobileCalendarSelectedDate}" ${key===todayKey?'aria-current="date"':''} aria-label="${key}${items.length?' · '+items.length+' กิจกรรม':''}"><span>${cellDate.getDate()}</span><b>${dots}${items.length>3?'<i class="more"></i>':""}</b></button>`);
   }
   const selectedEvents=filteredEvents.filter(event=>event.date===mobileCalendarSelectedDate);
   const selectedLabel=new Intl.DateTimeFormat("en-US",{weekday:"short",month:"short",day:"numeric"}).format(new Date(`${mobileCalendarSelectedDate}T00:00:00`));
   const detail=selectedEvents.length?selectedEvents.map(event=>`<button class="mobile-event-row" style="--event-color:${calendarEventColor(event,artistIndex)}" onclick="showEvent('${event.id}')"><span><small class="mobile-schedule-heading">${escapePageText([calendarEventArtistIds(event).map(calendarArtistLabel).join(" · "),calendarTypeLabel(event)].filter(Boolean).join(" · "))}</small><strong>${escapePageText(event.title)}</strong><small class="mobile-schedule-participation">${eventParticipationInline(event).replace('<span class="event-participation-inline"> · ','<span class="event-participation-inline">')}</small></span><b>›</b></button>`).join(""):`<div class="mobile-calendar-empty"><b>○</b><p>No schedule to display.<br>Please select another date.</p></div>`;
-  const nextEvent=filteredEvents.filter(event=>event.date>mobileCalendarSelectedDate).sort((a,b)=>a.date.localeCompare(b.date))[0];
-  const nextCard=nextEvent?`<section class="mobile-calendar-detail next"><header><strong>${new Intl.DateTimeFormat("en-US",{weekday:"short",month:"short",day:"numeric"}).format(new Date(`${nextEvent.date}T00:00:00`))}</strong><span>Next schedule</span></header><button class="mobile-next-event" style="--event-color:${calendarEventColor(nextEvent,artistIndex)}" onclick="showEvent('${nextEvent.id}')"><small class="mobile-schedule-heading">${escapePageText([calendarEventArtistIds(nextEvent).map(calendarArtistLabel).join(" · "),calendarTypeLabel(nextEvent)].filter(Boolean).join(" · "))}</small><strong>${escapePageText(nextEvent.title)}</strong><small class="mobile-schedule-participation">${eventParticipationInline(nextEvent).replace('<span class="event-participation-inline"> · ','<span class="event-participation-inline">')}</small></button></section>`:"";
+  const nextEvent=filteredEvents.filter(event=>event.date>todayKey).sort((a,b)=>a.date.localeCompare(b.date))[0];
+  const nextCard=nextEvent?`<section class="mobile-calendar-detail next"><h3 class="mobile-next-heading">Next schedule</h3>${mobileCalendarDayGroup(nextEvent.date,filteredEvents.filter(event=>event.date===nextEvent.date),artistIndex)}</section>`:"";
   const typeOptions=db.masterData.types.map(type=>`<option value="${type.id}" ${publicTypeFilter===type.id?"selected":""}>${escapePageText(type.label)}</option>`).join("");
-  const mobile=`<section class="mobile-calendar-view"><header class="mobile-calendar-title"><a href="#home" aria-label="Back">‹</a><h1>Calendar</h1><span></span></header><div class="mobile-calendar-card"><div class="mobile-month-head"><div><h2>${new Intl.DateTimeFormat("en-US",{month:"short"}).format(first)}, <span>${year}</span></h2><button title="Calendar information" aria-label="Calendar information">i</button></div><nav><button onclick="moveCalendar(-1)" aria-label="Previous month">‹</button><button onclick="moveCalendar(1)" aria-label="Next month">›</button></nav></div><div class="mobile-calendar-controls"><select aria-label="Filter schedules by type" onchange="filterMobileCalendar(this.value)"><option value="all">All</option>${typeOptions}</select><button onclick="mobileCalendarToday()">Today</button></div><div class="mobile-calendar-grid">${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(day=>`<span class="mobile-weekday">${day}</span>`).join("")}${cells.join("")}</div></div><section class="mobile-calendar-detail"><header><strong>${selectedLabel}</strong>${mobileCalendarSelectedDate===todayKey?"<span>Today</span>":""}</header>${detail}</section>${nextCard}</section>`;
+  const monthEvents=filteredEvents.filter(event=>event.date.startsWith(`${monthKey}-`));
+  const agenda=monthEvents.length?monthEvents.slice().sort((a,b)=>a.date.localeCompare(b.date)).map((event,index,events)=>mobileCalendarListRow(event,artistIndex,index===0||events[index-1].date!==event.date,index===events.length-1||events[index+1].date!==event.date)).join(''):'<div class="mobile-calendar-empty"><p>No schedules this month.<br>ลองเปลี่ยนเดือนหรือตัวกรองกิจกรรม</p></div>';
+  const viewIcon=(list)=>`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">${list?'<path d="M8 6h13M8 12h13M8 18h13M3 6h1M3 12h1M3 18h1"/>':'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 10h18M8 2v5M16 2v5M8 14h2M14 14h2M8 17h2M14 17h2"/>'}</svg>`;
+  const mobile=`<section class="mobile-calendar-view"><header class="mobile-calendar-title"><a href="#home" aria-label="Back to home"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></a><h1>Calendar</h1><span>${year}</span></header><div class="mobile-calendar-card"><div class="mobile-month-head"><nav aria-label="เปลี่ยนเดือน"><button onclick="moveCalendar(-1)" aria-label="Previous month">‹</button><h2>${new Intl.DateTimeFormat("en-US",{month:"long"}).format(first)}</h2><button onclick="moveCalendar(1)" aria-label="Next month">›</button></nav></div><div class="mobile-calendar-switch" role="group" aria-label="มุมมองปฏิทิน"><button data-view="month" aria-label="ตาราง" title="ตาราง" aria-pressed="${mobileCalendarView==='month'}" onclick="setMobileCalendarView('month')">${viewIcon(false)}ตาราง</button><button data-view="list" aria-label="รายการ" title="รายการ" aria-pressed="${mobileCalendarView==='list'}" onclick="setMobileCalendarView('list')">${viewIcon(true)}รายการ</button></div><div class="mobile-calendar-controls ${mobileCalendarView==='list'?'is-list':''}"><select aria-label="Filter schedules by type" onchange="filterMobileCalendar(this.value)"><option value="all">All</option>${typeOptions}</select>${mobileCalendarView==='month'?'<button onclick="mobileCalendarToday()">Today</button>':''}</div>${mobileCalendarView==='month'?`<div class="mobile-calendar-grid">${["S","M","T","W","T","F","S"].map((day,index)=>`<span class="mobile-weekday ${index===0||index===6?'weekend':''}">${day}</span>`).join("")}${cells.join("")}</div>`:''}</div>${mobileCalendarView==='list'?`<div class="mobile-calendar-agenda">${agenda}</div>`:`<section class="mobile-calendar-detail"><h3 class="mobile-today-heading">Today</h3>${mobileCalendarDayGroup(todayKey,filteredEvents.filter(event=>event.date===todayKey),artistIndex)}</section>${nextCard}`}</section>`;
+
   document.querySelector(".calendar-section")?.insertAdjacentHTML("afterend",mobile);
 };
 showEvent=function(id){
