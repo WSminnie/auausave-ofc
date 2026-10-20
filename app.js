@@ -3986,7 +3986,7 @@ calendarPage = function(){
   const detail=selectedEvents.length?selectedEvents.map(event=>`<button class="mobile-event-row" style="--event-color:${calendarEventColor(event,artistIndex)}" onclick="showEvent('${event.id}')"><span><small class="mobile-schedule-heading">${escapePageText([calendarEventArtistIds(event).map(calendarArtistLabel).join(" · "),calendarTypeLabel(event)].filter(Boolean).join(" · "))}</small><strong>${escapePageText(event.title)}</strong><small class="mobile-schedule-participation">${eventParticipationInline(event).replace('<span class="event-participation-inline"> · ','<span class="event-participation-inline">')}</small></span><b>›</b></button>`).join(""):`<div class="mobile-calendar-empty"><b>○</b><p>No schedule to display.<br>Please select another date.</p></div>`;
   const nextEvent=filteredEvents.filter(event=>event.date>mobileCalendarSelectedDate).sort((a,b)=>a.date.localeCompare(b.date))[0];
   const nextCard=nextEvent?`<section class="mobile-calendar-detail next"><h3 class="mobile-next-heading">Next schedule</h3>${mobileCalendarDayGroup(nextEvent.date,filteredEvents.filter(event=>event.date===nextEvent.date),artistIndex)}</section>`:"";
-  const typeOptions=db.masterData.types.map(type=>`<option value="${type.id}" ${publicTypeFilter===type.id?"selected":""}>${escapePageText(type.label)}</option>`).join("");
+  const typeOptions=db.masterData.types.filter(type=>![type.id,type.label].some(value=>String(value||'').trim().toLowerCase()==='other')).map(type=>`<option value="${type.id}" ${publicTypeFilter===type.id?"selected":""}>${escapePageText(type.label)}</option>`).join("");
   const monthEvents=filteredEvents.filter(event=>event.date.startsWith(`${monthKey}-`));
   const agenda=monthEvents.length?monthEvents.slice().sort((a,b)=>a.date.localeCompare(b.date)).map((event,index,events)=>mobileCalendarListRow(event,artistIndex,index===0||events[index-1].date!==event.date,index===events.length-1||events[index+1].date!==event.date)).join(''):'<div class="mobile-calendar-empty"><p>No schedules this month.<br>ลองเปลี่ยนเดือนหรือตัวกรองกิจกรรม</p></div>';
   const viewIcon=(list)=>`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">${list?'<path d="M8 6h13M8 12h13M8 18h13M3 6h1M3 12h1M3 18h1"/>':'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 10h18M8 2v5M16 2v5M8 14h2M14 14h2M8 17h2M14 17h2"/>'}</svg>`;
@@ -4694,40 +4694,53 @@ function unifiedHomeScheduleMeta(event) {
   }
   return String(event.place || '').trim();
 }
-function unifiedHomeScheduleSection() {
-  const now = new Date();
-  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const monthLabel = new Intl.DateTimeFormat('en-US', {month:'long'}).format(now);
-  const events = publicOrderedEvents()
-    .filter(event => event.date.startsWith(monthKey))
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const artists = homepageScheduleArtists();
-  const artistIndex = new Map(artists.map((artist, index) => [canonicalArtistId(artist.id), index]));
-  const artistBadge = artistId => {
-    const id = canonicalArtistId(artistId);
-    const artist = artistById(id);
-    const index = artistIndex.get(id) ?? 0;
-    const label = sameArtistId(id, 'duo') ? '#AUAUSAVE' : (artist?.name || artistName(id));
-    return `<span class="unified-schedule-artist" style="--artist-color:${artistDisplayColor(id, index)}"><i></i>${escapePageText(label)}</span>`;
+function homeScheduleBangkokDate(now=new Date()) {
+  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);
+  const value=type=>parts.find(part=>part.type===type).value;
+  return `${value('year')}-${value('month')}-${value('day')}`;
+}
+function homeScheduleStartMinutes(event) {
+  const parse=value=>{
+    const text=String(value||'').trim();
+    const match=text.match(/(?:^|\s)(\d{1,2})(?:[.:](\d{2}))?\s*(AM|PM)?(?=\s|$|\|)/i);
+    if(!match||(!match[2]&&!match[3]))return Infinity;
+    let hour=Number(match[1]);const minute=Number(match[2]||0);
+    if(minute>59||hour>23||(match[3]&&(hour<1||hour>12)))return Infinity;
+    if(match[3])hour=hour%12+(match[3].toUpperCase()==='PM'?12:0);
+    return hour*60+minute;
   };
-  const rows = events.map(event => {
-    const ids = calendarEventArtistIds(event);
-    const badges = (ids.length ? ids : [event.artistId]).filter(Boolean).map(artistBadge).join('');
-    const date = new Date(`${event.date}T00:00:00`);
-    const weekday = new Intl.DateTimeFormat('en-US', {weekday:'short'}).format(date);
-    const meta = unifiedHomeScheduleMeta(event);
-    return `<article class="unified-schedule-row">
-      <time datetime="${escapePageText(event.date)}"><b>${day(event.date)}</b><span>${month(event.date)}</span><small>${weekday}</small></time>
-      <div class="unified-schedule-detail"><div class="unified-schedule-badges">${badges}</div><h3>${escapePageText(event.title)}</h3>${meta?`<p>${escapePageText(meta)}</p>`:''}${eventParticipationCopy(event)}</div>
-      <span class="unified-schedule-type">${escapePageText(event.type || 'EVENT')}</span>
-    </article>`;
-  }).join('');
-  return `<section class="section unified-home-schedule"><div class="container">
-    <div class="unified-schedule-shell">
-      <header class="unified-schedule-head"><h2>${escapePageText(monthLabel)} Schedule</h2><a class="btn outline" href="#schedule">View full calendar</a></header>
-      <div class="unified-schedule-list" tabindex="0" role="region" aria-label="All events scheduled for ${escapePageText(monthLabel)}">${rows || `<div class="empty">No events scheduled for ${escapePageText(monthLabel)}.</div>`}</div>
-    </div>
-  </div></section>`;
+  const explicit=parse(event.time||event.startTime);if(Number.isFinite(explicit))return explicit;
+  const place=parse(event.place);if(Number.isFinite(place))return place;
+  return Math.min(...normalizeBroadcasts(event.broadcasts).map(row=>parse(row.time)),Infinity);
+}
+function homeScheduleGroups(events,today=homeScheduleBangkokDate()) {
+  const valid=events.filter(event=>/^\d{4}-\d{2}-\d{2}$/.test(event.date||''));
+  const nextDate=valid.filter(event=>event.date>today).map(event=>event.date).sort()[0];
+  const forDate=date=>valid.filter(event=>event.date===date).sort((a,b)=>homeScheduleStartMinutes(a)-homeScheduleStartMinutes(b));
+  return {today:forDate(today),next:nextDate?forDate(nextDate):[],nextDate};
+}
+function unifiedHomeScheduleSection() {
+  const today=homeScheduleBangkokDate();
+  const groups=homeScheduleGroups(publicOrderedEvents(),today);
+  const artists=homepageScheduleArtists();
+  const artistIndex=new Map(artists.map((artist,index)=>[canonicalArtistId(artist.id),index]));
+  const artistBadge=artistId=>{
+    const id=canonicalArtistId(artistId),artist=artistById(id),index=artistIndex.get(id)??0;
+    const label=sameArtistId(id,'duo')?'#AUAUSAVE':(artist?.name||artistName(id));
+    return `<span class="unified-schedule-artist" style="--artist-color:${artistDisplayColor(id,index)}"><i aria-hidden="true"></i>${escapePageText(label)}</span>`;
+  };
+  const row=event=>{
+    const ids=calendarEventArtistIds(event),badges=(ids.length?ids:[event.artistId]).filter(Boolean).map(artistBadge).join('');
+    const date=new Date(`${event.date}T12:00:00Z`);
+    const format=options=>new Intl.DateTimeFormat('en-US',{timeZone:'UTC',...options}).format(date);
+    const originalMeta=unifiedHomeScheduleMeta(event);
+    const meta=[event.time&&!originalMeta.includes(event.time)?event.time:'',originalMeta].filter(Boolean).join(' | ');
+    const minutes=homeScheduleStartMinutes(event);
+    const clock=Number.isFinite(minutes)?`<b>${Math.floor(minutes/60)%12||12}:${String(minutes%60).padStart(2,'0')}</b><small>${minutes>=720?'PM':'AM'}</small>`:'<small>ไม่ระบุเวลา</small>';
+    return `<article class="unified-schedule-row"><time class="unified-schedule-date" datetime="${escapePageText(event.date)}"><b>${event.date.slice(8)}</b><span>${format({month:'short'})}</span><small>${format({weekday:'short'})}</small></time><span class="unified-schedule-clock">${clock}</span><div class="unified-schedule-detail"><div class="unified-schedule-badges">${badges}</div><h3>${escapePageText(event.title)}</h3>${meta?`<p>${escapePageText(meta)}</p>`:''}${eventParticipationCopy(event)}</div><span class="unified-schedule-type">${escapePageText(event.type||'EVENT')}</span></article>`;
+  };
+  const section=(label,items)=>`<section class="unified-schedule-group ${label==='TODAY'?'is-today':'is-next'}" aria-label="${label}"><h3 class="unified-schedule-group-title"><span class="unified-schedule-section-label">${label}</span></h3>${items.map(row).join('')}</section>`;
+  return `<section class="section unified-home-schedule" data-schedule-today="${today}"><div class="container"><div class="unified-schedule-shell"><header class="unified-schedule-head"><h2>Upcoming Schedule</h2><a class="btn outline" href="#schedule">View full calendar</a></header><div class="unified-schedule-list">${groups.today.length?section('TODAY',groups.today):''}${groups.next.length?section('UP NEXT',groups.next):'<p class="empty unified-schedule-empty">No upcoming events.</p>'}</div></div></div></section>`;
 }
 
 const homeBeforeUnifiedSchedule = home;
@@ -4754,6 +4767,14 @@ home = function () {
     artistSection.insertAdjacentHTML('afterend', unifiedHomeScheduleSection());
   }
 };
+
+function refreshHomeScheduleDay() {
+  const section=document.querySelector('main .unified-home-schedule[data-schedule-today]');
+  if(section&&section.dataset.scheduleToday!==homeScheduleBangkokDate())section.outerHTML=unifiedHomeScheduleSection();
+}
+// Refresh only the Home schedule when an open page crosses Bangkok midnight.
+setInterval(refreshHomeScheduleDay,30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshHomeScheduleDay()});
 
 /* Apply the saved homepage order only after every late-rendered section exists. */
 const homeBeforeFinalSectionOrder = home;

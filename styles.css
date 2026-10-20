@@ -1699,19 +1699,54 @@ main:has(> .home-media-banner) > .unified-home-schedule{
   padding-block:23px;
 }
 
-/* Keep every event available on Home without letting a busy month lengthen the page. */
-.unified-home-schedule .unified-schedule-list{
-  max-height:min(560px,65vh);
-  overflow-y:auto;
-  overscroll-behavior:contain;
-  scrollbar-gutter:stable;
-  scrollbar-width:thin;
-  scrollbar-color:#aaa49a transparent;
+/* Home upcoming schedule grows with its content. */
+.unified-home-schedule .unified-schedule-list{display:block;height:auto;max-height:none;overflow:visible}
+.unified-home-schedule .unified-schedule-group{padding:0;background:transparent;border:0;border-radius:0;min-width:0}
+.unified-home-schedule .unified-schedule-group + .unified-schedule-group{border-top:1px solid var(--line);margin-top:8px;padding-top:4px}
+.unified-home-schedule .unified-schedule-group-title{margin:18px 0 2px;color:var(--red);font-size:15px;font-weight:700;letter-spacing:0;line-height:1.5}
+.unified-home-schedule .unified-schedule-row{gap:16px;padding:14px 0;min-width:0}
+.unified-home-schedule .unified-schedule-detail{min-width:0}
+.unified-home-schedule .unified-schedule-detail h3{overflow-wrap:anywhere;line-height:1.45}
+.unified-home-schedule .unified-schedule-detail p{overflow-wrap:anywhere;line-height:1.6}
+.unified-home-schedule .unified-schedule-type{max-width:160px;white-space:normal;overflow-wrap:anywhere;text-align:center}
+.unified-home-schedule .unified-schedule-empty{margin:0;padding:24px 0;font-size:13px;text-align:left}
+.unified-schedule-clock,.unified-schedule-section-date{display:none}
+@media(max-width:700px){
+  .unified-home-schedule .unified-schedule-shell{padding:16px 14px}
+  .unified-home-schedule .unified-schedule-head{align-items:center;gap:10px}
+  .unified-home-schedule .unified-schedule-head h2{min-width:0;font-size:clamp(20px,5.3vw,25px);letter-spacing:-.03em;line-height:1.2}
+  .unified-home-schedule .unified-schedule-head .btn{flex-shrink:0;padding:10px;font-size:9px}
+  .unified-home-schedule .unified-schedule-row{grid-template-columns:48px minmax(0,1fr);gap:10px;padding:11px 0}
+  .unified-home-schedule .unified-schedule-group-title{margin-top:14px;font-size:10px}
+  .unified-home-schedule .unified-schedule-detail h3{font-size:14px}
+  .unified-home-schedule .unified-schedule-detail p{font-size:11px}
+  .unified-home-schedule .unified-schedule-detail .event-participation-copy{font-size:12px;line-height:1.6}
+  .unified-home-schedule .unified-schedule-shell{padding:12px 10px;border-radius:18px}
+  .unified-home-schedule .unified-schedule-head{border:0;padding-bottom:10px}
+  .unified-home-schedule .unified-schedule-head h2{font-size:clamp(18px,4.7vw,24px)}
+  .unified-home-schedule .unified-schedule-head .btn{border-radius:12px;font-size:10px;color:var(--blue)}
+  .unified-home-schedule .unified-schedule-group{padding:10px 10px 4px;border-radius:14px;background:#fcf1f4}
+  .unified-home-schedule .unified-schedule-group.is-next{background:#eff6f8}
+  .unified-home-schedule .unified-schedule-group + .unified-schedule-group{margin-top:8px;padding-top:10px;border:0}
+  .unified-home-schedule .unified-schedule-group-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 6px;color:var(--ink);font-size:11px;letter-spacing:.2px}
+  .unified-home-schedule .unified-schedule-section-label{display:inline-flex;align-items:center;justify-content:center;min-height:23px;padding:3px 11px;border-radius:999px;background:#ad506c;color:#fff;font-size:10px;font-weight:700;letter-spacing:.5px}
+  .unified-home-schedule .is-next .unified-schedule-section-label{background:var(--blue)}
+  .unified-home-schedule .unified-schedule-section-date{display:inline;font-size:11px;line-height:1.6;font-weight:700}
+  .unified-home-schedule .unified-schedule-date{display:grid;grid-template-columns:1fr;grid-template-rows:10px 28px 11px;align-items:center;justify-items:end;align-self:start;column-gap:0;padding:0 8px 0 0;margin:0;line-height:1}
+  .unified-home-schedule .unified-schedule-date small{grid-row:1;justify-self:start;font-size:9px;color:var(--muted)}
+  .unified-home-schedule .unified-schedule-date b{grid-row:2;font-size:28px;line-height:1;letter-spacing:-.04em}
+  .unified-home-schedule .unified-schedule-date span{grid-row:3;font-size:10px;line-height:1;font-weight:700;letter-spacing:0;text-transform:uppercase}
+  .unified-home-schedule .unified-schedule-row{grid-template-columns:40px minmax(0,1fr);align-items:start;gap:8px;padding:6px 0 8px;border-color:#e6dfe2}
+  .unified-home-schedule .unified-schedule-clock{display:none}
+  .unified-home-schedule .unified-schedule-clock b{font-size:clamp(18px,5vw,23px);line-height:1.15;letter-spacing:-.03em}
+  .unified-home-schedule .unified-schedule-clock small{font-size:11px;line-height:1.4;color:#666;overflow-wrap:anywhere;text-align:center}
+  .unified-home-schedule .unified-schedule-artist{font-size:10px;line-height:1.5}
+  .unified-home-schedule .unified-schedule-detail h3{font-size:14px;line-height:1.5}
+  .unified-home-schedule .unified-schedule-detail p{margin-top:4px;font-size:12px;line-height:1.5;margin-bottom:0}
+  .unified-home-schedule .event-participation-item{padding:0;border:0;border-radius:0;background:transparent;color:var(--muted);font-size:11px;line-height:1.5;gap:4px}
+  .unified-home-schedule .event-participation-item .event-participation-icon{flex-basis:13px;width:13px;height:13px}
+  .unified-home-schedule .event-participation-item .event-participation-icon svg{width:13px;height:13px}
 }
-.unified-home-schedule .unified-schedule-list::-webkit-scrollbar{width:10px}
-.unified-home-schedule .unified-schedule-list::-webkit-scrollbar-track{background:transparent}
-.unified-home-schedule .unified-schedule-list::-webkit-scrollbar-thumb{background:#aaa49a;border:3px solid #fff;border-radius:999px}
-.unified-home-schedule .unified-schedule-list:focus-visible{outline:3px solid color-mix(in srgb,var(--focus) 55%,white);outline-offset:4px}
 main:has(> .home-media-banner) > .presenter-home{
   padding-top:clamp(28px,3.5vw,44px);
 }
@@ -1720,7 +1755,6 @@ main:has(> .home-media-banner) > .presenter-home{
   main:has(> .home-media-banner) > .unified-home-schedule{
     padding-block:14px;
   }
-  .unified-home-schedule .unified-schedule-list{max-height:52vh}
 }
 
 /* Projects index: halve the transition from the page title to the project list. */
