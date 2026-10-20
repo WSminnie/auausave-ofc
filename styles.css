@@ -2143,6 +2143,7 @@ main > .project-hub-section{
   .mobile-calendar-card .mobile-calendar-controls.is-list{grid-template-columns:minmax(0,1fr)}
   .mobile-calendar-agenda .mobile-home-schedule-row.is-today{background:color-mix(in srgb,var(--red) 7%,var(--white));margin-inline:calc(-1 * clamp(14px,3vw,22px));width:calc(100% + 2 * clamp(14px,3vw,22px));padding-inline:clamp(14px,3vw,22px)}
   .mobile-calendar-agenda .mobile-home-schedule-row.is-today time b,.mobile-calendar-agenda .mobile-home-schedule-row.is-today time small{color:var(--red)}
+  .mobile-calendar-agenda .mobile-home-schedule-row.is-today{scroll-margin-top:94px}
   .mobile-calendar-card .mobile-calendar-grid{grid-column:1/-1;grid-row:3}
   @media(max-width:420px){
     .mobile-calendar-card{column-gap:8px}

@@ -30,14 +30,17 @@ test('view switches preserve month and selected date; selecting a day in another
 test('month detail and next schedule use date rails and include every event of the next date',()=>{
   const {ctx,html}=setup();ctx.selectMobileCalendarDate('2026-10-19');
   assert.match(html(),/mobile-calendar-date-rail/);
-  assert.match(html(),/mobile-today-heading">Today/);assert.doesNotMatch(html(),/datetime="2026-10-19"/);
+  assert.doesNotMatch(html(),/mobile-today-heading/);assert.match(html(),/datetime="2026-10-19"/);
   assert.match(html(),/Next schedule/);
-  assert.match(html(),/datetime="2026-10-20"/);assert.match(html(),/datetime="2026-10-23"/);
+  assert.match(html(),/datetime="2026-10-20"/);
   assert.match(html(),/Timed event/);
   assert.doesNotMatch(html(),/mobile-agenda-time|ไม่ระบุเวลา/);
   const rows=ctx.mobileCalendarDayGroup('2026-10-24',[{id:'one',title:'First',type:'live'},{id:'two',title:'Second',type:'live'}],new Map());
   assert.match(rows,/First/);assert.match(rows,/Second/);
   assert.equal((rows.match(/mobile-calendar-date-rail/g)||[]).length,1);
+  ctx.selectMobileCalendarDate('2026-10-20');
+  assert.match(html(),/mobile-today-heading">Today/);
+  assert.match(html(),/datetime="2026-10-23"/);
 });
 test('rescheduled date sits under the title outside the right aligned participation row',()=>{
   const {ctx}=setup();
@@ -78,6 +81,13 @@ test('today and next schedule place artist and type above the event title',()=>{
   const row=ctx.mobileCalendarEventRow({id:'top',title:'Title',type:'Live'},new Map());
   assert.match(row,/<span class="mobile-agenda-topline"><span>Artist<\/span><span>Live<\/span><\/span><strong>Title<\/strong>/);
 });
+test('cards hide Series Broadcast type while retaining title and other event types',()=>{
+  const {ctx}=setup();
+  const row=ctx.mobileCalendarEventRow({id:'broadcast',title:'Mr.Fanboy EP9',type:'Series Broadcast'},new Map());
+  assert.match(row,/Mr.Fanboy EP9/);
+  assert.doesNotMatch(row,/Series Broadcast/);
+  assert.match(ctx.mobileCalendarEventRow({id:'live',title:'Live event',type:'Live'},new Map()),/>Live<\/span>/);
+});
 test('list hides Today control and highlights all events dated today',()=>{
   const {ctx,html}=setup();ctx.setMobileCalendarView('list');
   assert.doesNotMatch(html(),/onclick="mobileCalendarToday\(\)"/);
@@ -86,4 +96,12 @@ test('list hides Today control and highlights all events dated today',()=>{
   const other=ctx.mobileCalendarListRow({id:'other',date:'2026-10-23',title:'Other',type:'live'},new Map());
   assert.doesNotMatch(other,/is-today|aria-current="date"/);
   ctx.setMobileCalendarView('month');assert.match(html(),/onclick="mobileCalendarToday\(\)"/);
+});
+test('opening list scrolls to the first today event and safely handles no matching event',()=>{
+  const {ctx}=setup(),scrolled=[];
+  ctx.document.querySelector=selector=>selector==='.mobile-calendar-agenda .mobile-home-schedule-row.is-today'?{scrollIntoView:options=>scrolled.push(options)}:{insertAdjacentHTML(){},focus(){}};
+  ctx.setMobileCalendarView('list');assert.equal(scrolled.length,1);assert.equal(scrolled[0].block,'start');
+  ctx.setMobileCalendarView('month');assert.equal(scrolled.length,1);
+  ctx.document.querySelector=selector=>selector==='.mobile-calendar-agenda .mobile-home-schedule-row.is-today'?null:{insertAdjacentHTML(){},focus(){}};
+  assert.doesNotThrow(()=>ctx.setMobileCalendarView('list'));
 });
