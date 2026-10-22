@@ -106,8 +106,17 @@
 
   async function load() {
     const result = { masterData:{types:[],series:[]} };
-    for (const table of tables) {
-      const { data, error } = await client.from(table).select('*');
+    // These reads are independent; keep response processing in the original
+    // order so mapping, optional-table fallbacks and error priority stay intact.
+    const responses = await Promise.all([
+      ...tables.map(table => client.from(table).select('*')),
+      client.from('event_types').select('*').order('sort_order'),
+      client.from('series').select('*').order('name'),
+      client.from('site_settings').select('settings').eq('id','homepage').maybeSingle(),
+      client.from('site_settings').select('id,settings').like('id','event-order:%')
+    ]);
+    for (const [index, table] of tables.entries()) {
+      const { data, error } = responses[index];
       // Public pages must keep loading legacy awards while the additive
       // award_sections migration is being rolled out.
       if (error && (table === 'award_sections' || table === 'award_section_assignments')) {
@@ -122,18 +131,14 @@
     (result.awards||[]).forEach(award=>{
       award.sectionAssignments=(result.award_section_assignments||[]).filter(item=>item.awardId===award.id).map(item=>({id:item.id,mainSectionId:item.mainSectionId,subsectionId:item.subsectionId||'',displayOrder:item.displayOrder||0}));
     });
-    const [{data:types,error:typeError},{data:series,error:seriesError}] = await Promise.all([
-      client.from('event_types').select('*').order('sort_order'),
-      client.from('series').select('*').order('name')
-    ]);
+    const [{data:types,error:typeError},{data:series,error:seriesError},
+      {data:settings},{data:orders,error:orderError}] = responses.slice(tables.length);
     if (typeError || seriesError) throw typeError || seriesError;
     result.masterData.types = types.map(x=>({id:x.id,label:x.name}));
     result.masterData.series = series.map(x=>({id:x.id,label:x.name,broadcasts:Array.isArray(x.broadcasts)?x.broadcasts:[]}));
     knownIds.event_types = new Set(types.map(row => row.id));
     knownIds.series = new Set(series.map(row => row.id));
-    const {data:settings} = await client.from('site_settings').select('settings').eq('id','homepage').maybeSingle();
     result.siteSettings = settings?.settings || {};
-    const {data:orders,error:orderError}=await client.from('site_settings').select('id,settings').like('id','event-order:%');
     if(orderError)throw orderError;
     result.eventOrderByDate=Object.fromEntries((orders||[]).filter(row=>Array.isArray(row.settings?.eventIds)).map(row=>[row.id.slice('event-order:'.length),row.settings.eventIds]));
     return result;

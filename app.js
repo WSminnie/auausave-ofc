@@ -3071,10 +3071,10 @@ function renderHomeBanner(){
   const main=document.querySelector('#app main'),heroSection=main?.querySelector('.hero'),items=ensureHomeBanners().filter(item=>item.src);
   if(!main||!heroSection||!items.length)return;
   heroSection.insertAdjacentHTML('beforebegin',`<section class="home-media-banner" aria-label="Homepage banner"><div class="home-banner-track">${items.map((item,index)=>item.type==='video'
-    ?`<video class="home-banner-slide ${index?'':'active'} ${item.link?'is-linked':''}" src="${escapePageText(item.src)}" data-link="${escapePageText(item.link||'')}" muted playsinline preload="metadata"></video>`
-    :`<img class="home-banner-slide ${index?'':'active'} ${item.link?'is-linked':''}" src="${escapePageText(item.src)}" data-link="${escapePageText(item.link||'')}" alt="Banner ${index+1}">`).join('')}</div>${items.some(item=>item.type==='video')?`<button class="home-banner-sound" type="button" aria-label="เปิดเสียงวิดีโอ" title="เปิดเสียง">${homeBannerSoundIcon(false)}</button>`:''}${items.length>1?`<button class="home-banner-arrow prev" aria-label="Previous banner">‹</button><button class="home-banner-arrow next" aria-label="Next banner">›</button><div class="home-banner-dots">${items.map((_,index)=>`<button class="${index?'':'active'}" aria-label="Banner ${index+1}"></button>`).join('')}</div>`:''}</section>`);
+    ?`<video class="home-banner-slide ${index?'':'active'} ${item.link?'is-linked':''}" src="${escapePageText(item.src)}" data-link="${escapePageText(item.link||'')}" playsinline preload="metadata"></video>`
+    :`<img class="home-banner-slide ${index?'':'active'} ${item.link?'is-linked':''}" src="${escapePageText(item.src)}" data-link="${escapePageText(item.link||'')}" alt="Banner ${index+1}">`).join('')}</div>${items.some(item=>item.type==='video')?`<button class="home-banner-sound" type="button" aria-label="ปิดเสียงวิดีโอ" title="ปิดเสียง">${homeBannerSoundIcon(true)}</button>`:''}${items.length>1?`<button class="home-banner-arrow prev" aria-label="Previous banner">‹</button><button class="home-banner-arrow next" aria-label="Next banner">›</button><div class="home-banner-dots">${items.map((_,index)=>`<button class="${index?'':'active'}" aria-label="Banner ${index+1}"></button>`).join('')}</div>`:''}</section>`);
   const banner=main.querySelector('.home-media-banner');
-  let current=0,soundOn=false;
+  let current=0,soundOn=true;
   const slides=[...banner.querySelectorAll('.home-banner-slide')],dots=[...banner.querySelectorAll('.home-banner-dots button')];
   const show=index=>{
     clearTimeout(homeBannerTimer);
@@ -3086,15 +3086,47 @@ function renderHomeBanner(){
     if(item.type==='video'){
       slide.muted=!soundOn;
       slide.currentTime=0;
-      slide.play().catch(()=>{});
+      slide.play().catch(error=>{
+        // Audible autoplay may require a user gesture; keep the clip playing.
+        if(error.name!=='NotAllowedError'||slides[current]!==slide||!banner.isConnected)return;
+        soundOn=false;
+        banner.querySelectorAll('video').forEach(video=>video.muted=true);
+        updateSoundButton();
+        slide.play().catch(()=>{});
+      });
       slide.onended=()=>show(current+1);
     }else homeBannerTimer=setTimeout(()=>show(current+1),Math.max(2,Number(item.duration)||5)*1000);
   };
   banner.querySelector('.home-banner-arrow.prev')?.addEventListener('click',()=>show(current-1));
   banner.querySelector('.home-banner-arrow.next')?.addEventListener('click',()=>show(current+1));
-  slides.forEach(slide=>slide.addEventListener('click',()=>{const link=slide.dataset.link?.trim();if(!link)return;if(/^https?:\/\//i.test(link))window.open(link,'_blank','noopener,noreferrer');else location.href=link;}));
+  let touchStart=null,suppressLinkUntil=0;
+  const track=banner.querySelector('.home-banner-track');
+  track?.addEventListener('touchstart',event=>{
+    touchStart=null;
+    if(items.length<2||!window.matchMedia('(max-width:600px)').matches||event.touches.length!==1)return;
+    const touch=event.touches[0];
+    touchStart={x:touch.clientX,y:touch.clientY,index:current};
+  },{passive:true});
+  track?.addEventListener('touchend',event=>{
+    const start=touchStart;
+    touchStart=null;
+    if(!start||event.touches.length||event.changedTouches.length!==1)return;
+    const touch=event.changedTouches[0],dx=touch.clientX-start.x,dy=touch.clientY-start.y;
+    if(Math.abs(dx)<40||Math.abs(dx)<=Math.abs(dy)*1.25)return;
+    // A swipe must not open the slide's link via a synthesized click.
+    suppressLinkUntil=Date.now()+500;
+    if(start.index===current)show(current+(dx<0?1:-1));
+  },{passive:true});
+  track?.addEventListener('touchcancel',()=>{touchStart=null;},{passive:true});
+  slides.forEach(slide=>slide.addEventListener('click',()=>{if(Date.now()<suppressLinkUntil)return;const link=slide.dataset.link?.trim();if(!link)return;if(/^https?:\/\//i.test(link))window.open(link,'_blank','noopener,noreferrer');else location.href=link;}));
   const soundButton=banner.querySelector('.home-banner-sound');
-  soundButton?.addEventListener('click',()=>{soundOn=!soundOn;banner.querySelectorAll('video').forEach(video=>video.muted=!soundOn);soundButton.innerHTML=homeBannerSoundIcon(soundOn);soundButton.setAttribute('aria-label',soundOn?'ปิดเสียงวิดีโอ':'เปิดเสียงวิดีโอ');soundButton.title=soundOn?'ปิดเสียง':'เปิดเสียง';if(items[current]?.type==='video')slides[current].play().catch(()=>{});});
+  const updateSoundButton=()=>{
+    if(!soundButton)return;
+    soundButton.innerHTML=homeBannerSoundIcon(soundOn);
+    soundButton.setAttribute('aria-label',soundOn?'ปิดเสียงวิดีโอ':'เปิดเสียงวิดีโอ');
+    soundButton.title=soundOn?'ปิดเสียง':'เปิดเสียง';
+  };
+  soundButton?.addEventListener('click',()=>{soundOn=!soundOn;banner.querySelectorAll('video').forEach(video=>video.muted=!soundOn);updateSoundButton();if(items[current]?.type==='video')slides[current].play().catch(()=>{});});
   dots.forEach((dot,index)=>dot.addEventListener('click',()=>show(index)));
   show(0);
 }
