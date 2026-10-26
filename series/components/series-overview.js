@@ -1,6 +1,6 @@
 (() => {
   const C = SeriesFeature.components;
-  C.hero = item => `${C.image(item.banner_url || item.cover_url, item.title_en, true)}<header class="series-hero">
+  C.hero = item => `${C.image(item.banner_url || item.cover_url, item.title_en, true)}<header class="series-hero${item.cast?.length ? ' has-cast' : ''}">
     <div class="series-heading"><div class="series-title-row"><h1>${C.e(item.title_en)}</h1>${C.statusBadge(item.status)}</div>
     ${item.title_th ? `<p class="series-thai-title" lang="th">${C.e(item.title_th)}</p>` : ''}
     ${item.premiere_date ? `<p class="series-premiere">Premiere · <time datetime="${C.e(item.premiere_date)}">${C.date(item.premiere_date)}</time></p>` : ''}</div><dl class="series-header-facts">${C.meta('Broadcast', item.broadcast_info)}${C.meta('Streaming', item.streaming_info)}</dl></header>`;

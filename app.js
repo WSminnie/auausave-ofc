@@ -569,6 +569,29 @@ function listing(type) {
     `<main><section class="page-hero"><div class="container"><span class="eyebrow">AUAUSAVE HOUSE archive</span><h1>${title}</h1><p>${sub}</p></div></section><section class="section" style="padding-top:25px"><div class="container">${body}</div></section></main>` +
     footer();
 }
+function artistProfileScheduleMatches(event, artistId) {
+  const id = canonicalArtistId(artistId);
+  return itemMatchesArtist(event, id) ||
+    (['AT02', 'AT03'].includes(id) && itemMatchesArtist(event, 'AT01'));
+}
+function artistProfileScheduleFilterMatches(event, artistId, filter = 'solo') {
+  if (filter === 'all') return artistProfileScheduleMatches(event, artistId);
+  return itemMatchesArtist(event, filter === 'duo' ? 'AT01' : artistId);
+}
+function renderArtistProfileSchedule(items, artistId, filter = 'solo') {
+  const id = canonicalArtistId(artistId);
+  const label = id === 'AT02' ? 'AUAU' : 'SAVE';
+  const choices = [['all', 'All'], ['solo', label], ['duo', 'AUAUSAVE']];
+  return `<div class="artist-schedule-segments" role="group" aria-label="เลือกตารางงาน">${choices.map(([key, title]) => `<button type="button" data-schedule-filter="${key}" aria-pressed="${key === filter}" onclick="setArtistProfileSchedule(this,'${id}','${key}')">${title}</button>`).join('')}</div><div class="artist-profile-schedule-list" aria-live="polite">${scheduleRows(items.filter(event => artistProfileScheduleFilterMatches(event, id, filter)))}</div>`;
+}
+function setArtistProfileSchedule(button, artistId, filter) {
+  const host = button.closest('.artist-profile-schedule-content');
+  if (!host) return;
+  const now = new Date(), month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const items = publicOrderedEvents().filter(event => event.date.startsWith(month));
+  host.innerHTML = renderArtistProfileSchedule(items, artistId, filter);
+  host.querySelector(`[data-schedule-filter="${filter}"]`)?.focus({preventScroll:true});
+}
 function profile(id) {
   id = canonicalArtistId(id);
   const a = artistById(id);
@@ -578,12 +601,12 @@ function profile(id) {
   }
   const now = new Date(),
     currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
-    ev = publicOrderedEvents().filter((e) => itemMatchesArtist(e, id) && e.date.startsWith(currentMonth)),
+    ev = publicOrderedEvents().filter((e) => artistProfileScheduleMatches(e, id) && e.date.startsWith(currentMonth)),
     aw = db.awards.filter((r) => awardMatchesArtist(r, id)),
     vid = db.videos.filter((v) => v.artistId === id);
   app.innerHTML =
     nav("artists") +
-    `<main><section class="section"><div class="container profile-head"><div class="profile-portrait portrait" style="background:${a.color}"><span>${a.initial}</span></div><div><span class="eyebrow">Artist profile</span><h1 style="font-size:clamp(55px,8vw,100px);line-height:1;margin:10px 0">${a.name}</h1><p style="font-size:18px;line-height:1.8;color:var(--muted)">${a.bio}</p><div class="facts"><div class="fact"><small>ชื่อจริง</small><strong>${a.realName}</strong></div><div class="fact"><small>วันเกิด</small><strong>${a.birth}</strong></div><div class="fact"><small>บทบาท</small><strong>${a.role}</strong></div><div class="fact"><small>ผลงานล่าสุด</small><strong>${vid[0]?.title || "—"}</strong></div></div></div></div></section><section class="section"><div class="container schedule-wrap"><div class="section-head"><div><span class="eyebrow" style="color:var(--yellow)">Upcoming</span><h2>ตารางงานของ ${a.name}</h2></div></div>${scheduleRows(ev)}</div></section><section class="section"><div class="container"><div class="section-head"><h2>AWARDS</h2></div><div class="award-grid">${aw.map((r) => `<article class="award">${r.image?`<img class="award-image" src="${r.image}" alt="${r.title}">`:''}<div class="year">${awardDisplayDate(r)}</div><h3>${r.title}</h3><p>${r.org}</p></article>`).join("") || '<div class="empty">ยังไม่มีข้อมูลรางวัล</div>'}</div></div></section>${vid.length ? `<section class="section"><div class="container"><div class="section-head"><h2>วิดีโอ</h2></div>${videos(vid)}</div></section>` : ""}</main>` +
+    `<main><section class="section"><div class="container profile-head"><div class="profile-portrait portrait" style="background:${a.color}"><span>${a.initial}</span></div><div><span class="eyebrow">Artist profile</span><h1 style="font-size:clamp(55px,8vw,100px);line-height:1;margin:10px 0">${a.name}</h1><p style="font-size:18px;line-height:1.8;color:var(--muted)">${a.bio}</p><div class="facts"><div class="fact"><small>ชื่อจริง</small><strong>${a.realName}</strong></div><div class="fact"><small>วันเกิด</small><strong>${a.birth}</strong></div><div class="fact"><small>บทบาท</small><strong>${a.role}</strong></div><div class="fact"><small>ผลงานล่าสุด</small><strong>${vid[0]?.title || "—"}</strong></div></div></div></div></section><section class="section"><div class="container schedule-wrap"><div class="section-head"><div><span class="eyebrow" style="color:var(--yellow)">Upcoming</span><h2>ตารางงานของ ${a.name}</h2></div></div>${["AT02","AT03"].includes(id) ? `<div class="artist-profile-schedule-content">${renderArtistProfileSchedule(ev,id)}</div>` : scheduleRows(ev)}</div></section><section class="section"><div class="container"><div class="section-head"><h2>AWARDS</h2></div><div class="award-grid">${aw.map((r) => `<article class="award">${r.image?`<img class="award-image" src="${r.image}" alt="${r.title}">`:''}<div class="year">${awardDisplayDate(r)}</div><h3>${r.title}</h3><p>${r.org}</p></article>`).join("") || '<div class="empty">ยังไม่มีข้อมูลรางวัล</div>'}</div></div></section>${vid.length ? `<section class="section"><div class="container"><div class="section-head"><h2>วิดีโอ</h2></div>${videos(vid)}</div></section>` : ""}</main>` +
     footer();
 }
 const renderProfileWithAwardDetails = profile;
@@ -774,6 +797,7 @@ profile = function (id) {
   const monthLabel = new Intl.DateTimeFormat('en-US', {month:'long', year:'numeric'}).format(new Date());
   if (scheduleTitle) scheduleTitle.textContent = `This month’s schedule · ${artist.name}`;
   if (scheduleEyebrow) scheduleEyebrow.textContent = monthLabel;
+  if (['AT02','AT03'].includes(id)) scheduleSection?.querySelector('.schedule-wrap')?.classList.add('artist-profile-schedule');
   const visibility = db.siteSettings.artistArchive[id]?.visibility || {};
   document.querySelector('.profile-head')?.closest('.section')?.insertAdjacentHTML('afterend',artistSeriesSection(id));
   const artistTimelineSection = document.querySelector(`.artist-filmography[data-artist-timeline="${id}"]`);

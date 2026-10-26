@@ -2039,9 +2039,22 @@ main > .project-hub-section{
 
 @media(min-width:701px){.nav>.nav-inner,.calendar-hero>.container,.calendar-section>.container{width:min(calc(100% - clamp(28px,5vw,96px)),1600px);max-width:none}}
 
-.schedule-row.artist-schedule-row{grid-template-columns:80px minmax(0,1fr);gap:24px;align-items:start;padding:22px 0}.artist-schedule-row .date-box{padding-top:2px}.artist-schedule-row .date-box span{font-size:11px}.artist-schedule-row h3{font-size:18px;line-height:1.4}.artist-schedule-row .artist-schedule-copy>p{font-size:13px;line-height:1.6}.artist-schedule-links{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:12px}.artist-schedule-type{color:rgba(255,255,255,.7)}.artist-schedule-source{color:#fff;text-decoration:underline;text-underline-offset:4px;text-decoration-color:rgba(255,255,255,.45)}.artist-schedule-source:hover{text-decoration-color:#fff}.artist-schedule-source:focus-visible{outline:2px solid #fff;outline-offset:4px}.artist-schedule-row .event-participation-icon{color:inherit}@media(max-width:700px){.schedule-row.artist-schedule-row{grid-template-columns:48px minmax(0,1fr);gap:14px;padding:18px 0}.artist-schedule-row h3{font-size:14px}.artist-schedule-row .artist-schedule-copy>p{font-size:11px}.artist-schedule-row .date-box strong{font-size:24px}.artist-schedule-row .date-box span{font-size:9px}}
+.schedule-row.artist-schedule-row{grid-template-columns:80px minmax(0,1fr);gap:24px;align-items:start;padding:22px 0}.artist-schedule-row .date-box{padding-top:2px}.artist-schedule-row .date-box span{font-size:11px}.artist-schedule-row h3{font-size:18px;line-height:1.4}.artist-schedule-row .artist-schedule-copy>p{font-size:13px;line-height:1.6}.artist-schedule-links{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:12px}.artist-schedule-type{color:rgba(255,255,255,.7)}.artist-schedule-source{color:#fff;text-decoration:underline;text-underline-offset:4px;text-decoration-color:rgba(255,255,255,.45)}.artist-schedule-source:hover{text-decoration-color:#fff}.artist-schedule-source:focus-visible{outline:2px solid #fff;outline-offset:4px}.artist-schedule-row .event-participation-icon{color:var(--participation-color)}@media(max-width:700px){.schedule-row.artist-schedule-row{grid-template-columns:48px minmax(0,1fr);gap:14px;padding:18px 0}.artist-schedule-row h3{font-size:14px}.artist-schedule-row .artist-schedule-copy>p{font-size:11px}.artist-schedule-row .date-box strong{font-size:24px}.artist-schedule-row .date-box span{font-size:9px}}
 
 .artist-schedule-row .date-box span{display:block;white-space:nowrap}@media(max-width:700px){.schedule-row.artist-schedule-row{grid-template-columns:64px minmax(0,1fr)}}
+.schedule-wrap.artist-profile-schedule{background:#fff;color:var(--ink);border:1px solid #e5e5ea;border-radius:16px;padding:32px}
+.artist-profile-schedule .section-head{margin-bottom:24px}
+.artist-profile-schedule .section-head h2{font-size:clamp(24px,3vw,36px);letter-spacing:-.02em}
+.artist-profile-schedule .section-head .eyebrow{color:#636366!important}
+.artist-schedule-segments{display:flex;gap:3px;padding:4px;margin-bottom:24px;border-radius:10px;background:#f2f2f7;width:min(100%,420px)}
+.artist-schedule-segments button{flex:1;min-width:0;min-height:44px;padding:8px 12px;border:0;border-radius:7px;background:transparent;color:#636366;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.artist-schedule-segments button[aria-pressed=true]{background:#fff;color:#1c1c1e;box-shadow:0 1px 4px #00000014}
+.artist-schedule-segments button:focus-visible{outline:2px solid #007aff;outline-offset:2px}
+.artist-profile-schedule .schedule-row{border-top:1px solid #e5e5ea}
+.artist-profile-schedule .date-box span,.artist-profile-schedule .schedule-row p,.artist-profile-schedule .artist-schedule-type{color:#636366}
+.artist-profile-schedule .artist-schedule-source{color:#0066cc;text-decoration-color:currentColor}
+.artist-profile-schedule .artist-schedule-source:focus-visible{outline-color:#007aff}
+@media(max-width:700px){.schedule-wrap.artist-profile-schedule{padding:24px 18px}.artist-schedule-segments{width:100%}.artist-schedule-segments button{padding:8px}}
 .event-ref-link{background:none;border:0;padding:0;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 
 .event-reschedule-confirmed{display:block;flex-basis:100%;margin-top:4px}.event-reschedule-confirmed .event-ref-link{display:inline-block;padding:6px 10px;border:1px solid currentColor;border-radius:6px;font-size:12px;line-height:1.5;text-decoration:none}.event-reschedule-confirmed .event-ref-link:hover{text-decoration:underline}.event-ref-link:focus-visible{outline:2px solid currentColor;outline-offset:3px}

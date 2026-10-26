@@ -69,7 +69,7 @@
 .series-public .series-hero{display:grid;grid-template-columns:1.1fr 1fr;gap:32px;padding:24px 0 28px;align-items:center}
 .series-public .series-heading{min-width:0}.series-public .series-heading h1{font-size:clamp(26px,3vw,36px);overflow-wrap:anywhere}
 .series-public .series-thai-title{font-size:18px;margin:6px 0}.series-public .series-premiere{font-size:13px;color:#62625e;margin-top:12px}
-.series-header-facts{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:0;min-width:0}
+.series-header-facts{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;margin:0;min-width:0}
 .series-header-facts:empty{display:none}.series-header-facts dt{font-size:12px;font-weight:600;color:#62625e;margin-bottom:8px}
 .series-header-facts dd{margin:0;line-height:1.75;font-size:14px;white-space:pre-line;overflow-wrap:anywhere}
 .series-public .series-section-nav{margin-bottom:28px;gap:28px}.series-public .series-section-nav button[aria-current]{border-bottom-color:var(--red)}
@@ -139,7 +139,7 @@
 .series-overview-story{min-width:0}
 .series-public .series-overview-layout>.series-cast{min-width:0;margin-top:0}
 .series-public .series-overview-layout>.series-cast>h3{margin-top:0}
-@media(min-width:1101px){.series-overview-layout.has-cast{grid-template-columns:minmax(0,1.65fr) minmax(320px,1fr);gap:clamp(28px,4vw,64px)}.series-public .series-overview-layout .series-cast-grid{grid-template-columns:minmax(0,1fr)}}
+@media(min-width:1101px){.series-public .series-hero.has-cast,.series-overview-layout.has-cast{grid-template-columns:minmax(0,1.65fr) minmax(320px,1fr);gap:clamp(28px,4vw,64px)}.series-public .series-overview-layout .series-cast-grid{grid-template-columns:minmax(0,1fr)}}
 
 .series-public .series-status.is-on-air,.series-public .series-status.is-available{background:#e1f3e8;color:#21603b}
 .series-public .series-status.is-upcoming{background:#fff0da;color:#805016}
