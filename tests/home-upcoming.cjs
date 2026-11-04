@@ -21,7 +21,7 @@ test('start time handles AM PM, 24 hour and earliest broadcast, and unknown time
 });
 test('render uses one shell, hides empty Today, keeps navigation, metadata and empty future state',()=>{
  const c=setup([{id:'a',date:'2099-01-02',title:'Long event',place:'4 PM | Hall',type:'Live',artistId:'AUAU'}]);const html=c.unifiedHomeScheduleSection();
- assert.match(html,/Upcoming Schedule/);assert.match(html,/UP NEXT/);assert.doesNotMatch(html,/>TODAY</);assert.match(html,/href="#schedule"/);assert.match(html,/4 PM \| Hall/);assert.match(html,/เข้าร่วมได้/);assert.match(html,/Live/);assert.equal((html.match(/class="unified-schedule-shell"/g)||[]).length,1);
+ assert.match(html,/Upcoming Schedule/);assert.match(html,/UP NEXT/);assert.doesNotMatch(html,/>TODAY</);assert.match(html,/href="\/schedule"/);assert.match(html,/4 PM \| Hall/);assert.match(html,/เข้าร่วมได้/);assert.match(html,/Live/);assert.equal((html.match(/class="unified-schedule-shell"/g)||[]).length,1);
  const empty=setup([]).unifiedHomeScheduleSection();assert.match(empty,/No upcoming events/);assert.doesNotMatch(empty,/>TODAY</);
 });
 test('day rollover refreshes only a mounted Home schedule with an outdated Bangkok day',()=>{

@@ -200,7 +200,7 @@ test('Series menu defaults visible, can hide, and sits directly after Schedule i
   assert.ok(ctx.nav().includes('href="#series"'));
   ctx.db.siteSettings.seriesMenuVisible = false;
   assert.ok(!ctx.nav().includes('href="#series"'));
-  assert.ok(ctx.nav().includes('href="#schedule"'));
+  assert.ok(ctx.nav().includes('href="/schedule"'));
   ctx.db.siteSettings.seriesMenuVisible = true;
   assert.ok(ctx.nav().includes('href="#series"'));
   assert.equal(vm.runInContext('ADMIN_MENU_ITEMS[ADMIN_MENU_ITEMS.findIndex(row => row[0] === "events") + 1][0]', ctx), 'series');

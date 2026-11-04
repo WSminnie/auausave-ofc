@@ -10,6 +10,7 @@ function load(){
 test('routes group detail pages and exclude admin and unknown routes',()=>{
  const a=load();assert.equal(typeof a.pageKey,'function');
  for(const [route,page] of [['','home'],['#schedule','schedule'],['#series/abc/episodes/one','series'],['#project/abc','projects'],['#/AUAU','artists'],['#artist/AT01','artists'],['#admin',null],['#garbage',null]])assert.equal(a.pageKey(route),page);
+ assert.equal(a.pageKey('/schedule'),'schedule');assert.equal(a.pageKey('/schedule/'),'schedule');
 });
 test('Bangkok month and current-day chart stop at local today',()=>{
  const a=load();assert.equal(typeof a.monthInfo,'function');

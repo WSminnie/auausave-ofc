@@ -4,6 +4,7 @@
   const validId = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value || '');
   function pageKey(hash) {
     const route = String(hash || '').replace(/^#/, '') || 'home';
+    if (/^\/schedule\/?$/.test(route)) return 'schedule';
     if (Object.hasOwn(PAGES, route)) return route;
     if (route.startsWith('series/')) return 'series';
     if (route.startsWith('project/')) return 'projects';
@@ -96,7 +97,7 @@
       if(result.error)throw result.error;
     }});
     // Called after the public router, not during data hydration or rerendering.
-    const visit=()=>tracker.visit(root.location.hash);
+    const visit=()=>tracker.visit(root.location.hash || (root.PublicRoutes?.resolve(root.location) === 'schedule' ? '/schedule' : ''));
     root.addEventListener('hashchange',visit);
     visit();
   });
