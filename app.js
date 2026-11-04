@@ -50,7 +50,7 @@ function artistPublicSlug(id) {
 }
 function artistIdFromPublicRoute(value) {
   const key = decodeURIComponent(String(value || '')).replace(/^\/+|\/+$/g, '').toLowerCase();
-  const publicMatch = Object.entries(ARTIST_PUBLIC_SLUGS).find(([, slug]) => slug.toLowerCase() === key);
+  const publicMatch = Object.entries(ARTIST_PUBLIC_SLUGS).find(([id, slug]) => slug.toLowerCase() === key || id.toLowerCase() === key);
   if (publicMatch) return publicMatch[0];
   const directMatch = db.artists.find(artist =>
     [artist.id, artist.name, canonicalArtistId(artist.id)].some(candidate => String(candidate || '').toLowerCase() === key)
@@ -571,18 +571,36 @@ function listing(type) {
 }
 function artistProfileScheduleMatches(event, artistId) {
   const id = canonicalArtistId(artistId);
-  return itemMatchesArtist(event, id) ||
-    (['AT02', 'AT03'].includes(id) && itemMatchesArtist(event, 'AT01'));
+  if (itemMatchesArtist(event, id) ||
+    (['AT02', 'AT03'].includes(id) && itemMatchesArtist(event, 'AT01'))) return true;
+  if (id === 'AT01' || !isSeriesBroadcast(event) || !event.seriesId) return false;
+  // Broadcast schedules reference the series rather than individual artists.
+  // Use each artist's Journey, including couple associations only for its members.
+  const relatedArtists = ['AT02', 'AT03'].includes(id) ? [id, 'AT01'] : [id];
+  return (db.siteSettings?.timeline || []).some(item =>
+    (item.category || 'series') === 'series' && item.seriesId === event.seriesId &&
+    Array.isArray(item.artistIds) && item.artistIds.some(artist => relatedArtists.includes(canonicalArtistId(artist)))
+  );
 }
 function artistProfileScheduleFilterMatches(event, artistId, filter = 'solo') {
   if (filter === 'all') return artistProfileScheduleMatches(event, artistId);
   return itemMatchesArtist(event, filter === 'duo' ? 'AT01' : artistId);
 }
-function renderArtistProfileSchedule(items, artistId, filter = 'solo') {
+function artistProfileScheduleList(items) {
+  if (!items.length) return '<div class="mobile-calendar-agenda save-profile-agenda"><div class="empty">No schedules this month.</div></div>';
+  const artists = [...db.artists].sort((a,b)=>artistSchedulePriority(a)-artistSchedulePriority(b));
+  const artistIndex = new Map(artists.map((artist,index)=>[artist.id,index]));
+  const events = [...items].sort((a,b)=>a.date.localeCompare(b.date));
+  return `<div class="mobile-calendar-agenda save-profile-agenda">${events.map((event,index)=>mobileCalendarListRow(event,artistIndex,index===0||events[index-1].date!==event.date,index===events.length-1||events[index+1].date!==event.date)).join('')}</div>`;
+}
+function renderArtistProfileSchedule(items, artistId, filter) {
   const id = canonicalArtistId(artistId);
-  const label = id === 'AT02' ? 'AUAU' : 'SAVE';
-  const choices = [['all', 'All'], ['solo', label], ['duo', 'AUAUSAVE']];
-  return `<div class="artist-schedule-segments" role="group" aria-label="เลือกตารางงาน">${choices.map(([key, title]) => `<button type="button" data-schedule-filter="${key}" aria-pressed="${key === filter}" onclick="setArtistProfileSchedule(this,'${id}','${key}')">${title}</button>`).join('')}</div><div class="artist-profile-schedule-list" aria-live="polite">${scheduleRows(items.filter(event => artistProfileScheduleFilterMatches(event, id, filter)))}</div>`;
+  filter ||= 'all';
+  const label = artistName(id);
+  const choices = [['all', 'All'], ['solo', label]];
+  const filtered = items.filter(event => artistProfileScheduleFilterMatches(event, id, filter));
+  const list = artistProfileScheduleList(filtered);
+  return `<div class="artist-schedule-segments" role="group" aria-label="เลือกตารางงาน">${choices.map(([key, title]) => `<button type="button" data-schedule-filter="${key}" aria-pressed="${key === filter}" onclick="setArtistProfileSchedule(this,'${id}','${key}')">${title}</button>`).join('')}</div><div class="artist-profile-schedule-list" aria-live="polite">${list}</div>`;
 }
 function setArtistProfileSchedule(button, artistId, filter) {
   const host = button.closest('.artist-profile-schedule-content');
@@ -602,17 +620,17 @@ function profile(id) {
   const now = new Date(),
     currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
     ev = publicOrderedEvents().filter((e) => artistProfileScheduleMatches(e, id) && e.date.startsWith(currentMonth)),
-    aw = db.awards.filter((r) => awardMatchesArtist(r, id)),
+    aw = db.awards.filter((r) => awardMatchesArtist(r, id)).sort((a,b)=>awardDateValue(b)-awardDateValue(a)),
     vid = db.videos.filter((v) => v.artistId === id);
   app.innerHTML =
     nav("artists") +
-    `<main><section class="section"><div class="container profile-head"><div class="profile-portrait portrait" style="background:${a.color}"><span>${a.initial}</span></div><div><span class="eyebrow">Artist profile</span><h1 style="font-size:clamp(55px,8vw,100px);line-height:1;margin:10px 0">${a.name}</h1><p style="font-size:18px;line-height:1.8;color:var(--muted)">${a.bio}</p><div class="facts"><div class="fact"><small>ชื่อจริง</small><strong>${a.realName}</strong></div><div class="fact"><small>วันเกิด</small><strong>${a.birth}</strong></div><div class="fact"><small>บทบาท</small><strong>${a.role}</strong></div><div class="fact"><small>ผลงานล่าสุด</small><strong>${vid[0]?.title || "—"}</strong></div></div></div></div></section><section class="section"><div class="container schedule-wrap"><div class="section-head"><div><span class="eyebrow" style="color:var(--yellow)">Upcoming</span><h2>ตารางงานของ ${a.name}</h2></div></div>${["AT02","AT03"].includes(id) ? `<div class="artist-profile-schedule-content">${renderArtistProfileSchedule(ev,id)}</div>` : scheduleRows(ev)}</div></section><section class="section"><div class="container"><div class="section-head"><h2>AWARDS</h2></div><div class="award-grid">${aw.map((r) => `<article class="award">${r.image?`<img class="award-image" src="${r.image}" alt="${r.title}">`:''}<div class="year">${awardDisplayDate(r)}</div><h3>${r.title}</h3><p>${r.org}</p></article>`).join("") || '<div class="empty">ยังไม่มีข้อมูลรางวัล</div>'}</div></div></section>${vid.length ? `<section class="section"><div class="container"><div class="section-head"><h2>วิดีโอ</h2></div>${videos(vid)}</div></section>` : ""}</main>` +
+    `<main><section class="section"><div class="container profile-head"><div class="profile-portrait portrait" style="background:${a.color}"><span>${a.initial}</span></div><div><span class="eyebrow">Artist profile</span><h1 style="font-size:clamp(55px,8vw,100px);line-height:1;margin:10px 0">${a.name}</h1><p style="font-size:18px;line-height:1.8;color:var(--muted)">${a.bio}</p><div class="facts"><div class="fact"><small>ชื่อจริง</small><strong>${a.realName}</strong></div><div class="fact"><small>วันเกิด</small><strong>${a.birth}</strong></div><div class="fact"><small>บทบาท</small><strong>${a.role}</strong></div><div class="fact"><small>ผลงานล่าสุด</small><strong>${vid[0]?.title || "—"}</strong></div></div></div></div></section><section class="section"><div class="container schedule-wrap"><div class="section-head"><div><span class="eyebrow" style="color:var(--yellow)">Upcoming</span><h2>ตารางงานของ ${a.name}</h2></div></div>${id !== 'AT01' ? `<div class="artist-profile-schedule-content">${renderArtistProfileSchedule(ev,id)}</div>` : scheduleRows(ev)}</div></section><section class="section"><div class="container"><div class="section-head"><h2>AWARDS</h2></div><div class="award-grid">${aw.map((r) => `<article class="award">${r.image?`<img class="award-image" src="${r.image}" alt="${r.title}">`:''}<div class="year">${awardDisplayDate(r)}</div><h3>${r.title}</h3><p>${r.org}</p></article>`).join("") || '<div class="empty">ยังไม่มีข้อมูลรางวัล</div>'}</div></div></section>${vid.length ? `<section class="section"><div class="container"><div class="section-head"><h2>วิดีโอ</h2></div>${videos(vid)}</div></section>` : ""}</main>` +
     footer();
 }
 const renderProfileWithAwardDetails = profile;
 profile = function(id) {
   renderProfileWithAwardDetails(id);
-  const awards=db.awards.filter(item=>awardMatchesArtist(item,id));
+  const awards=db.awards.filter(item=>awardMatchesArtist(item,id)).sort((a,b)=>awardDateValue(b)-awardDateValue(a));
   document.querySelectorAll('.award-grid .award').forEach((card,index)=>{
     const item=awards[index], date=card.querySelector('.year');
     if (!item || !date) return;
@@ -708,9 +726,10 @@ function artistSeriesSection(artistId) {
   artistId=canonicalArtistId(artistId);
   const archive=db.siteSettings.artistArchive[artistId];
   if(!archive||archive.visibility?.series===false)return'';
-  const allowedArtists=sameArtistId(artistId,'duo')?['AT01']:['AT01',artistId];
+  const hasCoupleWork=['AT02','AT03'].includes(artistId);
+  const allowedArtists=sameArtistId(artistId,'duo')?['AT01']:hasCoupleWork?['AT01',artistId]:[artistId];
   const items=(db.siteSettings.timeline||[]).filter(item=>(item.artistIds||[]).some(id=>allowedArtists.includes(canonicalArtistId(id))));
-  const artistFilters=sameArtistId(artistId,'duo')?'':`<div class="timeline-artist-filters"><button onclick="filterArtistTimeline(this,'all')">All</button><button onclick="filterArtistTimeline(this,'AT01')">AUAUSAVE</button><button class="active" onclick="filterArtistTimeline(this,'${artistId}')">${escapePageText(artistName(artistId))}</button></div>`;
+  const artistFilters=sameArtistId(artistId,'duo')?'':`<div class="timeline-artist-filters"><button onclick="filterArtistTimeline(this,'all')">All</button>${hasCoupleWork?`<button onclick="filterArtistTimeline(this,'AT01')">AUAUSAVE</button>`:''}<button class="active" onclick="filterArtistTimeline(this,'${artistId}')">${escapePageText(artistName(artistId))}</button></div>`;
   return timelineSectionMarkup({attributes:`data-artist-timeline="${artistId}"`,description:`Series, variety shows and music videos of ${artistName(artistId)}`,items,artistFilters,groupScopeIds:[artistId],activeArtist:sameArtistId(artistId,'duo')?'all':artistId});
 }
 function filterArtistTimeline(button,artist){const section=button.closest('.artist-filmography');section.dataset.activeTimelineArtist=artist==='all'?'all':canonicalArtistId(artist);section.querySelectorAll('.timeline-artist-filters button').forEach(item=>item.classList.toggle('active',item===button));applyTimelineFilters(section);}
@@ -797,7 +816,7 @@ profile = function (id) {
   const monthLabel = new Intl.DateTimeFormat('en-US', {month:'long', year:'numeric'}).format(new Date());
   if (scheduleTitle) scheduleTitle.textContent = `This month’s schedule · ${artist.name}`;
   if (scheduleEyebrow) scheduleEyebrow.textContent = monthLabel;
-  if (['AT02','AT03'].includes(id)) scheduleSection?.querySelector('.schedule-wrap')?.classList.add('artist-profile-schedule');
+  if (id !== 'AT01') scheduleSection?.querySelector('.schedule-wrap')?.classList.add('artist-profile-schedule');
   const visibility = db.siteSettings.artistArchive[id]?.visibility || {};
   document.querySelector('.profile-head')?.closest('.section')?.insertAdjacentHTML('afterend',artistSeriesSection(id));
   const artistTimelineSection = document.querySelector(`.artist-filmography[data-artist-timeline="${id}"]`);
@@ -2409,16 +2428,30 @@ async function hydrateFromSupabase() {
   }
 }
 
+function renderPublicArtistProfile(value) {
+  const artistId = artistIdFromPublicRoute(String(value).replace(/^\/+/, '').split('/')[0]);
+  if (!artistById(artistId) && Object.hasOwn(ARTIST_PUBLIC_SLUGS, artistId)) {
+    app.innerHTML = nav('artists') + '<main><div class="empty">กำลังโหลดข้อมูลศิลปิน...</div></main>' + footer();
+    return;
+  }
+  profile(artistId);
+}
 function router() {
   route = location.hash.slice(1) || "home";
-  if (route === 'series' || route.startsWith('series/')) SeriesFeature.pages.render(route);
+  const saveTab = window.SaveProfileTabs?.resolve(location);
+  if (saveTab) {
+    const artistId = window.SaveProfileTabs.resolveArtist(location);
+    route = '/' + artistPublicSlug(artistId);
+    renderPublicArtistProfile(artistPublicSlug(artistId));
+  }
+  else if (route === 'series' || route.startsWith('series/')) SeriesFeature.pages.render(route);
   else if (route === "home") home();
   else if (
     ["artists", "schedule", "presenters", "awards"].includes(route)
   )
     listing(route);
-  else if (route.startsWith("artist/")) profile(artistIdFromPublicRoute(route.slice(7)));
-  else if (route.startsWith("/")) profile(artistIdFromPublicRoute(route));
+  else if (route.startsWith("artist/")) renderPublicArtistProfile(route.slice(7));
+  else if (route.startsWith("/")) renderPublicArtistProfile(route);
   else if (route === "projects") projectHubPage();
   else if (route.startsWith("project/")) projectDetailPage(route.slice(8));
   else if (route === "admin") requestAdminAccess();
@@ -2465,7 +2498,7 @@ function renderPersonalProfile(artist) {
   ensureHomePageSettings();
   const artistId = canonicalArtistId(artist.id);
   const info = db.siteSettings.personalProfiles[artistId] || {};
-  const moreAboutTitle = artistId === 'AT02' ? 'More About Auau' : 'More About Save';
+  const moreAboutTitle = artistId === 'AT02' ? 'More About Auau' : artistId === 'AT03' ? 'More About Save' : 'More About ' + escapePageText(artist.name || '');
   const basics = [
     ['Birthday', artist.birth], ['Zodiac sign', info.zodiac], ['Chinese zodiac', info.chineseZodiac],
     ['Blood type', info.bloodType],

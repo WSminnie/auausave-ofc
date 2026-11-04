@@ -1,0 +1,108 @@
+/* SAVE shell refinements; existing content and data renderers stay in use. */
+.save-profile-page{width:100%;max-width:none;margin:0;background:transparent;border:0;border-radius:0;padding:0 0 36px;box-sizing:border-box}
+#app:has(>.save-profile-page)>.nav{height:var(--site-header-height);min-height:var(--site-header-height)}
+#app>.save-profile-page+.footer{margin-top:0}
+.save-profile-page [data-save-panel][hidden]{display:none!important}
+.save-profile-tabs[hidden]{display:none!important}
+.save-profile-page>.save-profile-header{padding:48px 0 32px;background:transparent}
+.save-profile-page>.save-profile-header>.profile-head{display:grid;grid-template-columns:280px minmax(0,1fr);gap:48px;align-items:center}
+.save-profile-header .profile-portrait{width:260px;height:260px;aspect-ratio:1;border-radius:50%;min-height:0;overflow:hidden;justify-self:start}
+.save-profile-header .profile-portrait img{width:100%;height:100%;object-fit:cover}
+.save-profile-header .artist-profile-copy{min-width:0}
+.save-profile-header .artist-profile-copy>.eyebrow{display:none}
+.save-profile-header .artist-profile-copy>h1{font-size:clamp(55px,8vw,100px);line-height:1;letter-spacing:-.035em;margin:0 0 22px}
+.save-profile-header .artist-profile-description{font-size:16px;line-height:1.8;margin:0;color:#707070;max-width:70ch}
+.save-profile-header .artist-profile-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:26px}
+.save-profile-header .artist-profile-facts .fact{border:0;padding:0;background:transparent;min-width:0}
+.save-profile-header .artist-profile-facts small{font-size:10px;color:#707070}
+.save-profile-header .artist-profile-facts strong{font-size:14px}
+@media(min-width:701px){
+  .save-profile-header .artist-profile-facts{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .save-profile-header .artist-profile-facts .artist-role-fact{grid-column:auto}
+}
+.save-profile-header .artist-official-socials{margin-top:28px;padding-top:0;border-top:0}
+.save-profile-header .artist-social-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.save-profile-header .artist-social-button{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;min-width:0;min-height:48px;width:100%;gap:8px;padding:10px}
+.save-profile-header .artist-social-platform-label{padding:7px;font-size:10px;overflow:visible;text-overflow:clip;white-space:nowrap}
+.save-profile-header .artist-social-copy{display:block;min-width:0}
+.save-profile-header .artist-social-copy small{font-size:10px;color:#707070}
+.save-profile-header .artist-social-grid.save-social-groups{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:clamp(3px,1vw,14px);width:100%;max-width:430px}
+.save-social-group,.save-social-links{display:contents}
+.save-profile-header .save-social-link{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:7px;width:100%;min-width:0;min-height:64px;border-radius:8px;text-decoration:none;color:#333}
+.save-social-icon{display:grid;place-items:center;width:clamp(34px,11vw,44px);height:clamp(34px,11vw,44px);flex:none;border-radius:50%;overflow:hidden;background:#fff}
+.save-social-icon img{display:block;width:100%;height:100%;object-fit:contain}
+.save-social-icon .save-social-artwork-x{transform:scale(1.11)}
+.save-social-icon .save-social-artwork-instagram{transform:scale(1.15)}
+.save-social-icon .save-social-artwork-weibo{transform:scale(1.06)}
+.save-social-icon .save-social-artwork-tiktok{transform:scale(1.26)}
+.save-social-icon .save-social-artwork-rednote{transform:scale(1.68)}
+.save-social-caption{font-size:clamp(9px,2.5vw,11px);line-height:1.4;white-space:nowrap}
+.save-social-link:focus-visible{outline:2px solid #335c67;outline-offset:4px}
+.save-profile-tabs{display:flex;gap:32px;margin:0 auto;border-bottom:1px solid #e6e6e6}
+.save-profile-tabs a{display:flex;align-items:center;min-height:49px;padding:10px 0;border-bottom:2px solid transparent;margin-bottom:-1px;color:#707070;font-size:15px;text-decoration:none}
+.save-profile-tabs a[aria-current=page]{color:#202020;border-bottom-color:#202020;font-weight:600}
+.save-profile-tabs a:hover{color:#202020}
+.save-profile-tabs a:focus-visible{outline:2px solid #335c67;outline-offset:4px}
+.save-profile-page>[data-save-panel]>.section{padding-top:32px;padding-bottom:32px;background:transparent}
+.save-profile-page .personal-profile-section{border-top:0}
+.save-profile-page .personal-profile-heading{border-bottom:0;padding-bottom:0}
+.save-profile-page .personal-profile-card:before{display:none}
+@media(min-width:851px){
+  .save-profile-page :is(.personal-basics,.personal-sizing){align-self:stretch;display:flex;flex-direction:column}
+  .save-profile-page .personal-basics>.personal-row{flex:1;align-items:center}
+  .save-profile-page .personal-basics>.personal-copy{margin-top:16px}
+  .save-profile-page .personal-sizing{justify-content:space-between}
+}
+.save-profile-empty{width:min(1180px,calc(100% - 40px));margin:32px auto}
+/* Reuse the main Calendar list renderer and its date-rail presentation at every size. */
+.save-profile-page .schedule-wrap.artist-profile-schedule{background:transparent;border:0;border-radius:0;padding:0}
+.save-profile-page .save-profile-agenda{max-width:none;margin:0;padding:clamp(14px,3vw,22px);border:1px solid var(--line);border-radius:18px;background:var(--white)}
+.save-profile-agenda .mobile-home-schedule-row{display:grid;width:100%;grid-template-columns:36px minmax(0,1fr);gap:8px;align-items:start;padding:9px 0;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);text-align:left}
+.save-profile-agenda .mobile-home-schedule-row:not(.is-day-end),.save-profile-agenda .mobile-home-schedule-row:last-child{border-bottom:0}
+.save-profile-agenda .mobile-home-schedule-row time{display:grid;grid-template-columns:1fr;grid-template-rows:12px 28px;align-items:center;justify-items:end;column-gap:0;padding-right:3px}
+.save-profile-agenda .mobile-home-schedule-row time small{grid-row:1;justify-self:start;font-size:10px;font-weight:700;color:var(--ink)}
+.save-profile-agenda .mobile-home-schedule-row time b{grid-row:2;font-size:28px;letter-spacing:-.04em}
+.save-profile-agenda .unified-schedule-detail{display:block;min-width:0;position:relative;padding-left:10px}
+.save-profile-agenda .unified-schedule-detail:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:999px;background:var(--event-color)}
+.save-profile-agenda .mobile-home-schedule-title{display:block;font-size:15px;line-height:1.45;font-weight:700;overflow-wrap:anywhere}
+.save-profile-agenda .mobile-home-schedule-origin{display:block;font-size:11px;line-height:1.6;color:var(--muted);margin-top:4px}
+.save-profile-agenda .mobile-home-schedule-meta{display:block;font-size:11px;line-height:1.5;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
+.save-profile-agenda .mobile-home-schedule-participation{display:block;font-size:12px;line-height:1.6;color:var(--muted);margin-top:6px;white-space:normal;overflow-wrap:anywhere}
+.save-profile-agenda .mobile-home-schedule-participation:empty{display:none}
+.save-profile-agenda .event-participation-inline{display:inline;white-space:normal}
+@media(max-width:1024px){
+  .save-profile-page>.save-profile-header>.profile-head{grid-template-columns:200px minmax(0,1fr)!important;gap:30px}
+  .save-profile-header .profile-portrait{width:200px;height:200px}
+  .save-profile-header .artist-profile-copy>h1{font-size:64px}
+  .save-profile-header .artist-profile-description{font-size:14px}
+  .save-profile-header .artist-social-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:700px){
+  .save-profile-page>.save-profile-header{padding:28px 0}
+  .save-profile-page>.save-profile-header>.profile-head{grid-template-columns:96px minmax(0,1fr)!important;gap:18px 16px}
+  .save-profile-header .profile-portrait{grid-column:1;grid-row:1;width:96px;height:96px;justify-self:start}
+  .save-profile-header .artist-profile-copy{display:contents}
+  .save-profile-header .artist-profile-copy>h1{grid-column:2;grid-row:1;align-self:center;font-size:clamp(38px,10vw,56px);margin:0}
+  .save-profile-header .artist-profile-copy>:is(.artist-profile-description,.artist-profile-facts,.artist-official-socials){grid-column:1/-1}
+  .save-profile-header .artist-profile-description{font-size:14px;line-height:1.75}
+  .save-profile-header .artist-profile-facts{gap:14px;margin-top:4px}
+  .save-profile-header .artist-profile-facts strong{font-size:13px}
+  .save-profile-header .artist-official-socials{margin-top:6px}
+  .save-profile-header .artist-social-button{padding:9px;gap:7px}
+  .save-profile-tabs{justify-content:flex-start;gap:clamp(16px,5vw,28px)}
+  .save-profile-tabs a{font-size:14px}
+  .save-profile-page>[data-save-panel]>.section{padding-top:26px;padding-bottom:26px}
+  .save-profile-page .personal-profile-heading{grid-template-columns:1fr;gap:12px;margin-bottom:20px}
+  .save-profile-page .personal-profile-heading>.personal-profile-title{grid-column:1;grid-row:auto}
+  .save-profile-page .personal-profile-heading>p{grid-column:1;grid-row:auto;justify-self:start;text-align:left;font-size:13px;white-space:normal}
+  .save-profile-page .personal-profile-heading .personal-profile-updated{font-size:12px}
+  .save-profile-page .personal-profile-card{padding:22px 18px;border-radius:18px}
+  .save-profile-page .sizing-box-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .save-profile-page .finger-row>*{padding:10px 3px;white-space:nowrap}
+  .save-profile-page .finger-row strong{font-size:12px}
+}
+@media(max-width:360px){
+  .save-profile-header .artist-social-button{gap:5px;padding:8px 6px}
+  .save-profile-header .artist-social-platform-label{font-size:9px;padding:6px 4px}
+  .save-profile-header .artist-social-copy small{font-size:9px}
+}

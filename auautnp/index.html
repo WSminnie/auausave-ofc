@@ -6,7 +6,11 @@
   <meta name="robots" content="noindex" />
   <title>กำลังเปิดหน้า AUAU</title>
   <script>
-    window.location.replace("/" + window.location.search + "#/AUAU");
+    const entry = new URL('/', location.origin);
+    entry.search = location.search;
+    entry.searchParams.set('__artist_id', 'AT02');
+    entry.searchParams.set('__artist_tab', 'profile');
+    window.location.replace(entry.href);
   </script>
 </head>
 <body>

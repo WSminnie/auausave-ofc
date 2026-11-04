@@ -6,7 +6,10 @@
   <meta name="robots" content="noindex" />
   <title>กำลังเปิดหน้า SAVE</title>
   <script>
-    window.location.replace("/" + window.location.search + "#/SAVE");
+    const entry = new URL('/', location.origin);
+    entry.search = location.search;
+    entry.searchParams.set('__save_tab', 'profile');
+    window.location.replace(entry.href);
   </script>
 </head>
 <body>
