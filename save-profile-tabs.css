@@ -39,9 +39,9 @@
 .save-social-caption{font-size:clamp(9px,2.5vw,11px);line-height:1.4;white-space:nowrap}
 .save-social-link:focus-visible{outline:2px solid #335c67;outline-offset:4px}
 .save-profile-tabs{display:flex;gap:32px;margin:0 auto;border-bottom:1px solid #e6e6e6}
-.save-profile-tabs a{display:flex;align-items:center;min-height:49px;padding:10px 0;border-bottom:2px solid transparent;margin-bottom:-1px;color:#707070;font-size:15px;text-decoration:none}
-.save-profile-tabs a[aria-current=page]{color:#202020;border-bottom-color:#202020;font-weight:600}
-.save-profile-tabs a:hover{color:#202020}
+.save-profile-tabs a{display:flex;align-items:center;min-height:49px;padding:10px 0;border-bottom:0;margin-bottom:0;color:#707070;font-size:15px;text-decoration:none}
+.save-profile-tabs a[aria-current=page]{color:#202020;font-weight:600}
+.save-profile-tabs a:is(:hover,:focus-visible){color:#202020;text-decoration:none}
 .save-profile-tabs a:focus-visible{outline:2px solid #335c67;outline-offset:4px}
 .save-profile-page>[data-save-panel]>.section{padding-top:32px;padding-bottom:32px;background:transparent}
 .save-profile-page .personal-profile-section{border-top:0}
