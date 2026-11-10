@@ -1,3 +1,4 @@
+const { sourceIndex } = require('./source-section.cjs');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -99,7 +100,7 @@ test('image crop presets match Series display aspect ratios', () => {
 test('Master defaults use existing broadcast normalization and preserve manual edits', () => {
   const ctx = setup(['series/admin/master-data.js']);
   const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
-  vm.runInContext(app.slice(app.indexOf('function formatBroadcastTime('), app.indexOf('function seriesBroadcastRow(')), ctx);
+  vm.runInContext(app.slice(sourceIndex(app, 'function formatBroadcastTime('), sourceIndex(app, 'function seriesBroadcastRow(')), ctx);
   const master = { id: 'sample', label: 'Sample Series', broadcasts: [{channel:'TV',time:'22:30',mode:'live'}, {channel:'Stream',time:'23:30',mode:'online_uncut'}] };
   const values = ctx.SeriesFeature.master.defaults(master);
   assert.equal(values.slug, 'sample-series');
@@ -195,8 +196,8 @@ test('Series menu defaults visible, can hide, and sits directly after Schedule i
   const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   ctx.db = { siteSettings: {} };
   ctx.adminTab = 'series';
-  vm.runInContext(source.slice(source.indexOf('function nav('), source.indexOf('function closePublicMenu(')), ctx);
-  vm.runInContext(source.slice(source.indexOf('const ADMIN_MENU_ITEMS ='), source.indexOf('function admin()')), ctx);
+  vm.runInContext(source.slice(sourceIndex(source, 'function nav('), sourceIndex(source, 'function closePublicMenu(')), ctx);
+  vm.runInContext(source.slice(sourceIndex(source, 'const ADMIN_MENU_ITEMS ='), sourceIndex(source, 'function admin()')), ctx);
   assert.ok(ctx.nav().includes('href="#series"'));
   ctx.db.siteSettings.seriesMenuVisible = false;
   assert.ok(!ctx.nav().includes('href="#series"'));

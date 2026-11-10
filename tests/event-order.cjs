@@ -1,3 +1,4 @@
+const { sourceIndex } = require('./source-section.cjs');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
@@ -7,7 +8,7 @@ function setup(){
   const messages=[],writes=[];
   const ctx=vm.createContext({db:{events:[{id:'a',date:'2026-09-12'},{id:'hidden',date:'2026-09-12',hidden:true},{id:'b',date:'2026-09-12'},{id:'next',date:'2026-09-13'}]},adminAuthenticated:true,adminSelectedDate:'2026-09-12',adminEventFilter:'all',adminTab:'events',location:{hash:'#admin'},window:{auausaveDB:{saveEventOrder:async(date,ids)=>writes.push({date,ids:[...ids]})}},itemMatchesArtist:e=>!e.hidden,matchesAdminType:()=>true,save:()=>true,admin(){},toast:m=>messages.push(m),document:{querySelector:()=>null,querySelectorAll:()=>[]},console});
   ctx.CSS={escape:value=>value};
-  vm.runInContext(source.slice(source.indexOf('// Shared schedule order'),source.indexOf('// End shared schedule order')),ctx);
+  vm.runInContext(source.slice(sourceIndex(source, '// Shared schedule order'),sourceIndex(source, '// End shared schedule order')),ctx);
   return {ctx,messages,writes};
 }
 const ids=items=>Array.from(items,x=>x.id);

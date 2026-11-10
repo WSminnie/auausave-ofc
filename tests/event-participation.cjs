@@ -1,3 +1,4 @@
+const { sourceIndex } = require('./source-section.cjs');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
@@ -41,7 +42,7 @@ test('multiple access conditions roundtrip, render and restore together',()=>{
 test('event create and edit include participation in the first save and allow clearing it',()=>{
  const c=setup(),source=fs.readFileSync('app.js','utf8');const snapshots=[];
  Object.assign(c,{db:{events:[]},FormData:function(data){return data},save:()=>snapshots.push(JSON.parse(JSON.stringify(c.db.events))),closeModal(){},admin(){},toast(){}});
- vm.runInContext(source.slice(source.indexOf('function submitForm(e, type, id)'),source.indexOf('const submitFormBase = submitForm;')),c);
+ vm.runInContext(source.slice(sourceIndex(source, 'function submitForm(e, type, id)'),sourceIndex(source, 'const submitFormBase = submitForm;')),c);
  const data=new Map([['title','Test'],['date','2026-09-12'],['participationAccess','closed'],['participationGifts','on']]);
  c.submitForm({preventDefault(){},target:data},'events','');
  assert.deepEqual(snapshots[0][0].participation,{access:'closed',gathering:false,gifts:true});
@@ -52,7 +53,7 @@ test('event create and edit include participation in the first save and allow cl
 
 test('database mapping roundtrips conditions and legacy rows remain unspecified',()=>{
  const source=fs.readFileSync('supabase-db.js','utf8'),c=setup();
- vm.runInContext(source.slice(source.indexOf('  const mapFromDb ='),source.indexOf('  async function load()')),c);
+ vm.runInContext(source.slice(sourceIndex(source, '  const mapFromDb ='),sourceIndex(source, '  async function load()')),c);
  const maps=vm.runInContext('({from:mapFromDb.events,to:mapToDb.events})',c);
  const event={id:'e1',date:'2026-09-12',title:'Test',participation:{access:'private',gathering:true,gifts:false}};
  assert.deepEqual(JSON.parse(JSON.stringify(maps.from(maps.to(event)).participation)),event.participation);

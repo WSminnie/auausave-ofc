@@ -1,0 +1,12 @@
+node_modules/
+.artifact-node_modules/
+.agents/
+.codex/
+.git/
+.openai/
+dist/
+tmp/
+outputs/
+docs/
+supabase/
+tests/

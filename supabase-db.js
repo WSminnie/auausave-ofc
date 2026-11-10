@@ -12,252 +12,580 @@
     },
   });
 
-  const tables = ['artists', 'events', 'award_sections', 'awards', 'award_section_assignments', 'presenters', 'videos'];
+  const tables = [
+    "artists",
+    "events",
+    "award_sections",
+    "awards",
+    "award_section_assignments",
+    "presenters",
+    "videos",
+  ];
   const knownIds = {};
   const storageTimestamp = () => {
-    const now = new Date(), pad = (value,size=2) => String(value).padStart(size,'0');
-    return `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}_${pad(now.getMilliseconds(),3)}`;
+    const now = new Date(),
+      pad = (value, size = 2) => String(value).padStart(size, "0");
+    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}_${pad(now.getMilliseconds(), 3)}`;
   };
-  const storageNonce = () => Math.random().toString(36).slice(2,10);
-  const createUniqueStoragePath = (path, ext) => `${path.replace(/[^a-zA-Z0-9/_-]/g,'_')}_${storageTimestamp()}_${storageNonce()}.${ext}`;
-  const storagePathFromUrl = value => {
-    if (typeof value !== 'string') return '';
+  const storageNonce = () => Math.random().toString(36).slice(2, 10);
+  const createUniqueStoragePath = (path, ext) =>
+    `${path.replace(/[^a-zA-Z0-9/_-]/g, "_")}_${storageTimestamp()}_${storageNonce()}.${ext}`;
+  const storagePathFromUrl = (value) => {
+    if (typeof value !== "string") return "";
     const marker = `/storage/v1/object/public/${config.mediaBucket}/`;
     const markerIndex = value.indexOf(marker);
-    if (markerIndex < 0) return '';
-    return decodeURIComponent(value.slice(markerIndex + marker.length).split('?')[0]);
+    if (markerIndex < 0) return "";
+    return decodeURIComponent(value.slice(markerIndex + marker.length).split("?")[0]);
   };
   const collectStoragePaths = (value, result = new Set()) => {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       const path = storagePathFromUrl(value);
       if (path) result.add(path);
-    } else if (Array.isArray(value)) value.forEach(item => collectStoragePaths(item,result));
-    else if (value && typeof value === 'object') Object.values(value).forEach(item => collectStoragePaths(item,result));
+    } else if (Array.isArray(value)) value.forEach((item) => collectStoragePaths(item, result));
+    else if (value && typeof value === "object")
+      Object.values(value).forEach((item) => collectStoragePaths(item, result));
     return result;
   };
   const removeUnreferencedMedia = async (oldValue, newValue) => {
-    const oldPaths = collectStoragePaths(oldValue), newPaths = collectStoragePaths(newValue);
-    const obsoletePaths = [...oldPaths].filter(path => !newPaths.has(path));
+    const oldPaths = collectStoragePaths(oldValue),
+      newPaths = collectStoragePaths(newValue);
+    const obsoletePaths = [...oldPaths].filter((path) => !newPaths.has(path));
     if (!obsoletePaths.length) return;
-    const {error} = await client.storage.from(config.mediaBucket).remove(obsoletePaths);
-    if (error) console.warn('Storage cleanup:', error.message);
+    const { error } = await client.storage.from(config.mediaBucket).remove(obsoletePaths);
+    if (error) console.warn("Storage cleanup:", error.message);
   };
   const uploadMediaBlob = async (blob, path) => {
-    const ext = blob.type.includes('video') ? (blob.type.includes('webm') ? 'webm' : 'mp4') : (blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg');
-    const uniquePath = createUniqueStoragePath(path,ext);
-    const {error} = await client.storage.from(config.mediaBucket).upload(uniquePath,blob,{upsert:false,contentType:blob.type});
-    if(error)throw error;
-    const publicUrl=client.storage.from(config.mediaBucket).getPublicUrl(uniquePath).data.publicUrl;
+    const ext = blob.type.includes("video")
+      ? blob.type.includes("webm")
+        ? "webm"
+        : "mp4"
+      : blob.type.includes("png")
+        ? "png"
+        : blob.type.includes("webp")
+          ? "webp"
+          : "jpg";
+    const uniquePath = createUniqueStoragePath(path, ext);
+    const { error } = await client.storage
+      .from(config.mediaBucket)
+      .upload(uniquePath, blob, { upsert: false, contentType: blob.type });
+    if (error) throw error;
+    const publicUrl = client.storage.from(config.mediaBucket).getPublicUrl(uniquePath)
+      .data.publicUrl;
     return `${publicUrl}?v=${storageTimestamp()}_${storageNonce()}`;
   };
   const mergeSettings = (remote, local) => {
     if (Array.isArray(local)) return local;
-    if (!local || typeof local !== 'object') return local;
-    const result = remote && typeof remote === 'object' && !Array.isArray(remote) ? {...remote} : {};
-    Object.entries(local).forEach(([key,value]) => {
-      result[key] = value && typeof value === 'object' && !Array.isArray(value)
-        ? mergeSettings(result[key], value)
-        : value;
+    if (!local || typeof local !== "object") return local;
+    const result =
+      remote && typeof remote === "object" && !Array.isArray(remote) ? { ...remote } : {};
+    Object.entries(local).forEach(([key, value]) => {
+      result[key] =
+        value && typeof value === "object" && !Array.isArray(value)
+          ? mergeSettings(result[key], value)
+          : value;
     });
     return result;
   };
   const uploadEmbeddedMedia = async (value, path) => {
-    if (typeof value === 'string' && value.startsWith('data:')) {
+    if (typeof value === "string" && value.startsWith("data:")) {
       const blob = await (await fetch(value)).blob();
-      return uploadMediaBlob(blob,path);
+      return uploadMediaBlob(blob, path);
     }
-    if (typeof value === 'string' && /settings\/homepage\/timeline\/timeline_[^/]+\/poster$/.test(path)) {
-      const currentPath=storagePathFromUrl(value),expectedPrefix=`${path.replace(/[^a-zA-Z0-9/_-]/g,'_')}_`;
-      if(currentPath&&!currentPath.startsWith(expectedPrefix)){
-        const response=await fetch(value);
-        if(!response.ok)throw new Error(`ย้ายรูป Timeline ไม่สำเร็จ (${response.status})`);
-        return uploadMediaBlob(await response.blob(),path);
+    if (
+      typeof value === "string" &&
+      /settings\/homepage\/timeline\/timeline_[^/]+\/poster$/.test(path)
+    ) {
+      const currentPath = storagePathFromUrl(value),
+        expectedPrefix = `${path.replace(/[^a-zA-Z0-9/_-]/g, "_")}_`;
+      if (currentPath && !currentPath.startsWith(expectedPrefix)) {
+        const response = await fetch(value);
+        if (!response.ok) throw new Error(`ย้ายรูป Timeline ไม่สำเร็จ (${response.status})`);
+        return uploadMediaBlob(await response.blob(), path);
       }
     }
-    if (Array.isArray(value)) return Promise.all(value.map((item,index)=>{
-      const segment = item && typeof item === 'object' && item.id ? String(item.id).replace(/[^a-zA-Z0-9_-]/g,'_') : index;
-      return uploadEmbeddedMedia(item,`${path}/${segment}`);
-    }));
-    if (value && typeof value === 'object') {
+    if (Array.isArray(value))
+      return Promise.all(
+        value.map((item, index) => {
+          const segment =
+            item && typeof item === "object" && item.id
+              ? String(item.id).replace(/[^a-zA-Z0-9_-]/g, "_")
+              : index;
+          return uploadEmbeddedMedia(item, `${path}/${segment}`);
+        }),
+      );
+    if (value && typeof value === "object") {
       const result = {};
-      for (const [key,item] of Object.entries(value)) result[key] = await uploadEmbeddedMedia(item,`${path}/${key}`);
+      for (const [key, item] of Object.entries(value))
+        result[key] = await uploadEmbeddedMedia(item, `${path}/${key}`);
       return result;
     }
     return value;
   };
   const mapFromDb = {
-    artists: r => ({ id:r.id,name:r.nickname ?? r.name,realName:r.name_TH ?? r.real_name,nameEN:r.name_EN||'',role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image:r.image_url,socialLinks:Array.isArray(r.social_links)?r.social_links:[] }),
-    events: r => ({ id:r.id,artistId:r.artist_id||'',artistIds:Array.isArray(r.artist_ids)&&r.artist_ids.length?r.artist_ids:[r.artist_id].filter(Boolean),eventStatus:r.event_status||'scheduled',statusSource:r.status_source_url||'',rescheduledFrom:r.rescheduled_from||'',date:r.event_date,title:r.title,place:r.place,type:r.event_type,seriesId:r.series_id||'',source:r.source_url||'',scheduleType:r.schedule_type||'',episode:r.episode??null,broadcasts:Array.isArray(r.broadcasts)?r.broadcasts:[],participation:r.participation&&typeof r.participation==='object'&&!Array.isArray(r.participation)?r.participation:{} }),
-    award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parentId:r.parent_id||'',displayOrder:Number(r.display_order)||0,active:r.active!==false }),
-    awards: r => ({ id:r.id,artistId:r.artist_id,year:String(r.award_year||''),day:String(r.award_day||''),month:String(r.award_month||''),title:r.title,org:r.organization,source:r.source_url||'',image:r.image_url||'',mainSectionId:r.main_section_id||'',subsectionId:r.subsection_id||'',displayOrder:Number(r.display_order)||0 }),
-    award_section_assignments: r => ({ id:r.id,awardId:r.award_id,mainSectionId:r.main_section_id,subsectionId:r.subsection_id||'',displayOrder:Number(r.display_order)||0 }),
-    presenters: r => ({ id:r.id,artistId:r.artist_id,brand:r.brand,role:r.role,year:String(r.presenter_year),color:r.color,url:r.source_url||'',logo:r.logo_url||'',announcementImage:r.announcement_image_url||'',announcementVideo:r.announcement_video_url||'',mediaFit:r.media_fit||'contain',mediaPosition:r.media_position||'center' }),
-    videos: r => ({ id:r.id,artistId:r.artist_id,title:r.title,views:r.views_label,url:r.youtube_url,embedUrl:r.embed_url||'',category:r.category,featured:r.featured?'yes':'no',color:r.color,thumbnail:r.thumbnail_url||'' })
+    artists: (r) => ({
+      id: r.id,
+      name: r.nickname ?? r.name,
+      realName: r.name_TH ?? r.real_name,
+      nameEN: r.name_EN || "",
+      role: r.role,
+      birth: r.birth,
+      initial: r.initial,
+      color: r.color,
+      bio: r.bio,
+      image: r.image_url,
+      socialLinks: Array.isArray(r.social_links) ? r.social_links : [],
+    }),
+    events: (r) => ({
+      id: r.id,
+      artistId: r.artist_id || "",
+      artistIds:
+        Array.isArray(r.artist_ids) && r.artist_ids.length
+          ? r.artist_ids
+          : [r.artist_id].filter(Boolean),
+      eventStatus: r.event_status || "scheduled",
+      statusSource: r.status_source_url || "",
+      rescheduledFrom: r.rescheduled_from || "",
+      date: r.event_date,
+      title: r.title,
+      place: r.place,
+      type: r.event_type,
+      seriesId: r.series_id || "",
+      source: r.source_url || "",
+      scheduleType: r.schedule_type || "",
+      episode: r.episode ?? null,
+      broadcasts: Array.isArray(r.broadcasts) ? r.broadcasts : [],
+      participation:
+        r.participation && typeof r.participation === "object" && !Array.isArray(r.participation)
+          ? r.participation
+          : {},
+    }),
+    award_sections: (r) => ({
+      id: r.id,
+      name: r.name,
+      slug: r.slug,
+      parentId: r.parent_id || "",
+      displayOrder: Number(r.display_order) || 0,
+      active: r.active !== false,
+    }),
+    awards: (r) => ({
+      id: r.id,
+      artistId: r.artist_id,
+      year: String(r.award_year || ""),
+      day: String(r.award_day || ""),
+      month: String(r.award_month || ""),
+      title: r.title,
+      org: r.organization,
+      source: r.source_url || "",
+      image: r.image_url || "",
+      mainSectionId: r.main_section_id || "",
+      subsectionId: r.subsection_id || "",
+      displayOrder: Number(r.display_order) || 0,
+    }),
+    award_section_assignments: (r) => ({
+      id: r.id,
+      awardId: r.award_id,
+      mainSectionId: r.main_section_id,
+      subsectionId: r.subsection_id || "",
+      displayOrder: Number(r.display_order) || 0,
+    }),
+    presenters: (r) => ({
+      id: r.id,
+      artistId: r.artist_id,
+      brand: r.brand,
+      role: r.role,
+      year: String(r.presenter_year),
+      color: r.color,
+      url: r.source_url || "",
+      logo: r.logo_url || "",
+      announcementImage: r.announcement_image_url || "",
+      announcementVideo: r.announcement_video_url || "",
+      mediaFit: r.media_fit || "contain",
+      mediaPosition: r.media_position || "center",
+    }),
+    videos: (r) => ({
+      id: r.id,
+      artistId: r.artist_id,
+      title: r.title,
+      views: r.views_label,
+      url: r.youtube_url,
+      embedUrl: r.embed_url || "",
+      category: r.category,
+      featured: r.featured ? "yes" : "no",
+      color: r.color,
+      thumbnail: r.thumbnail_url || "",
+    }),
   };
   const mapToDb = {
-    artists: r => ({ id:r.id,nickname:r.name,name_TH:r.realName||null,name_EN:r.nameEN||null,role:r.role,birth:r.birth,initial:r.initial,color:r.color,bio:r.bio,image_url:r.image||null,social_links:Array.isArray(r.socialLinks)?r.socialLinks:[] }),
-    events: r => ({ id:r.id,artist_id:r.artistId||null,artist_ids:Array.isArray(r.artistIds)&&r.artistIds.length?[...new Set(r.artistIds.map(String))]:[r.artistId].filter(Boolean),event_status:['postponed','canceled'].includes(r.eventStatus)?r.eventStatus:'scheduled',status_source_url:r.statusSource||null,rescheduled_from:r.rescheduledFrom||null,event_date:r.date,title:r.title,place:r.place||null,event_type:r.type,series_id:r.seriesId||null,source_url:r.source||null,schedule_type:r.scheduleType||null,episode:r.episode==null?null:Number(r.episode),broadcasts:Array.isArray(r.broadcasts)?r.broadcasts:[],participation:r.participation&&typeof r.participation==='object'&&!Array.isArray(r.participation)?r.participation:{} }),
-    award_sections: r => ({ id:r.id,name:r.name,slug:r.slug,parent_id:r.parentId||null,display_order:Number(r.displayOrder)||0,active:r.active!==false }),
-    awards: r => ({ id:r.id,artist_id:r.artistId,award_year:Number(r.year)||null,award_day:Number(r.day)||null,award_month:Number(r.month)||null,title:r.title,organization:r.org,source_url:r.source||null,image_url:r.image||null,main_section_id:r.mainSectionId||null,subsection_id:r.subsectionId||null,display_order:Number(r.displayOrder)||0 }),
-    award_section_assignments: r => ({ id:r.id,award_id:r.awardId,main_section_id:r.mainSectionId,subsection_id:r.subsectionId||null,display_order:Number(r.displayOrder)||0 }),
-    presenters: r => ({ id:r.id,artist_id:r.artistId,brand:r.brand,role:r.role,presenter_year:Number(r.year)||null,color:r.color,source_url:r.url||null,logo_url:r.logo||null,announcement_image_url:r.announcementImage||null,announcement_video_url:r.announcementVideo||null,media_fit:r.mediaFit||'contain',media_position:r.mediaPosition||'center' }),
-    videos: r => ({ id:r.id,artist_id:r.artistId,title:r.title,views_label:r.views,youtube_url:r.url,embed_url:r.embedUrl||null,category:r.category||'variety',featured:r.featured==='yes',color:r.color,thumbnail_url:r.thumbnail||null })
+    artists: (r) => ({
+      id: r.id,
+      nickname: r.name,
+      name_TH: r.realName || null,
+      name_EN: r.nameEN || null,
+      role: r.role,
+      birth: r.birth,
+      initial: r.initial,
+      color: r.color,
+      bio: r.bio,
+      image_url: r.image || null,
+      social_links: Array.isArray(r.socialLinks) ? r.socialLinks : [],
+    }),
+    events: (r) => ({
+      id: r.id,
+      artist_id: r.artistId || null,
+      artist_ids:
+        Array.isArray(r.artistIds) && r.artistIds.length
+          ? [...new Set(r.artistIds.map(String))]
+          : [r.artistId].filter(Boolean),
+      event_status: ["postponed", "canceled"].includes(r.eventStatus) ? r.eventStatus : "scheduled",
+      status_source_url: r.statusSource || null,
+      rescheduled_from: r.rescheduledFrom || null,
+      event_date: r.date,
+      title: r.title,
+      place: r.place || null,
+      event_type: r.type,
+      series_id: r.seriesId || null,
+      source_url: r.source || null,
+      schedule_type: r.scheduleType || null,
+      episode: r.episode == null ? null : Number(r.episode),
+      broadcasts: Array.isArray(r.broadcasts) ? r.broadcasts : [],
+      participation:
+        r.participation && typeof r.participation === "object" && !Array.isArray(r.participation)
+          ? r.participation
+          : {},
+    }),
+    award_sections: (r) => ({
+      id: r.id,
+      name: r.name,
+      slug: r.slug,
+      parent_id: r.parentId || null,
+      display_order: Number(r.displayOrder) || 0,
+      active: r.active !== false,
+    }),
+    awards: (r) => ({
+      id: r.id,
+      artist_id: r.artistId,
+      award_year: Number(r.year) || null,
+      award_day: Number(r.day) || null,
+      award_month: Number(r.month) || null,
+      title: r.title,
+      organization: r.org,
+      source_url: r.source || null,
+      image_url: r.image || null,
+      main_section_id: r.mainSectionId || null,
+      subsection_id: r.subsectionId || null,
+      display_order: Number(r.displayOrder) || 0,
+    }),
+    award_section_assignments: (r) => ({
+      id: r.id,
+      award_id: r.awardId,
+      main_section_id: r.mainSectionId,
+      subsection_id: r.subsectionId || null,
+      display_order: Number(r.displayOrder) || 0,
+    }),
+    presenters: (r) => ({
+      id: r.id,
+      artist_id: r.artistId,
+      brand: r.brand,
+      role: r.role,
+      presenter_year: Number(r.year) || null,
+      color: r.color,
+      source_url: r.url || null,
+      logo_url: r.logo || null,
+      announcement_image_url: r.announcementImage || null,
+      announcement_video_url: r.announcementVideo || null,
+      media_fit: r.mediaFit || "contain",
+      media_position: r.mediaPosition || "center",
+    }),
+    videos: (r) => ({
+      id: r.id,
+      artist_id: r.artistId,
+      title: r.title,
+      views_label: r.views,
+      youtube_url: r.url,
+      embed_url: r.embedUrl || null,
+      category: r.category || "variety",
+      featured: r.featured === "yes",
+      color: r.color,
+      thumbnail_url: r.thumbnail || null,
+    }),
   };
 
   async function load() {
-    const result = { masterData:{types:[],series:[]} };
+    const result = { masterData: { types: [], series: [] } };
     // These reads are independent; keep response processing in the original
     // order so mapping, optional-table fallbacks and error priority stay intact.
     const responses = await Promise.all([
-      ...tables.map(table => client.from(table).select('*')),
-      client.from('event_types').select('*').order('sort_order'),
-      client.from('series').select('*').order('name'),
-      client.from('site_settings').select('settings').eq('id','homepage').maybeSingle(),
-      client.from('site_settings').select('id,settings').like('id','event-order:%')
+      ...tables.map((table) => client.from(table).select("*")),
+      client.from("event_types").select("*").order("sort_order"),
+      client.from("series").select("*").order("name"),
+      client.from("site_settings").select("settings").eq("id", "homepage").maybeSingle(),
+      client.from("site_settings").select("id,settings").like("id", "event-order:%"),
     ]);
     for (const [index, table] of tables.entries()) {
       const { data, error } = responses[index];
       // Public pages must keep loading legacy awards while the additive
       // award_sections migration is being rolled out.
-      if (error && (table === 'award_sections' || table === 'award_section_assignments')) {
+      if (error && (table === "award_sections" || table === "award_section_assignments")) {
         result[table] = [];
         knownIds[table] = new Set();
         continue;
       }
       if (error) throw error;
       result[table] = data.map(mapFromDb[table]);
-      knownIds[table] = new Set(data.map(row => row.id));
+      knownIds[table] = new Set(data.map((row) => row.id));
     }
-    (result.awards||[]).forEach(award=>{
-      award.sectionAssignments=(result.award_section_assignments||[]).filter(item=>item.awardId===award.id).map(item=>({id:item.id,mainSectionId:item.mainSectionId,subsectionId:item.subsectionId||'',displayOrder:item.displayOrder||0}));
+    (result.awards || []).forEach((award) => {
+      award.sectionAssignments = (result.award_section_assignments || [])
+        .filter((item) => item.awardId === award.id)
+        .map((item) => ({
+          id: item.id,
+          mainSectionId: item.mainSectionId,
+          subsectionId: item.subsectionId || "",
+          displayOrder: item.displayOrder || 0,
+        }));
     });
-    const [{data:types,error:typeError},{data:series,error:seriesError},
-      {data:settings},{data:orders,error:orderError}] = responses.slice(tables.length);
+    const [
+      { data: types, error: typeError },
+      { data: series, error: seriesError },
+      { data: settings },
+      { data: orders, error: orderError },
+    ] = responses.slice(tables.length);
     if (typeError || seriesError) throw typeError || seriesError;
-    result.masterData.types = types.map(x=>({id:x.id,label:x.name}));
-    result.masterData.series = series.map(x=>({id:x.id,label:x.name,broadcasts:Array.isArray(x.broadcasts)?x.broadcasts:[]}));
-    knownIds.event_types = new Set(types.map(row => row.id));
-    knownIds.series = new Set(series.map(row => row.id));
+    result.masterData.types = types.map((x) => ({ id: x.id, label: x.name }));
+    result.masterData.series = series.map((x) => ({
+      id: x.id,
+      label: x.name,
+      broadcasts: Array.isArray(x.broadcasts) ? x.broadcasts : [],
+    }));
+    knownIds.event_types = new Set(types.map((row) => row.id));
+    knownIds.series = new Set(series.map((row) => row.id));
     result.siteSettings = settings?.settings || {};
-    if(orderError)throw orderError;
-    result.eventOrderByDate=Object.fromEntries((orders||[]).filter(row=>Array.isArray(row.settings?.eventIds)).map(row=>[row.id.slice('event-order:'.length),row.settings.eventIds]));
+    if (orderError) throw orderError;
+    result.eventOrderByDate = Object.fromEntries(
+      (orders || [])
+        .filter((row) => Array.isArray(row.settings?.eventIds))
+        .map((row) => [row.id.slice("event-order:".length), row.settings.eventIds]),
+    );
     return result;
   }
 
   async function save(database) {
-    database.award_section_assignments=(database.awards||[]).flatMap(award=>(award.sectionAssignments||[]).map((assignment,index)=>{
-      const safe=value=>String(value||'none').replace(/[^a-zA-Z0-9_-]/g,'_');
-      return {id:`asa_${safe(award.id)}_${safe(assignment.mainSectionId)}_${safe(assignment.subsectionId)}`,awardId:award.id,mainSectionId:assignment.mainSectionId,subsectionId:assignment.subsectionId||'',displayOrder:Number(assignment.displayOrder)||index+1};
-    }));
+    database.award_section_assignments = (database.awards || []).flatMap((award) =>
+      (award.sectionAssignments || []).map((assignment, index) => {
+        const safe = (value) => String(value || "none").replace(/[^a-zA-Z0-9_-]/g, "_");
+        return {
+          id: `asa_${safe(award.id)}_${safe(assignment.mainSectionId)}_${safe(assignment.subsectionId)}`,
+          awardId: award.id,
+          mainSectionId: assignment.mainSectionId,
+          subsectionId: assignment.subsectionId || "",
+          displayOrder: Number(assignment.displayOrder) || index + 1,
+        };
+      }),
+    );
     for (const table of tables) {
-      const mediaFields = {artists:['image'],awards:['image'],presenters:['logo','announcementImage'],videos:['thumbnail']}[table] || [];
-      const { data:existing, error:readError } = await client.from(table).select('*');
+      const mediaFields =
+        {
+          artists: ["image"],
+          awards: ["image"],
+          presenters: ["logo", "announcementImage"],
+          videos: ["thumbnail"],
+        }[table] || [];
+      const { data: existing, error: readError } = await client.from(table).select("*");
       if (readError) throw readError;
       const knownBeforeSave = knownIds[table] || new Set();
-      const oldManagedRecords = (existing || []).filter(row => knownBeforeSave.has(row.id)).map(mapFromDb[table]);
-      const prepared = await Promise.all(database[table].map(async record => {
-        const copy = {...record};
-        for (const field of mediaFields) {
-          if (!copy[field] || !String(copy[field]).startsWith('data:')) continue;
-          const blob = await (await fetch(copy[field])).blob();
-          copy[field] = await uploadMediaBlob(blob,`${table}/${record.id}/${field}`);
-          record[field] = copy[field];
-        }
-        return copy;
-      }));
+      const oldManagedRecords = (existing || [])
+        .filter((row) => knownBeforeSave.has(row.id))
+        .map(mapFromDb[table]);
+      const prepared = await Promise.all(
+        database[table].map(async (record) => {
+          const copy = { ...record };
+          for (const field of mediaFields) {
+            if (!copy[field] || !String(copy[field]).startsWith("data:")) continue;
+            const blob = await (await fetch(copy[field])).blob();
+            copy[field] = await uploadMediaBlob(blob, `${table}/${record.id}/${field}`);
+            record[field] = copy[field];
+          }
+          return copy;
+        }),
+      );
       const rows = prepared.map(mapToDb[table]);
-      const localIds = new Set(rows.map(row => row.id));
+      const localIds = new Set(rows.map((row) => row.id));
       // Delete only records that this browser previously loaded. This prevents a
       // stale admin session from deleting records recently added by another admin.
-      const deletedIds = [...(knownIds[table] || new Set())].filter(id => !localIds.has(id));
+      const deletedIds = [...(knownIds[table] || new Set())].filter((id) => !localIds.has(id));
       if (deletedIds.length) {
-        const { error:deleteError } = await client.from(table).delete().in('id', deletedIds);
+        const { error: deleteError } = await client.from(table).delete().in("id", deletedIds);
         if (deleteError) throw deleteError;
       }
       if (rows.length) {
-        const { error } = await client.from(table).upsert(rows, { onConflict:'id' });
+        const { error } = await client.from(table).upsert(rows, { onConflict: "id" });
         if (error) throw error;
       }
       await removeUnreferencedMedia(oldManagedRecords, prepared);
-      knownIds[table] = new Set([...(existing || []).map(row => row.id).filter(id => !deletedIds.includes(id)), ...localIds]);
+      knownIds[table] = new Set([
+        ...(existing || []).map((row) => row.id).filter((id) => !deletedIds.includes(id)),
+        ...localIds,
+      ]);
     }
-    const typeRows = database.masterData.types.map((x,i)=>({id:x.id,name:x.label,sort_order:i}));
-    const seriesRows = database.masterData.series.map(x=>({id:x.id,name:x.label,broadcasts:Array.isArray(x.broadcasts)?x.broadcasts:[]}));
-    for (const [table, rows] of [['event_types',typeRows],['series',seriesRows]]) {
-      const {data:existing,error:readError} = await client.from(table).select('id');
+    const typeRows = database.masterData.types.map((x, i) => ({
+      id: x.id,
+      name: x.label,
+      sort_order: i,
+    }));
+    const seriesRows = database.masterData.series.map((x) => ({
+      id: x.id,
+      name: x.label,
+      broadcasts: Array.isArray(x.broadcasts) ? x.broadcasts : [],
+    }));
+    for (const [table, rows] of [
+      ["event_types", typeRows],
+      ["series", seriesRows],
+    ]) {
+      const { data: existing, error: readError } = await client.from(table).select("id");
       if (readError) throw readError;
-      const ids = new Set(rows.map(row=>row.id));
-      const deletedIds = [...(knownIds[table] || new Set())].filter(id=>!ids.has(id));
+      const ids = new Set(rows.map((row) => row.id));
+      const deletedIds = [...(knownIds[table] || new Set())].filter((id) => !ids.has(id));
       if (deletedIds.length) {
-        const {error:deleteError} = await client.from(table).delete().in('id',deletedIds);
+        const { error: deleteError } = await client.from(table).delete().in("id", deletedIds);
         if (deleteError) throw deleteError;
       }
       if (rows.length) {
-        const {error} = await client.from(table).upsert(rows,{onConflict:'id'});
+        const { error } = await client.from(table).upsert(rows, { onConflict: "id" });
         if (error) throw error;
       }
-      knownIds[table] = new Set([...(existing||[]).map(row=>row.id).filter(id=>!deletedIds.includes(id)), ...ids]);
+      knownIds[table] = new Set([
+        ...(existing || []).map((row) => row.id).filter((id) => !deletedIds.includes(id)),
+        ...ids,
+      ]);
     }
-    const {data:latestSettings,error:settingsReadError} = await client.from('site_settings').select('settings').eq('id','homepage').maybeSingle();
+    const { data: latestSettings, error: settingsReadError } = await client
+      .from("site_settings")
+      .select("settings")
+      .eq("id", "homepage")
+      .maybeSingle();
     if (settingsReadError) throw settingsReadError;
-    database.siteSettings = await uploadEmbeddedMedia(database.siteSettings || {}, 'settings/homepage');
-    const legacyFreeSettings = {...(latestSettings?.settings || {})};
-    ['heroImage','heroFit','heroPosition','heroOverlayText','heroOverlayVisible'].forEach(key=>delete legacyFreeSettings[key]);
-    if(Array.isArray(legacyFreeSettings.homeSections))legacyFreeSettings.homeSections=legacyFreeSettings.homeSections.filter(section=>section?.id!=='hero');
-    if(legacyFreeSettings.pageContent)delete legacyFreeSettings.pageContent.home;
+    database.siteSettings = await uploadEmbeddedMedia(
+      database.siteSettings || {},
+      "settings/homepage",
+    );
+    const legacyFreeSettings = { ...(latestSettings?.settings || {}) };
+    ["heroImage", "heroFit", "heroPosition", "heroOverlayText", "heroOverlayVisible"].forEach(
+      (key) => delete legacyFreeSettings[key],
+    );
+    if (Array.isArray(legacyFreeSettings.homeSections))
+      legacyFreeSettings.homeSections = legacyFreeSettings.homeSections.filter(
+        (section) => section?.id !== "hero",
+      );
+    if (legacyFreeSettings.pageContent) delete legacyFreeSettings.pageContent.home;
     const mergedSettings = mergeSettings(legacyFreeSettings, database.siteSettings || {});
-    const {error:settingsError} = await client.from('site_settings').upsert({id:'homepage',settings:mergedSettings},{onConflict:'id'});
+    const { error: settingsError } = await client
+      .from("site_settings")
+      .upsert({ id: "homepage", settings: mergedSettings }, { onConflict: "id" });
     if (settingsError) throw settingsError;
     await removeUnreferencedMedia(latestSettings?.settings || {}, mergedSettings);
     database.siteSettings = mergedSettings;
     return database;
   }
 
-  async function signIn(email,password){return client.auth.signInWithPassword({email,password});}
-  async function signOut(){return client.auth.signOut();}
-  async function session(){return client.auth.getSession();}
-  async function removeAwardAssignment(awardId,mainSectionId,subsectionId=''){
-    let query=client.from('award_section_assignments').delete().eq('award_id',awardId).eq('main_section_id',mainSectionId);
-    query=subsectionId?query.eq('subsection_id',subsectionId):query.is('subsection_id',null);
-    const {error}=await query;
-    if(error)throw error;
+  async function signIn(email, password) {
+    return client.auth.signInWithPassword({ email, password });
+  }
+  async function signOut() {
+    return client.auth.signOut();
+  }
+  async function session() {
+    return client.auth.getSession();
+  }
+  async function removeAwardAssignment(awardId, mainSectionId, subsectionId = "") {
+    let query = client
+      .from("award_section_assignments")
+      .delete()
+      .eq("award_id", awardId)
+      .eq("main_section_id", mainSectionId);
+    query = subsectionId
+      ? query.eq("subsection_id", subsectionId)
+      : query.is("subsection_id", null);
+    const { error } = await query;
+    if (error) throw error;
     return true;
   }
-  async function upsertAwardAssignments(awardId,assignments=[]){
-    if(!assignments.length)return true;
-    const safe=value=>String(value||'none').replace(/[^a-zA-Z0-9_-]/g,'_');
-    const rows=assignments.map((assignment,index)=>({id:`asa_${safe(awardId)}_${safe(assignment.mainSectionId)}_${safe(assignment.subsectionId)}`,award_id:awardId,main_section_id:assignment.mainSectionId,subsection_id:assignment.subsectionId||null,display_order:Number(assignment.displayOrder)||index+1}));
-    const {error}=await client.from('award_section_assignments').upsert(rows,{onConflict:'id'});
-    if(error)throw error;
-    return true;
-  }
-  async function upsertAwardSectionAssignments(assignments=[]){
-    if(!assignments.length)return [];
-    const safe=value=>String(value||'none').replace(/[^a-zA-Z0-9_-]/g,'_');
-    const rows=assignments.map((assignment,index)=>({
-      id:assignment.id||`asa_${safe(assignment.awardId)}_${safe(assignment.mainSectionId)}_${safe(assignment.subsectionId)}`,
-      award_id:assignment.awardId,
-      main_section_id:assignment.mainSectionId,
-      subsection_id:assignment.subsectionId||null,
-      display_order:Number(assignment.displayOrder)||index+1
+  async function upsertAwardAssignments(awardId, assignments = []) {
+    if (!assignments.length) return true;
+    const safe = (value) => String(value || "none").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const rows = assignments.map((assignment, index) => ({
+      id: `asa_${safe(awardId)}_${safe(assignment.mainSectionId)}_${safe(assignment.subsectionId)}`,
+      award_id: awardId,
+      main_section_id: assignment.mainSectionId,
+      subsection_id: assignment.subsectionId || null,
+      display_order: Number(assignment.displayOrder) || index + 1,
     }));
-    const {data,error}=await client.from('award_section_assignments').upsert(rows,{onConflict:'id'}).select();
-    if(error)throw error;
-    (data||[]).forEach(row=>knownIds.award_section_assignments.add(row.id));
-    return (data||[]).map(mapFromDb.award_section_assignments);
+    const { error } = await client
+      .from("award_section_assignments")
+      .upsert(rows, { onConflict: "id" });
+    if (error) throw error;
+    return true;
+  }
+  async function upsertAwardSectionAssignments(assignments = []) {
+    if (!assignments.length) return [];
+    const safe = (value) => String(value || "none").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const rows = assignments.map((assignment, index) => ({
+      id:
+        assignment.id ||
+        `asa_${safe(assignment.awardId)}_${safe(assignment.mainSectionId)}_${safe(assignment.subsectionId)}`,
+      award_id: assignment.awardId,
+      main_section_id: assignment.mainSectionId,
+      subsection_id: assignment.subsectionId || null,
+      display_order: Number(assignment.displayOrder) || index + 1,
+    }));
+    const { data, error } = await client
+      .from("award_section_assignments")
+      .upsert(rows, { onConflict: "id" })
+      .select();
+    if (error) throw error;
+    (data || []).forEach((row) => knownIds.award_section_assignments.add(row.id));
+    return (data || []).map(mapFromDb.award_section_assignments);
   }
 
-  async function saveEventOrder(date,eventIds){
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Array.isArray(eventIds)||eventIds.some(id=>typeof id!=='string')||new Set(eventIds).size!==eventIds.length)throw new Error('Invalid schedule order');
-    const {data,error}=await client.from('site_settings').upsert({id:`event-order:${date}`,settings:{eventIds}},{onConflict:'id'}).select('id').single();
-    if(error)throw error;
-    if(!data)throw new Error('Schedule order was not saved');
+  async function saveEventOrder(date, eventIds) {
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !Array.isArray(eventIds) ||
+      eventIds.some((id) => typeof id !== "string") ||
+      new Set(eventIds).size !== eventIds.length
+    )
+      throw new Error("Invalid schedule order");
+    const { data, error } = await client
+      .from("site_settings")
+      .upsert({ id: `event-order:${date}`, settings: { eventIds } }, { onConflict: "id" })
+      .select("id")
+      .single();
+    if (error) throw error;
+    if (!data) throw new Error("Schedule order was not saved");
   }
 
-  async function saveReferencedEvent(item){
-    const {data,error}=await client.from('events').upsert(mapToDb.events(item),{onConflict:'id'}).select().single();
-    if(error)throw error;if(!data)throw new Error('ไม่สามารถบันทึกงานได้');
-    knownIds.events=new Set([...(knownIds.events||[]),data.id]);return mapFromDb.events(data);
+  async function saveReferencedEvent(item) {
+    const { data, error } = await client
+      .from("events")
+      .upsert(mapToDb.events(item), { onConflict: "id" })
+      .select()
+      .single();
+    if (error) throw error;
+    if (!data) throw new Error("ไม่สามารถบันทึกงานได้");
+    knownIds.events = new Set([...(knownIds.events || []), data.id]);
+    return mapFromDb.events(data);
   }
-  window.auausaveDB = { client, load, save, signIn, signOut, session, uploadEmbeddedMedia, removeAwardAssignment, upsertAwardAssignments, upsertAwardSectionAssignments, saveEventOrder, saveReferencedEvent };
+  window.auausaveDB = {
+    client,
+    load,
+    save,
+    signIn,
+    signOut,
+    session,
+    uploadEmbeddedMedia,
+    removeAwardAssignment,
+    upsertAwardAssignments,
+    upsertAwardSectionAssignments,
+    saveEventOrder,
+    saveReferencedEvent,
+  };
 })();

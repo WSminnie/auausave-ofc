@@ -1,3 +1,4 @@
+const { sourceIndex } = require('./source-section.cjs');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
@@ -7,7 +8,7 @@ function setup(){
   let html='';
   const events=[{id:'a',date:'2026-10-20',title:'Timed event',time:'18:00',type:'live'},{id:'b',date:'2026-10-23',title:'Other day',place:'20:00 – 21:00 | Bangkok',type:'other'},{id:'c',date:'2026-11-01',title:'Outside month',type:'live'}];
   const ctx=vm.createContext({Date:class extends Date{constructor(...args){super(...(args.length?args:[2026,9,20,12]));}},calendarDate:new Date(2026,9,1),publicTypeFilter:'all',calendarPage(){},db:{artists:[],masterData:{types:[]}},publicOrderedEvents:()=>events,eventHasType:(e,t)=>e.type===t,calendarEventArtistIds:()=>[],calendarArtistColor:()=>'#f80',calendarArtistLabel:()=>'',escapePageText:s=>s,eventParticipationInline:()=>'',document:{querySelector:()=>({insertAdjacentHTML:(_,value)=>html=value})}});
-  vm.runInContext(source.slice(source.indexOf('let mobileCalendarSelectedDate'),source.indexOf('showEvent=function(id)',source.indexOf('let mobileCalendarSelectedDate'))),ctx);
+  vm.runInContext(source.slice(sourceIndex(source, 'let mobileCalendarSelectedDate'),sourceIndex(source, 'showEvent=function(id)',sourceIndex(source, 'let mobileCalendarSelectedDate'))),ctx);
   return {ctx,html:()=>html};
 }
 test('month mode offers two views and marks selected date accessibly',()=>{
@@ -80,6 +81,50 @@ test('today and next schedule place artist and type above the event title',()=>{
   const {ctx}=setup();ctx.calendarEventArtistIds=()=>['artist'];ctx.calendarArtistLabel=()=>'Artist';
   const row=ctx.mobileCalendarEventRow({id:'top',title:'Title',type:'Live'},new Map());
   assert.match(row,/<span class="mobile-agenda-topline"><span>Artist<\/span><span>Live<\/span><\/span><strong>Title<\/strong>/);
+});
+test('selected-day and next-schedule cards show time and venue directly under the title',()=>{
+  const {ctx,html}=setup();
+  const row=ctx.mobileCalendarEventRow({id:'details',title:'Fan meeting',time:'18:00',place:'Central Hall',type:'live'},new Map());
+  assert.match(row,/<strong>Fan meeting<\/strong><span class="mobile-agenda-meta">18:00 \| Central Hall<\/span>/);
+  ctx.calendarPage();
+  assert.match(html(),/<strong>Timed event<\/strong><span class="mobile-agenda-meta">18:00<\/span>/);
+  assert.match(html(),/<strong>Other day<\/strong><span class="mobile-agenda-meta">20:00 – 21:00 \| Bangkok<\/span>/);
+});
+test('calendar metadata handles combined, separate and missing fields without duplicate times or empty rows',()=>{
+  const {ctx}=setup();
+  for(const [fields,want] of [
+    [{time:'18:00',place:'18:00 | Bangkok'},'18:00 | Bangkok'],
+    [{time:'4 PM',place:'4 pm | Bangkok'},'4 pm | Bangkok'],
+    [{startTime:'18:00',place:'Bangkok'},'18:00 | Bangkok'],
+    [{time:'18:00'},'18:00'],
+    [{place:'Bangkok'},'Bangkok'],
+    [{},''],
+  ]){
+    const event={id:'meta',date:'2026-10-20',title:'Event',...fields};
+    const card=ctx.mobileCalendarEventRow(event,new Map());
+    const list=ctx.mobileCalendarListRow(event,new Map());
+    if(want){
+      assert.equal(card.match(/class="mobile-agenda-meta">([^<]*)/)[1],want);
+      assert.equal(list.match(/class="mobile-home-schedule-meta">([^<]*)/)[1],want);
+    }else{
+      assert.doesNotMatch(card,/class="mobile-agenda-meta"/);
+      assert.doesNotMatch(list,/class="mobile-home-schedule-meta"/);
+    }
+  }
+});
+test('broadcast cards retain the existing channel and broadcast-time formatting',()=>{
+  const {ctx}=setup();
+  Object.assign(ctx,{isSeriesBroadcast:event=>event.scheduleType==='series_broadcast',normalizeBroadcasts:rows=>rows,formatBroadcastTime:time=>time});
+  vm.runInContext(source.slice(sourceIndex(source,'function unifiedHomeScheduleMeta('),sourceIndex(source,'function homeScheduleBangkokDate(')),ctx);
+  const row=ctx.mobileCalendarEventRow({id:'broadcast-meta',title:'Episode',scheduleType:'series_broadcast',time:'20:00',broadcasts:[{mode:'online_uncut',channel:'Stream',time:'21:00'}]},new Map());
+  assert.match(row,/class="mobile-agenda-meta">UNCUT - Stream · 21:00<\/span>/);
+  assert.doesNotMatch(row,/20:00 \|/);
+});
+test('time and venue text is escaped before inserting it into the event card',()=>{
+  const {ctx}=setup();
+  vm.runInContext(source.slice(sourceIndex(source,'function escapePageText('),sourceIndex(source,'function renderPageLanguageSettings(')),ctx);
+  const row=ctx.mobileCalendarEventRow({id:'escaped-meta',title:'Event',time:'18:00',place:'Hall <A> & Lobby'},new Map());
+  assert.match(row,/class="mobile-agenda-meta">18:00 \| Hall &lt;A&gt; &amp; Lobby<\/span>/);
 });
 test('cards hide Series Broadcast type while retaining title and other event types',()=>{
   const {ctx}=setup();

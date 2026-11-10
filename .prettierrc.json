@@ -1,0 +1,11 @@
+{
+  "tabWidth": 2,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": false,
+  "quoteProps": "preserve",
+  "trailingComma": "all",
+  "printWidth": 100,
+  "endOfLine": "lf",
+  "embeddedLanguageFormatting": "off"
+}

@@ -1,3 +1,4 @@
+const { sourceIndex } = require('./source-section.cjs');
 const fs = require('fs');
 const vm = require('vm');
 const assert = require('node:assert/strict');
@@ -7,8 +8,8 @@ const aliases = {duo:'AT01',auau:'AT02',save:'AT03'};
 const canonicalArtistId = id => aliases[id] || id;
 const context = vm.createContext({canonicalArtistId, artistName:id=>id==='AT04'?'MHIIPREAW':id==='AT02'?'AUAU':'SAVE', db:{siteSettings:{}},isSeriesBroadcast:event=>event.scheduleType==='series_broadcast', itemMatchesArtist: (event, id) =>
   (event.artistIds || [event.artistId]).map(canonicalArtistId).includes(canonicalArtistId(id))});
-const start = source.indexOf('function artistProfileScheduleMatches(');
-if (start !== -1) vm.runInContext(source.slice(start, source.indexOf('function profile(', start)), context);
+const start = sourceIndex(source, 'function artistProfileScheduleMatches(');
+if (start !== -1) vm.runInContext(source.slice(start, sourceIndex(source, 'function profile(', start)), context);
 test('solo profiles include joint schedules, but exclude the other solo artist', () => {
   for (const [artist, other] of [['auau','save'],['save','auau'],['AT02','AT03'],['AT03','AT02']]) {
     assert.equal(context.artistProfileScheduleMatches({artistId:'duo'}, artist), true);
@@ -22,7 +23,7 @@ test('joint and unrelated profiles retain their own schedule scope', () => {
   assert.equal(context.artistProfileScheduleMatches({artistId:'auau'}, 'duo'), false);
   assert.equal(context.artistProfileScheduleMatches({artistId:'duo'}, 'AT04'), false);
   assert.equal(context.artistProfileScheduleMatches({artistIds:[]}, 'save'), false);
-  assert.match(source, /ev = publicOrderedEvents\(\)\.filter\(\(e\) => artistProfileScheduleMatches\(e, id\) && e.date.startsWith\(currentMonth\)\)/);
+  assert.match(source, /ev\s*=\s*publicOrderedEvents\(\)\.filter\(\s*\(e\)\s*=>\s*artistProfileScheduleMatches\(e,\s*id\)\s*&&\s*e.date.startsWith\(currentMonth\),?\s*\)/);
 });
 test('schedule choices default to solo and keep All scoped to the profile', () => {
   const solo={artistId:'save'},duo={artistId:'duo'},other={artistId:'auau'};
@@ -84,8 +85,8 @@ test('SAVE All includes broadcasts linked by Journey series, without artist IDs'
   assert.equal(context.artistProfileScheduleMatches(broadcast('fanboy'),'save'),false);
 });
 test('other solo Journeys exclude couple work and the couple-only filter',()=>{
-  const start=source.indexOf('function artistSeriesSection(');
-  vm.runInContext(source.slice(start,source.indexOf('function filterArtistTimeline(',start)),context);
+  const start=sourceIndex(source, 'function artistSeriesSection(');
+  vm.runInContext(source.slice(start,sourceIndex(source, 'function filterArtistTimeline(',start)),context);
   context.sameArtistId=(a,b)=>canonicalArtistId(a)===canonicalArtistId(b);
   context.escapePageText=String;context.timelineSectionMarkup=options=>options;
   context.db={siteSettings:{artistArchive:{AT02:{},AT04:{}},timeline:[{id:'joint',artistIds:['AT01']},{id:'auau',artistIds:['AT02']},{id:'four',artistIds:['AT04']}]}};

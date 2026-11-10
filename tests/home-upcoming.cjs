@@ -1,3 +1,4 @@
+const { sourceIndex } = require('./source-section.cjs');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
@@ -5,7 +6,7 @@ const fs=require('node:fs');
 const source=fs.readFileSync('app.js','utf8');
 function setup(events=[]){
  const ctx=vm.createContext({Date,Intl,publicOrderedEvents:()=>events,homepageScheduleArtists:()=>[],canonicalArtistId:x=>x,artistById:()=>null,sameArtistId:(a,b)=>a===b,artistName:x=>x,artistDisplayColor:()=>'#abc',calendarEventArtistIds:e=>e.artistId?[e.artistId]:[],escapePageText:s=>String(s),unifiedHomeScheduleMeta:e=>e.place||'',eventParticipationCopy:()=>'<p>เข้าร่วมได้</p>',normalizeBroadcasts:x=>x||[]});
- vm.runInContext(source.slice(source.indexOf('function homeScheduleBangkokDate'),source.indexOf('const homeBeforeUnifiedSchedule')),ctx);
+ vm.runInContext(source.slice(sourceIndex(source, 'function homeScheduleBangkokDate'),sourceIndex(source, 'const homeBeforeUnifiedSchedule')),ctx);
  return ctx;
 }
 test('Bangkok date changes at Bangkok midnight across year boundaries',()=>{
@@ -27,7 +28,7 @@ test('render uses one shell, hides empty Today, keeps navigation, metadata and e
 test('day rollover refreshes only a mounted Home schedule with an outdated Bangkok day',()=>{
  const c=setup();let writes=0;const section={dataset:{scheduleToday:'2026-10-19'},set outerHTML(value){writes++;assert.match(value,/Upcoming Schedule/);}};
  c.document={querySelector:()=>section};c.homeScheduleBangkokDate=()=>'2026-10-20';
- vm.runInContext(source.slice(source.indexOf('function refreshHomeScheduleDay()'),source.indexOf('// Refresh only the Home schedule')),c);
+ vm.runInContext(source.slice(sourceIndex(source, 'function refreshHomeScheduleDay()'),sourceIndex(source, '// Refresh only the Home schedule')),c);
  c.refreshHomeScheduleDay();assert.equal(writes,1);
  section.dataset.scheduleToday='2026-10-20';c.refreshHomeScheduleDay();assert.equal(writes,1);
  c.document.querySelector=()=>null;assert.doesNotThrow(()=>c.refreshHomeScheduleDay());

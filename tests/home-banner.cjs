@@ -1,3 +1,4 @@
+const { sourceIndex } = require('./source-section.cjs');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
@@ -8,7 +9,7 @@ function setup(mobile=true){
   const banner={querySelectorAll(selector){return selector==='.home-banner-slide'?slides:[]},querySelector(selector){return selector==='.home-banner-track'?track:null}};
   const hero={insertAdjacentHTML(){}},main={querySelector(selector){return selector==='.hero'?hero:banner}};
   const ctx=vm.createContext({db:{siteSettings:{homeBanners:slides.map(()=>({type:'image',src:'test.jpg'}))}},document:{querySelector:()=>main},window:{matchMedia:()=>({matches:mobile}),open:url=>opened.push(url)},escapePageText:x=>x,clearTimeout(){},setTimeout(){return 1}});
-  vm.runInContext(source.slice(source.indexOf('// Homepage media banner:'),source.indexOf('function homeBannerAdminPanel()')),ctx);
+  vm.runInContext(source.slice(sourceIndex(source, '// Homepage media banner:'),sourceIndex(source, 'function homeBannerAdminPanel()')),ctx);
   ctx.renderHomeBanner();
   function swipe(x,y=0){gestures.touchstart({touches:[{clientX:100,clientY:100}]});gestures.touchend({touches:[],changedTouches:[{clientX:100+x,clientY:100+y}]});}
   return {slides,opened,gestures,swipe,active:()=>slides.findIndex(s=>s.active)};
