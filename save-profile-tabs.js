@@ -67,7 +67,7 @@
         (settings.get(keys[tab][0]) !== false && visibility[keys[tab][1]] !== false),
     );
   }
-  const api = { resolve, resolveArtist, path, socialMeta, availableTabs };
+  const api = { resolve, resolveArtist, path, socialMeta, availableTabs, activate };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   root.SaveProfileTabs = api;
   if (typeof document === "undefined") return;
@@ -134,6 +134,13 @@
       requestAnimationFrame(() => syncTimelineTrackRules(main));
     }
   }
+  function activate(location) {
+    const selected = resolveRoute(location);
+    const main = document.querySelector('main.save-profile-page');
+    if (!selected || main?.dataset.saveArtist !== selected.artist || !main.querySelector(`[data-save-tab="${selected.tab}"]`)) return false;
+    select(main, selected.tab);
+    return true;
+  }
   function mount(tab, artistId) {
     const main = document.querySelector("main");
     const head = main?.querySelector(".profile-head");
@@ -150,6 +157,7 @@
       history.replaceState(null, "", url);
     }
     main.classList.add("save-profile-page");
+    main.dataset.saveArtist = artistId;
     const hero = head.closest(".section");
     hero.classList.add("save-profile-header");
     enhanceSocials(head);
@@ -229,7 +237,6 @@
     id = canonicalArtistId(id);
     if (id !== "AT01" && artistById(id)) mount(resolve(location) || "profile", id);
   };
-  window.addEventListener("popstate", () => router());
   // Static hosting entry pages pass a tab through the root document. All assets
   // have root-relative resolution before restoring the shareable clean URL.
   const entry = new URL(location.href);

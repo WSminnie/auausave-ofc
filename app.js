@@ -503,7 +503,7 @@ db.events.forEach((e) => {
           : "";
   }
 });
-let route = location.hash.slice(1) || "home";
+let route = window.PublicRoutes?.resolve(location) || location.hash.slice(1) || "home";
 if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 const app = document.querySelector("#app");
 let databaseSyncQueue = Promise.resolve();
@@ -3568,22 +3568,24 @@ async function requestAdminAccess() {
   }
   try {
     const { data, error } = await window.auausaveDB.session();
-    if (requestId !== adminAuthRequest || location.hash !== "#admin") return;
+    if (requestId !== adminAuthRequest || (window.PublicRoutes?.resolve(location) || location.hash.slice(1)) !== "admin") return;
     if (error) throw error;
     adminAuthenticated = Boolean(data?.session);
     currentAdminEmail = data?.session?.user?.email || "";
     if (adminAuthenticated) {
       await connectAdminDatabase();
-      if (requestId !== adminAuthRequest || location.hash !== "#admin") return;
+      if (requestId !== adminAuthRequest || (window.PublicRoutes?.resolve(location) || location.hash.slice(1)) !== "admin") return;
       admin();
     } else renderAdminLogin();
   } catch (error) {
+    if (requestId !== adminAuthRequest || (window.PublicRoutes?.resolve(location) || location.hash.slice(1)) !== "admin") return;
     renderAdminLogin(`ตรวจสอบสิทธิ์ไม่สำเร็จ: ${error.message}`);
   }
 }
 
 async function adminSignIn(event) {
   event.preventDefault();
+  const requestId = ++adminAuthRequest;
   const form = event.currentTarget;
   const button = form.querySelector('[type="submit"]');
   const values = new FormData(form);
@@ -3594,14 +3596,17 @@ async function adminSignIn(event) {
       values.get("email").trim(),
       values.get("password"),
     );
+    if (requestId !== adminAuthRequest || (window.PublicRoutes?.resolve(location) || location.hash.slice(1)) !== "admin") return;
     if (error) throw error;
     adminAuthenticated = true;
     currentAdminEmail = data?.user?.email || values.get("email").trim();
     button.textContent = "กำลังเชื่อมต่อฐานข้อมูล...";
     await connectAdminDatabase();
+    if (requestId !== adminAuthRequest || (window.PublicRoutes?.resolve(location) || location.hash.slice(1)) !== "admin") return;
     admin();
     toast("เข้าสู่ระบบหลังบ้านแล้ว");
   } catch (error) {
+    if (requestId !== adminAuthRequest || (window.PublicRoutes?.resolve(location) || location.hash.slice(1)) !== "admin") return;
     renderAdminLogin(
       error.message === "Invalid login credentials"
         ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
@@ -3666,14 +3671,14 @@ function renderPublicArtistProfile(value) {
   }
   profile(artistId);
 }
-function router() {
+function router(event) {
   window.PublicRoutes?.syncLocation();
   route = window.PublicRoutes?.resolve(location) || location.hash.slice(1) || "home";
   const saveTab = window.SaveProfileTabs?.resolve(location);
   if (saveTab) {
     const artistId = window.SaveProfileTabs.resolveArtist(location);
     route = "/" + artistPublicSlug(artistId);
-    renderPublicArtistProfile(artistPublicSlug(artistId));
+    if (event?.type !== "popstate" || !window.SaveProfileTabs.activate(location)) renderPublicArtistProfile(artistPublicSlug(artistId));
   } else if (route === "series" || route.startsWith("series/")) SeriesFeature.pages.render(route);
   else if (route === "home") home();
   else if (["artists", "schedule", "presenters", "awards"].includes(route)) listing(route);
@@ -3697,6 +3702,8 @@ window.addEventListener("pageshow", () => {
 });
 setTimeout(() => document.documentElement.classList.remove("initial-route-loading"), 10000);
 window.addEventListener("hashchange", router);
+window.addEventListener("popstate", router);
+window.addEventListener("publicroutechange", router);
 window.addEventListener("storage", (event) => {
   if (event.key !== "auausave-house-db-v9" || !event.newValue) return;
   // Never re-render an admin session from another tab's localStorage update.
@@ -10364,7 +10371,7 @@ async function reorderAdminEvent(sourceId, targetId) {
     toast("บันทึกลำดับงานไม่สำเร็จ คืนลำดับเดิมแล้ว กรุณาลองอีกครั้ง");
   } finally {
     eventOrderSaving = false;
-    if (location.hash === "#admin" && adminTab === "events") {
+    if ((location.hash === "#admin" || route === "admin") && adminTab === "events") {
       admin();
     }
   }

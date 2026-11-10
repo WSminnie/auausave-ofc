@@ -3,6 +3,7 @@
     C = S.components;
   let request = 0,
     cleanup;
+  const currentRoute = () => globalThis.PublicRoutes?.resolve(location) || location.hash.slice(1);
   const shell = (body) =>
     `${nav("series")}<main class="series-public container">${body}</main>${footer()}`;
   S.pages = {
@@ -34,14 +35,14 @@
             C.seriesSelector(rows, null) +
             '<div class="series-empty"><h1>Series not found</h1><p>This series is not available.</p><a href="#series">Back to Series</a></div>';
         }
-        if (current !== request || location.hash.slice(1) !== routeName) return;
+        if (current !== request || currentRoute() !== routeName) return;
         app.innerHTML = shell(body);
         cleanup = C.bindNavigation(app.querySelector(".series-public"));
         app
           .querySelector(".series-selector [aria-current]")
           ?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
       } catch (error) {
-        if (current !== request || location.hash.slice(1) !== routeName) return;
+        if (current !== request || currentRoute() !== routeName) return;
         app.innerHTML = shell(
           '<div class="series-empty" role="alert"><h1>Series could not load</h1><p>Please check your connection and try again.</p><button class="btn" data-series-retry>Try again</button></div>',
         );
@@ -52,10 +53,11 @@
       }
     },
   };
-  window.addEventListener("hashchange", () => {
-    if (!location.hash.startsWith("#series")) {
+  const leaveSeries = () => {
+    if (!/^series(?:\/|$)/.test(currentRoute())) {
       ++request;
       cleanup?.();
     }
-  });
+  };
+  ["hashchange", "popstate", "publicroutechange"].forEach((event) => window.addEventListener(event, leaveSeries));
 })();

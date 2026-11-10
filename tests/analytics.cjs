@@ -11,6 +11,7 @@ test('routes group detail pages and exclude admin and unknown routes',()=>{
  const a=load();assert.equal(typeof a.pageKey,'function');
  for(const [route,page] of [['','home'],['#schedule','schedule'],['#series/abc/episodes/one','series'],['#project/abc','projects'],['#/AUAU','artists'],['#artist/AT01','artists'],['#admin',null],['#garbage',null]])assert.equal(a.pageKey(route),page);
  assert.equal(a.pageKey('/schedule'),'schedule');assert.equal(a.pageKey('/schedule/'),'schedule');
+ for(const [route,page] of [['/','home'],['/projects','projects'],['/project/example','projects'],['/series/fanboy','series'],['/presenters','presenters'],['/awards','awards'],['/auausave','artists'],['/auautnp/schedule','artists'],['/savewrg/journey','artists'],['/mhiipraew/awards','artists'],['/admin',null],['/not-a-page',null]])assert.equal(a.pageKey(route),page,route);
 });
 test('Bangkok month and current-day chart stop at local today',()=>{
  const a=load();assert.equal(typeof a.monthInfo,'function');

@@ -12,12 +12,11 @@
   const validId = (value) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value || "");
   function pageKey(hash) {
-    const route = String(hash || "").replace(/^#/, "") || "home";
-    if (/^\/schedule\/?$/.test(route)) return "schedule";
+    const route = String(hash || "").replace(/^#/, "").replace(/^\/+|\/+$/g, "") || "home";
     if (Object.hasOwn(PAGES, route)) return route;
     if (route.startsWith("series/")) return "series";
     if (route.startsWith("project/")) return "projects";
-    if (route.startsWith("artist/") || /^\/(AUAU|SAVE|AUAUSAVE|MHIIPREAW)$/i.test(route))
+    if (route.startsWith("artist/") || /^(AUAU|SAVE|AUAUSAVE|MHIIPREAW|MHIIPRAEW|AUAUTNP|SAVEWRG)(?:\/(profile|schedule|journey|awards))?$/i.test(route))
       return "artists";
     return null;
   }
@@ -184,10 +183,11 @@
     // Called after the public router, not during data hydration or rerendering.
     const visit = () =>
       tracker.visit(
-        root.location.hash ||
-          (root.PublicRoutes?.resolve(root.location) === "schedule" ? "/schedule" : ""),
+        root.location.hash || root.location.pathname || "/",
       );
     root.addEventListener("hashchange", visit);
+    root.addEventListener("popstate", visit);
+    root.addEventListener("publicroutechange", visit);
     visit();
   });
 })(typeof window !== "undefined" ? window : globalThis);

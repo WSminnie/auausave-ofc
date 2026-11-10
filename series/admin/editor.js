@@ -14,7 +14,7 @@
         ]);
       if (item.id && kind === "episodes")
         related.links = await S.api.related("series_episode_links", "episode_id", item.id);
-      if (ticket !== opening || location.hash !== "#admin" || adminTab !== "series") return;
+      if (ticket !== opening || (window.PublicRoutes?.resolve(location) || location.hash.slice(1)) !== "admin" || adminTab !== "series") return;
       closeModal();
       const previousFocus = document.activeElement;
       const modal = document.createElement("div");

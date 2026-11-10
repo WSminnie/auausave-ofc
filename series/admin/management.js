@@ -14,7 +14,7 @@
       .join("")}</nav>`;
   }
   const active = (ticket) =>
-    ticket === request && location.hash === "#admin" && adminTab === "series" && adminAuthenticated;
+    ticket === request && (window.PublicRoutes?.resolve(location) || location.hash.slice(1)) === "admin" && adminTab === "series" && adminAuthenticated;
   S.admin = {
     async setMenuVisible(visible) {
       const { data, error } = await window.auausaveDB.session();
