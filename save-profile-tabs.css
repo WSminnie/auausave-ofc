@@ -56,7 +56,7 @@
   font-size: clamp(55px, 8vw, 100px);
   line-height: 1;
   letter-spacing: -0.035em;
-  margin: 0 0 22px;
+  margin: 0 0 6px;
 }
 .save-profile-header .artist-profile-description {
   font-size: 16px;
@@ -67,9 +67,9 @@
 }
 .save-profile-header .artist-profile-facts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 26px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 0;
 }
 .save-profile-header .artist-profile-facts .fact {
   border: 0;
@@ -84,13 +84,29 @@
 .save-profile-header .artist-profile-facts strong {
   font-size: 14px;
 }
-@media (min-width: 701px) {
-  .save-profile-header .artist-profile-facts {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .save-profile-header .artist-profile-facts .artist-role-fact {
-    grid-column: auto;
-  }
+.save-profile-header .artist-profile-facts .artist-full-name strong {
+  display: block;
+  font-size: clamp(20px, 2.6vw, 30px);
+  font-weight: 700;
+  line-height: 1.25;
+}
+.save-profile-header .artist-profile-facts .artist-birth {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.save-profile-header .artist-profile-facts .artist-birth small {
+  color: #68635e;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.025em;
+}
+.save-profile-header .artist-profile-facts .artist-birth strong {
+  color: #56524c;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
 }
 .save-profile-header .artist-official-socials {
   margin-top: 28px;
@@ -405,14 +421,15 @@
   }
   .save-profile-page > .save-profile-header > .profile-head {
     grid-template-columns: 96px minmax(0, 1fr) !important;
-    gap: 18px 16px;
+    gap: 6px 16px;
   }
   .save-profile-header .profile-portrait {
     grid-column: 1;
-    grid-row: 1;
+    grid-row: 1 / span 2;
     width: 96px;
     height: 96px;
     justify-self: start;
+    align-self: center;
   }
   .save-profile-header .artist-profile-copy {
     display: contents;
@@ -420,13 +437,13 @@
   .save-profile-header .artist-profile-copy > h1 {
     grid-column: 2;
     grid-row: 1;
-    align-self: center;
+    align-self: end;
     font-size: clamp(38px, 10vw, 56px);
     margin: 0;
   }
   .save-profile-header
     .artist-profile-copy
-    > :is(.artist-profile-description, .artist-profile-facts, .artist-official-socials) {
+    > :is(.artist-profile-description, .artist-official-socials) {
     grid-column: 1/-1;
   }
   .save-profile-header .artist-profile-description {
@@ -434,10 +451,26 @@
     line-height: 1.75;
   }
   .save-profile-header .artist-profile-facts {
-    gap: 14px;
-    margin-top: 4px;
+    grid-column: 2;
+    grid-row: 2;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin: 0;
+    align-self: start;
   }
   .save-profile-header .artist-profile-facts strong {
+    font-size: 13px;
+  }
+  .save-profile-header .artist-profile-facts .artist-full-name strong {
+    font-size: 20px;
+  }
+  .save-profile-header .artist-profile-facts .artist-birth {
+    gap: 4px 8px;
+  }
+  .save-profile-header .artist-profile-facts .artist-birth small {
+    font-size: 11px;
+  }
+  .save-profile-header .artist-profile-facts .artist-birth strong {
     font-size: 13px;
   }
   .save-profile-header .artist-official-socials {

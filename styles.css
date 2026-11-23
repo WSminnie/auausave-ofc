@@ -15164,37 +15164,115 @@ main > .project-hub-section {
 .artist-profile-schedule .section-head .eyebrow {
   color: #636366 !important;
 }
-.artist-schedule-segments {
-  display: flex;
-  gap: 3px;
-  padding: 4px;
-  margin-bottom: 24px;
-  border-radius: 10px;
-  background: #f2f2f7;
-  width: min(100%, 420px);
+.artist-schedule-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(112px, 136px);
+  align-items: center;
+  gap: 8px 16px;
+  padding: 12px;
+  margin-bottom: 20px;
+  border-radius: 16px;
+  background: #fcf1f4;
 }
-.artist-schedule-segments button {
-  flex: 1;
+.artist-schedule-today-label {
+  justify-self: start;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #ad506c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.artist-schedule-collaborator {
+  justify-self: end;
+  width: 100%;
+  min-width: 0;
+}
+.artist-schedule-collaborator select {
   min-width: 0;
   min-height: 44px;
-  padding: 8px 12px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: #636366;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.artist-schedule-segments button[aria-pressed="true"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d2d2d7;
+  border-radius: 10px;
   background: #fff;
   color: #1c1c1e;
-  box-shadow: 0 1px 4px #00000014;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
 }
-.artist-schedule-segments button:focus-visible {
+.artist-schedule-collaborator select:focus-visible {
   outline: 2px solid #007aff;
   outline-offset: 2px;
+}
+.artist-schedule-today {
+  grid-column: 1/-1;
+  min-width: 0;
+}
+.artist-schedule-today .unified-schedule-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 0;
+}
+.artist-schedule-today .unified-schedule-row + .unified-schedule-row {
+  border-top: 1px solid #e6dfe2;
+}
+.artist-schedule-today .unified-schedule-date {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 12px 30px 12px;
+  justify-items: start;
+  column-gap: 0;
+  line-height: 1;
+}
+.artist-schedule-today .unified-schedule-date small {
+  grid-row: 1;
+  color: #68635e;
+  font-size: 10px;
+}
+.artist-schedule-today .unified-schedule-date b {
+  grid-row: 2;
+  font-size: 28px;
+  line-height: 1;
+}
+.artist-schedule-today .unified-schedule-date span {
+  grid-row: 3;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.artist-schedule-today .unified-schedule-clock,
+.artist-schedule-today .unified-schedule-type {
+  display: none;
+}
+.artist-schedule-today .unified-schedule-detail {
+  min-width: 0;
+}
+.artist-schedule-today .unified-schedule-artist {
+  font-size: 10px;
+}
+.artist-schedule-today .unified-schedule-detail h3 {
+  margin: 4px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.artist-schedule-today .unified-schedule-detail p,
+.artist-schedule-today .event-participation-copy {
+  margin: 6px 0 0;
+  color: #68635e;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.artist-schedule-today-empty {
+  margin: 0;
+  padding-block: 4px;
+  color: #68635e;
+  font-size: 13px;
 }
 .artist-profile-schedule .schedule-row {
   border-top: 1px solid #e5e5ea;
@@ -15214,12 +15292,6 @@ main > .project-hub-section {
 @media (max-width: 700px) {
   .schedule-wrap.artist-profile-schedule {
     padding: 24px 18px;
-  }
-  .artist-schedule-segments {
-    width: 100%;
-  }
-  .artist-schedule-segments button {
-    padding: 8px;
   }
 }
 .event-ref-link {

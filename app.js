@@ -778,7 +778,7 @@ function artistCards() {
   return `<div class="artists homepage-artist-grid">${cards
     .map((artist) => {
       const settings = db.siteSettings.homeArtistCards[artist.id] || {};
-      return `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(artist.id)}'"><div class="portrait" style="background:${artist.color}">${artist.image ? `<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">` : `<span>${escapePageText(artist.initial)}</span>`}<small class="tag">${escapePageText(settings.badge || "")}</small></div><div class="artist-meta"><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role)}</p></div></article>`;
+      return `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(artist.id)}'"><div class="portrait" style="background:${artist.color}">${artist.image ? `<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}">` : `<span>${escapePageText(artist.initial)}</span>`}<small class="tag">${escapePageText(settings.badge || "")}</small></div><div class="artist-meta"><h3>${escapePageText(artist.name)}</h3></div></article>`;
     })
     .join("")}</div>`;
 }
@@ -849,26 +849,34 @@ function listing(type) {
 }
 function artistProfileScheduleMatches(event, artistId) {
   const id = canonicalArtistId(artistId);
-  if (
-    itemMatchesArtist(event, id) ||
-    (["AT02", "AT03"].includes(id) && itemMatchesArtist(event, "AT01"))
-  )
-    return true;
-  if (id === "AT01" || !isSeriesBroadcast(event) || !event.seriesId) return false;
-  // Broadcast schedules reference the series rather than individual artists.
-  // Use each artist's Journey, including couple associations only for its members.
-  const relatedArtists = ["AT02", "AT03"].includes(id) ? [id, "AT01"] : [id];
-  return (db.siteSettings?.timeline || []).some(
-    (item) =>
-      (item.category || "series") === "series" &&
-      item.seriesId === event.seriesId &&
-      Array.isArray(item.artistIds) &&
-      item.artistIds.some((artist) => relatedArtists.includes(canonicalArtistId(artist))),
-  );
+  const tags = artistProfileScheduleTags(event);
+  return tags.includes(id) || (["AT02", "AT03"].includes(id) && tags.includes("AT01"));
 }
-function artistProfileScheduleFilterMatches(event, artistId, filter = "solo") {
-  if (filter === "all") return artistProfileScheduleMatches(event, artistId);
-  return itemMatchesArtist(event, filter === "duo" ? "AT01" : artistId);
+function artistProfileScheduleTags(event) {
+  const tags = new Set(eventArtistIds(event).map(canonicalArtistId));
+  if (isSeriesBroadcast(event) && event.seriesId) {
+    // Broadcasts inherit artist tags from their linked series in Journey.
+    (db.siteSettings?.timeline || []).forEach((item) => {
+      if ((item.category || "series") === "series" && item.seriesId === event.seriesId) {
+        (Array.isArray(item.artistIds) ? item.artistIds : []).forEach((id) => tags.add(canonicalArtistId(id)));
+      }
+    });
+  }
+  // Keep the couple as one filter instead of duplicating its two members.
+  if (tags.has("AT02") && tags.has("AT03")) tags.add("AT01");
+  if (tags.has("AT01")) {
+    tags.delete("AT02");
+    tags.delete("AT03");
+  }
+  return [...tags];
+}
+function artistProfileScheduleFilterMatches(event, artistId, collaborator = "all") {
+  if (!artistProfileScheduleMatches(event, artistId)) return false;
+  const tags = artistProfileScheduleTags(event);
+  if (collaborator === "solo") {
+    return tags.length === 1 && tags[0] === canonicalArtistId(artistId);
+  }
+  return collaborator === "all" || tags.includes(canonicalArtistId(collaborator));
 }
 function artistProfileScheduleList(items) {
   if (!items.length)
@@ -880,17 +888,35 @@ function artistProfileScheduleList(items) {
   const events = [...items].sort((a, b) => a.date.localeCompare(b.date));
   return `<div class="mobile-calendar-agenda save-profile-agenda">${events.map((event, index) => mobileCalendarListRow(event, artistIndex, index === 0 || events[index - 1].date !== event.date, index === events.length - 1 || events[index + 1].date !== event.date)).join("")}</div>`;
 }
-function renderArtistProfileSchedule(items, artistId, filter) {
+function renderArtistProfileToday(items) {
+  const today = homeScheduleBangkokDate();
+  const events = homeScheduleGroups(items, today).today;
+  const artists = [...db.artists].sort((a, b) => artistSchedulePriority(a) - artistSchedulePriority(b));
+  const artistIndex = new Map(artists.map((artist, index) => [canonicalArtistId(artist.id), index]));
+  const rows = events.length
+    ? events.map((event) => unifiedScheduleEventRow(event, artistIndex)).join("")
+    : '<p class="artist-schedule-today-empty">No events today.</p>';
+  return `<section class="artist-schedule-today" aria-label="Today's events" data-profile-today="${today}">${rows}</section>`;
+}
+function renderArtistProfileSchedule(items, artistId, collaborator = "all") {
   const id = canonicalArtistId(artistId);
-  filter ||= "all";
-  const label = artistName(id);
-  const choices = [
-    ["all", "All"],
-    ["solo", label],
-  ];
-  const filtered = items.filter((event) => artistProfileScheduleFilterMatches(event, id, filter));
-  const list = artistProfileScheduleList(filtered);
-  return `<div class="artist-schedule-segments" role="group" aria-label="เลือกตารางงาน">${choices.map(([key, title]) => `<button type="button" data-schedule-filter="${key}" aria-pressed="${key === filter}" onclick="setArtistProfileSchedule(this,'${id}','${key}')">${title}</button>`).join("")}</div><div class="artist-profile-schedule-list" aria-live="polite">${list}</div>`;
+  const scopedItems = items.filter((event) => artistProfileScheduleMatches(event, id));
+  const choices = (db.artists || []).filter(
+    (artist) => canonicalArtistId(artist.id) !== id &&
+      scopedItems.some((event) => artistProfileScheduleTags(event).includes(canonicalArtistId(artist.id))),
+  );
+  collaborator = canonicalArtistId(collaborator);
+  if (collaborator !== "solo" && !choices.some((artist) => canonicalArtistId(artist.id) === collaborator)) collaborator = "all";
+  const filtered = scopedItems.filter((event) => artistProfileScheduleFilterMatches(event, id, collaborator));
+  const emptyMessage = collaborator === "solo"
+    ? `No ${id === "AT01" ? "" : "solo "}events for ${escapePageText(artistName(id))} this month.`
+    : `No events with ${escapePageText(artistName(collaborator))} this month.`;
+  const list = !filtered.length && collaborator !== "all"
+    ? `<div class="mobile-calendar-agenda save-profile-agenda"><div class="empty">${emptyMessage}</div></div>`
+    : artistProfileScheduleList(filtered);
+  const selectId = `artistScheduleCollaborator-${id}`;
+  const soloChoice = `<option value="solo"${collaborator === "solo" ? " selected" : ""}>${escapePageText(artistName(id))}</option>`;
+  return `<div class="artist-schedule-filters" data-schedule-owner="${escapePageText(id)}"><span class="artist-schedule-today-label">TODAY</span><div class="artist-schedule-collaborator"><select id="${escapePageText(selectId)}" aria-label="Filter schedules for ${escapePageText(artistName(id))}" data-schedule-collaborator onchange="setArtistProfileSchedule(this,'${id}',this.value)"><option value="all"${collaborator === "all" ? " selected" : ""}>All</option>${soloChoice}${choices.map((artist) => `<option value="${escapePageText(canonicalArtistId(artist.id))}"${canonicalArtistId(artist.id) === collaborator ? " selected" : ""}>${escapePageText(artist.name)}</option>`).join("")}</select></div>${renderArtistProfileToday(filtered)}</div><div class="artist-profile-schedule-list" aria-live="polite">${list}</div>`;
 }
 function setArtistProfileSchedule(button, artistId, filter) {
   const host = button.closest(".artist-profile-schedule-content");
@@ -899,7 +925,10 @@ function setArtistProfileSchedule(button, artistId, filter) {
     month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const items = publicOrderedEvents().filter((event) => event.date.startsWith(month));
   host.innerHTML = renderArtistProfileSchedule(items, artistId, filter);
-  host.querySelector(`[data-schedule-filter="${filter}"]`)?.focus({ preventScroll: true });
+  host.querySelector("[data-schedule-collaborator]")?.focus({ preventScroll: true });
+}
+function artistProfileScheduleSection(items, artistId) {
+  return `<section class="section"><div class="container schedule-wrap artist-profile-schedule"><div class="section-head"><h2>This month’s schedule · ${escapePageText(artistName(artistId))}</h2></div><div class="artist-profile-schedule-content">${renderArtistProfileSchedule(items, artistId)}</div></div></section>`;
 }
 function profile(id) {
   id = canonicalArtistId(id);
@@ -919,7 +948,7 @@ function profile(id) {
     vid = db.videos.filter((v) => v.artistId === id);
   app.innerHTML =
     nav("artists") +
-    `<main><section class="section"><div class="container profile-head"><div class="profile-portrait portrait" style="background:${a.color}"><span>${a.initial}</span></div><div><span class="eyebrow">Artist profile</span><h1 style="font-size:clamp(55px,8vw,100px);line-height:1;margin:10px 0">${a.name}</h1><p style="font-size:18px;line-height:1.8;color:var(--muted)">${a.bio}</p><div class="facts"><div class="fact"><small>ชื่อจริง</small><strong>${a.realName}</strong></div><div class="fact"><small>วันเกิด</small><strong>${a.birth}</strong></div><div class="fact"><small>บทบาท</small><strong>${a.role}</strong></div><div class="fact"><small>ผลงานล่าสุด</small><strong>${vid[0]?.title || "—"}</strong></div></div></div></div></section><section class="section"><div class="container schedule-wrap"><div class="section-head"><div><span class="eyebrow" style="color:var(--yellow)">Upcoming</span><h2>ตารางงานของ ${a.name}</h2></div></div>${id !== "AT01" ? `<div class="artist-profile-schedule-content">${renderArtistProfileSchedule(ev, id)}</div>` : scheduleRows(ev)}</div></section><section class="section"><div class="container"><div class="section-head"><h2>AWARDS</h2></div><div class="award-grid">${aw.map((r) => `<article class="award">${r.image ? `<img class="award-image" src="${r.image}" alt="${r.title}">` : ""}<div class="year">${awardDisplayDate(r)}</div><h3>${r.title}</h3><p>${r.org}</p></article>`).join("") || '<div class="empty">ยังไม่มีข้อมูลรางวัล</div>'}</div></div></section>${vid.length ? `<section class="section"><div class="container"><div class="section-head"><h2>วิดีโอ</h2></div>${videos(vid)}</div></section>` : ""}</main>` +
+    `<main><section class="section"><div class="container profile-head"><div class="profile-portrait portrait" style="background:${a.color}"><span>${a.initial}</span></div><div><span class="eyebrow">Artist profile</span><h1 style="font-size:clamp(55px,8vw,100px);line-height:1;margin:10px 0">${a.name}</h1><p style="font-size:18px;line-height:1.8;color:var(--muted)">${a.bio}</p><div class="facts"><div class="fact"><small>ชื่อจริง</small><strong>${a.realName}</strong></div><div class="fact"><small>วันเกิด</small><strong>${a.birth}</strong></div><div class="fact"><small>ผลงานล่าสุด</small><strong>${vid[0]?.title || "—"}</strong></div></div></div></div></section><section class="section"><div class="container schedule-wrap"><div class="section-head"><div><span class="eyebrow" style="color:var(--yellow)">Upcoming</span><h2>ตารางงานของ ${a.name}</h2></div></div>${id !== "AT01" ? `<div class="artist-profile-schedule-content">${renderArtistProfileSchedule(ev, id)}</div>` : scheduleRows(ev)}</div></section><section class="section"><div class="container"><div class="section-head"><h2>AWARDS</h2></div><div class="award-grid">${aw.map((r) => `<article class="award">${r.image ? `<img class="award-image" src="${r.image}" alt="${r.title}">` : ""}<div class="year">${awardDisplayDate(r)}</div><h3>${r.title}</h3><p>${r.org}</p></article>`).join("") || '<div class="empty">ยังไม่มีข้อมูลรางวัล</div>'}</div></div></section>${vid.length ? `<section class="section"><div class="container"><div class="section-head"><h2>วิดีโอ</h2></div>${videos(vid)}</div></section>` : ""}</main>` +
     footer();
 }
 const renderProfileWithAwardDetails = profile;
@@ -1217,7 +1246,13 @@ function coupleArchivePage() {
   <section class="section archive-awards"><div class="container"><div class="archive-section-head"><span>04</span><div><small>SHARED ACHIEVEMENTS</small><h2>Awards</h2></div><div class="archive-award-table"><div class="archive-award-row head"><span>Year</span><span>Award</span><span>Organization / Category</span><span>Result</span></div>${awards.map((item) => `<div class="archive-award-row"><strong>${item.year}</strong><span>${awardImage(item) ? `<img class="award-image" src="${awardImage(item)}" alt="${item.title}">` : ""}${item.title}</span><span>${item.org}<time class="award-date">${awardDisplayDate(item)}</time></span><span>Recipient</span></div>`).join("") || '<div class="empty">No couple awards yet.</div>'}</div></div></section>
   <section class="section"><div class="container"><div class="archive-section-head"><span>04</span><div><small>PHOTO · VIDEO · SOURCE</small><h2>Media Gallery</h2></div><p>Event photos, short clips and original post links.</p></div><div class="couple-media-grid">${media.map((item) => `<article>${item.kind === "video" ? `<video src="${item.src}" controls playsinline></video>` : item.kind === "image" ? `<img src="${item.src}" alt="${item.title}">` : '<div class="media-link-art">LINK</div>'}<div><h3>${item.title}</h3>${item.url ? `<a href="${item.url}" target="_blank">View original post </a>` : ""}</div></article>`).join("") || '<div class="empty">No media has been added yet.</div>'}</div></div></section></main>` +
     footer();
-  document.querySelector(".couple-event-list")?.closest(".section")?.remove();
+  const scheduleSection = document.querySelector(".couple-event-list")?.closest(".section");
+  if (scheduleSection) {
+    scheduleSection.outerHTML = artistProfileScheduleSection(
+      events.filter((event) => event.date >= monthStart && event.date <= monthEnd),
+      "AT01",
+    );
+  }
   document
     .querySelectorAll(".couple-event-card")
     .forEach(
@@ -7706,17 +7741,13 @@ function renderUnifiedArtistProfile(artist) {
   const profileBirth = db.siteSettings?.personalProfiles?.[artist.id]?.birthday;
   const fullName = String(artist.nameEN || artist.fullNameEn || "").trim(),
     birth = formatArtistBirthEnglish(artist.birthDate || artist.birth || profileBirth),
-    role = String(artist.role || "").trim(),
     socials = validArtistSocials(artist);
   const facts = [
     fullName
-      ? `<div class="fact"><small>FULL NAME</small><strong>${escapePageText(fullName)}</strong></div>`
+      ? `<div class="fact artist-full-name"><strong>${escapePageText(fullName)}</strong></div>`
       : "",
     birth
-      ? `<div class="fact"><small>DATE OF BIRTH</small><strong>${escapePageText(birth)}</strong></div>`
-      : "",
-    role
-      ? `<div class="fact artist-role-fact"><small>ROLE</small><strong>${escapePageText(role)}</strong></div>`
+      ? `<div class="fact artist-birth"><small>DATE OF BIRTH</small><strong>${escapePageText(birth)}</strong></div>`
       : "",
   ].join("");
   const socialSection = socials.length
@@ -7725,7 +7756,8 @@ function renderUnifiedArtistProfile(artist) {
   const portrait = artist.image
     ? `<img src="${escapePageText(versionedMediaUrl(artist.image, artist.imageVersion || artist.id))}" alt="${escapePageText(artist.name || "Artist")}">`
     : `<span>${escapePageText(artist.initial || String(artist.name || "AR").slice(0, 2))}</span>`;
-  return `<div class="profile-portrait portrait" style="background:${escapePageText(artist.color || "#ddd")}">${portrait}</div><div class="artist-profile-copy"><span class="eyebrow">ARTIST PROFILE</span><h1>${escapePageText(artist.stageNameEn || artist.name || "")}</h1>${artist.bio ? `<p class="artist-profile-description">${escapePageText(artist.bio)}</p>` : ""}${facts ? `<div class="facts artist-profile-facts">${facts}</div>` : ""}${socialSection}</div>`;
+  const information = facts ? `<div class="facts artist-profile-facts">${facts}</div>` : "";
+  return `<div class="profile-portrait portrait" style="background:${escapePageText(artist.color || "#ddd")}">${portrait}</div><div class="artist-profile-copy"><span class="eyebrow">ARTIST PROFILE</span><h1>${escapePageText(artist.stageNameEn || artist.name || "")}</h1>${information}${socialSection}</div>`;
 }
 const profileBeforeUnifiedArtistProfile = profile;
 profile = function (id) {
@@ -8320,14 +8352,14 @@ homeScheduleSection = function () {
   const cards = homepageScheduleArtists()
     .map(
       (artist, index) =>
-        `<article class="schedule-card ${artistScheduleCardClass(artist.id, index)}"><div class="schedule-card-head" style="background:${artistDisplayColor(artist.id, index)};color:#fff"><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role || "")}</p></div>${compactSchedule(monthly.filter((event) => itemMatchesArtist(event, artist.id)))}</article>`,
+        `<article class="schedule-card ${artistScheduleCardClass(artist.id, index)}"><div class="schedule-card-head" style="background:${artistDisplayColor(artist.id, index)};color:#fff"><h3>${escapePageText(artist.name)}</h3></div>${compactSchedule(monthly.filter((event) => itemMatchesArtist(event, artist.id)))}</article>`,
     )
     .join("");
   return `<section class="section home-schedules"><div class="container"><div class="section-head"><div><h2>${escapePageText(title)}</h2></div><a class="btn outline" href="/schedule">View calendar </a></div><div class="schedule-columns dynamic-schedule-columns">${cards}</div></div></section>`;
 };
 artistCards = function () {
   const cards = homepageOrderedArtists();
-  return `<div class="artists homepage-artist-grid">${cards.map((artist) => `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(artist.id)}'"><div class="portrait" style="background:${artist.color}">${artist.image ? `<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}" loading="lazy" decoding="async">` : `<span>${escapePageText(artist.initial || artist.name.slice(0, 2))}</span>`}</div><div class="artist-meta"><h3>${escapePageText(artist.name)}</h3><p>${escapePageText(artist.role || "")}</p></div></article>`).join("")}</div>`;
+  return `<div class="artists homepage-artist-grid">${cards.map((artist) => `<article class="artist-card" onclick="location.hash='/${artistPublicSlug(artist.id)}'"><div class="portrait" style="background:${artist.color}">${artist.image ? `<img src="${escapePageText(artist.image)}" alt="${escapePageText(artist.name)}" loading="lazy" decoding="async">` : `<span>${escapePageText(artist.initial || artist.name.slice(0, 2))}</span>`}</div><div class="artist-meta"><h3>${escapePageText(artist.name)}</h3></div></article>`).join("")}</div>`;
 };
 function renderManagedPageTitleEditor() {
   const titles = ensureManagedPageTitles(),
@@ -9112,13 +9144,7 @@ function homeScheduleGroups(events, today = homeScheduleBangkokDate()) {
       .sort((a, b) => homeScheduleStartMinutes(a) - homeScheduleStartMinutes(b));
   return { today: forDate(today), next: nextDate ? forDate(nextDate) : [], nextDate };
 }
-function unifiedHomeScheduleSection() {
-  const today = homeScheduleBangkokDate();
-  const groups = homeScheduleGroups(publicOrderedEvents(), today);
-  const artists = homepageScheduleArtists();
-  const artistIndex = new Map(
-    artists.map((artist, index) => [canonicalArtistId(artist.id), index]),
-  );
+function unifiedScheduleEventRow(event, artistIndex) {
   const artistBadge = (artistId) => {
     const id = canonicalArtistId(artistId),
       artist = artistById(id),
@@ -9126,24 +9152,31 @@ function unifiedHomeScheduleSection() {
     const label = sameArtistId(id, "duo") ? "#AUAUSAVE" : artist?.name || artistName(id);
     return `<span class="unified-schedule-artist" style="--artist-color:${artistDisplayColor(id, index)}"><i aria-hidden="true"></i>${escapePageText(label)}</span>`;
   };
-  const row = (event) => {
-    const ids = calendarEventArtistIds(event),
-      badges = (ids.length ? ids : [event.artistId]).filter(Boolean).map(artistBadge).join("");
-    const date = new Date(`${event.date}T12:00:00Z`);
-    const format = (options) =>
-      new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...options }).format(date);
-    const originalMeta = unifiedHomeScheduleMeta(event);
-    const meta = [event.time && !originalMeta.includes(event.time) ? event.time : "", originalMeta]
-      .filter(Boolean)
-      .join(" | ");
-    const minutes = homeScheduleStartMinutes(event);
-    const clock = Number.isFinite(minutes)
-      ? `<b>${Math.floor(minutes / 60) % 12 || 12}:${String(minutes % 60).padStart(2, "0")}</b><small>${minutes >= 720 ? "PM" : "AM"}</small>`
-      : "<small>ไม่ระบุเวลา</small>";
-    return `<article class="unified-schedule-row"><time class="unified-schedule-date" datetime="${escapePageText(event.date)}"><b>${event.date.slice(8)}</b><span>${format({ month: "short" })}</span><small>${format({ weekday: "short" })}</small></time><span class="unified-schedule-clock">${clock}</span><div class="unified-schedule-detail"><div class="unified-schedule-badges">${badges}</div><h3>${escapePageText(event.title)}</h3>${meta ? `<p>${escapePageText(meta)}</p>` : ""}${eventParticipationCopy(event)}</div><span class="unified-schedule-type">${escapePageText(event.type || "EVENT")}</span></article>`;
-  };
+
+  const ids = calendarEventArtistIds(event),
+    badges = (ids.length ? ids : [event.artistId]).filter(Boolean).map(artistBadge).join("");
+  const date = new Date(`${event.date}T12:00:00Z`);
+  const format = (options) =>
+    new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...options }).format(date);
+  const originalMeta = unifiedHomeScheduleMeta(event);
+  const meta = [event.time && !originalMeta.includes(event.time) ? event.time : "", originalMeta]
+    .filter(Boolean)
+    .join(" | ");
+  const minutes = homeScheduleStartMinutes(event);
+  const clock = Number.isFinite(minutes)
+    ? `<b>${Math.floor(minutes / 60) % 12 || 12}:${String(minutes % 60).padStart(2, "0")}</b><small>${minutes >= 720 ? "PM" : "AM"}</small>`
+    : "<small>ไม่ระบุเวลา</small>";
+  return `<article class="unified-schedule-row"><time class="unified-schedule-date" datetime="${escapePageText(event.date)}"><b>${event.date.slice(8)}</b><span>${format({ month: "short" })}</span><small>${format({ weekday: "short" })}</small></time><span class="unified-schedule-clock">${clock}</span><div class="unified-schedule-detail"><div class="unified-schedule-badges">${badges}</div><h3>${escapePageText(event.title)}</h3>${meta ? `<p>${escapePageText(meta)}</p>` : ""}${eventParticipationCopy(event)}</div><span class="unified-schedule-type">${escapePageText(event.type || "EVENT")}</span></article>`;
+}
+function unifiedHomeScheduleSection() {
+  const today = homeScheduleBangkokDate();
+  const groups = homeScheduleGroups(publicOrderedEvents(), today);
+  const artists = homepageScheduleArtists();
+  const artistIndex = new Map(
+    artists.map((artist, index) => [canonicalArtistId(artist.id), index]),
+  );
   const section = (label, items) =>
-    `<section class="unified-schedule-group ${label === "TODAY" ? "is-today" : "is-next"}" aria-label="${label}"><h3 class="unified-schedule-group-title"><span class="unified-schedule-section-label">${label}</span></h3>${items.map(row).join("")}</section>`;
+    `<section class="unified-schedule-group ${label === "TODAY" ? "is-today" : "is-next"}" aria-label="${label}"><h3 class="unified-schedule-group-title"><span class="unified-schedule-section-label">${label}</span></h3>${items.map((event) => unifiedScheduleEventRow(event, artistIndex)).join("")}</section>`;
   return `<section class="section unified-home-schedule" data-schedule-today="${today}"><div class="container"><div class="unified-schedule-shell"><header class="unified-schedule-head"><h2>Upcoming Schedule</h2><a class="btn outline" href="/schedule">View full calendar</a></header><div class="unified-schedule-list">${groups.today.length ? section("TODAY", groups.today) : ""}${groups.next.length ? section("UP NEXT", groups.next) : '<p class="empty unified-schedule-empty">No upcoming events.</p>'}</div></div></div></section>`;
 }
 
