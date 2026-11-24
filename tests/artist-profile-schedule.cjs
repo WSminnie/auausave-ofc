@@ -142,7 +142,31 @@ test('Today highlights only the selected artist events in Bangkok today, in star
   assert.match(today,/Participation details/);
   const solo=context.renderArtistProfileSchedule(items,'auau','solo').match(/<section class="artist-schedule-today"[^>]*>([\s\S]*?)<\/section>/)?.[1];
   assert.match(solo,/LATE TODAY/);assert.doesNotMatch(solo,/EARLY TODAY/);
-  assert.match(context.renderArtistProfileSchedule(items,'AT04'),/No events today\./);
+  assert.match(context.renderArtistProfileSchedule(items,'AT04'),/No upcoming events\./);
+});
+
+test('when Today is empty, UP NEXT shows all events on the nearest future date within the selected filter', () => {
+  context.db={artists:[{id:'AT01',name:'AUAUSAVE'},{id:'AT02',name:'AUAU'},{id:'AT03',name:'SAVE'}],siteSettings:{}};
+  context.artistSchedulePriority=()=>0;
+  context.mobileCalendarListRow=event=>`<article>${event.title}</article>`;
+  const items=[
+    {id:'past',artistId:'auau',date:'2026-11-22',title:'PAST'},
+    {id:'other',artistId:'save',date:'2026-11-23',title:'OTHER ARTIST TODAY'},
+    {id:'late',artistId:'duo',date:'2026-11-24',time:'8 PM',title:'NEAREST LATE'},
+    {id:'early',artistId:'duo',date:'2026-11-24',time:'3 PM',title:'NEAREST EARLY'},
+    {id:'solo',artistId:'auau',date:'2026-11-25',title:'NEXT SOLO'},
+  ];
+  const html=context.renderArtistProfileSchedule(items,'auau');
+  assert.match(html,/>UP NEXT</);assert.doesNotMatch(html,/>TODAY<|No events today\./);
+  assert.match(html,/artist-schedule-filters is-next/);
+  const highlight=html.match(/<section class="artist-schedule-today"[^>]*>([\s\S]*?)<\/section>/)?.[1];
+  assert.ok(highlight.indexOf('NEAREST EARLY')<highlight.indexOf('NEAREST LATE'));
+  assert.doesNotMatch(highlight,/PAST|OTHER ARTIST TODAY|NEXT SOLO/);
+  const solo=context.renderArtistProfileSchedule(items,'auau','solo');
+  const soloHighlight=solo.match(/<section class="artist-schedule-today"[^>]*>([\s\S]*?)<\/section>/)?.[1];
+  assert.match(solo,/>UP NEXT</);assert.match(soloHighlight,/NEXT SOLO/);
+  assert.doesNotMatch(soloHighlight,/NEAREST EARLY|NEAREST LATE/);
+  assert.match(context.renderArtistProfileSchedule([],'save'),/>UP NEXT<[\s\S]*No upcoming events\./);
 });
 
 test('SAVE list reuses calendar rows in date order and prints each date once', () => {

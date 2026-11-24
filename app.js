@@ -888,15 +888,16 @@ function artistProfileScheduleList(items) {
   const events = [...items].sort((a, b) => a.date.localeCompare(b.date));
   return `<div class="mobile-calendar-agenda save-profile-agenda">${events.map((event, index) => mobileCalendarListRow(event, artistIndex, index === 0 || events[index - 1].date !== event.date, index === events.length - 1 || events[index + 1].date !== event.date)).join("")}</div>`;
 }
-function renderArtistProfileToday(items) {
+function renderArtistProfileToday(items, groups = homeScheduleGroups(items)) {
   const today = homeScheduleBangkokDate();
-  const events = homeScheduleGroups(items, today).today;
+  const showToday = groups.today.length > 0;
+  const events = showToday ? groups.today : groups.next;
   const artists = [...db.artists].sort((a, b) => artistSchedulePriority(a) - artistSchedulePriority(b));
   const artistIndex = new Map(artists.map((artist, index) => [canonicalArtistId(artist.id), index]));
   const rows = events.length
     ? events.map((event) => unifiedScheduleEventRow(event, artistIndex)).join("")
-    : '<p class="artist-schedule-today-empty">No events today.</p>';
-  return `<section class="artist-schedule-today" aria-label="Today's events" data-profile-today="${today}">${rows}</section>`;
+    : '<p class="artist-schedule-today-empty">No upcoming events.</p>';
+  return `<section class="artist-schedule-today" aria-label="${showToday ? "Today's events" : "Upcoming events"}" data-profile-today="${today}">${rows}</section>`;
 }
 function renderArtistProfileSchedule(items, artistId, collaborator = "all") {
   const id = canonicalArtistId(artistId);
@@ -908,6 +909,8 @@ function renderArtistProfileSchedule(items, artistId, collaborator = "all") {
   collaborator = canonicalArtistId(collaborator);
   if (collaborator !== "solo" && !choices.some((artist) => canonicalArtistId(artist.id) === collaborator)) collaborator = "all";
   const filtered = scopedItems.filter((event) => artistProfileScheduleFilterMatches(event, id, collaborator));
+  const highlightGroups = homeScheduleGroups(filtered);
+  const showToday = highlightGroups.today.length > 0;
   const emptyMessage = collaborator === "solo"
     ? `No ${id === "AT01" ? "" : "solo "}events for ${escapePageText(artistName(id))} this month.`
     : `No events with ${escapePageText(artistName(collaborator))} this month.`;
@@ -916,7 +919,7 @@ function renderArtistProfileSchedule(items, artistId, collaborator = "all") {
     : artistProfileScheduleList(filtered);
   const selectId = `artistScheduleCollaborator-${id}`;
   const soloChoice = `<option value="solo"${collaborator === "solo" ? " selected" : ""}>${escapePageText(artistName(id))}</option>`;
-  return `<div class="artist-schedule-filters" data-schedule-owner="${escapePageText(id)}"><span class="artist-schedule-today-label">TODAY</span><div class="artist-schedule-collaborator"><select id="${escapePageText(selectId)}" aria-label="Filter schedules for ${escapePageText(artistName(id))}" data-schedule-collaborator onchange="setArtistProfileSchedule(this,'${id}',this.value)"><option value="all"${collaborator === "all" ? " selected" : ""}>All</option>${soloChoice}${choices.map((artist) => `<option value="${escapePageText(canonicalArtistId(artist.id))}"${canonicalArtistId(artist.id) === collaborator ? " selected" : ""}>${escapePageText(artist.name)}</option>`).join("")}</select></div>${renderArtistProfileToday(filtered)}</div><div class="artist-profile-schedule-list" aria-live="polite">${list}</div>`;
+  return `<div class="artist-schedule-filters${showToday ? "" : " is-next"}" data-schedule-owner="${escapePageText(id)}"><span class="artist-schedule-today-label">${showToday ? "TODAY" : "UP NEXT"}</span><div class="artist-schedule-collaborator"><select id="${escapePageText(selectId)}" aria-label="Filter schedules for ${escapePageText(artistName(id))}" data-schedule-collaborator onchange="setArtistProfileSchedule(this,'${id}',this.value)"><option value="all"${collaborator === "all" ? " selected" : ""}>All</option>${soloChoice}${choices.map((artist) => `<option value="${escapePageText(canonicalArtistId(artist.id))}"${canonicalArtistId(artist.id) === collaborator ? " selected" : ""}>${escapePageText(artist.name)}</option>`).join("")}</select></div>${renderArtistProfileToday(filtered, highlightGroups)}</div><div class="artist-profile-schedule-list" aria-live="polite">${list}</div>`;
 }
 function setArtistProfileSchedule(button, artistId, filter) {
   const host = button.closest(".artist-profile-schedule-content");

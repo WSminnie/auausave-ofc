@@ -15184,6 +15184,12 @@ main > .project-hub-section {
   font-weight: 700;
   line-height: 1.4;
 }
+.artist-schedule-filters.is-next {
+  background: #eff6f8;
+}
+.artist-schedule-filters.is-next .artist-schedule-today-label {
+  background: var(--blue);
+}
 .artist-schedule-collaborator {
   justify-self: end;
   width: 100%;
