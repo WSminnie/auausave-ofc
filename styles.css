@@ -1089,6 +1089,26 @@ img {
 .unified-schedule-row:last-child {
   border-bottom: 0;
 }
+.unified-schedule-row[data-event-id] {
+  cursor: pointer;
+}
+.unified-schedule-open {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .unified-schedule-row[data-event-id]:hover .unified-schedule-open {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
 .unified-schedule-row time {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -9437,6 +9457,59 @@ img {
 .event-modal-detail {
   max-height: 90vh;
   overflow-y: auto;
+}
+/* Event details remain a centered dialog at every viewport size. */
+.event-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(600px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  overflow: visible;
+}
+.event-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+.event-dialog > .event-modal {
+  width: 100%;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  padding: clamp(20px, 4vw, 28px);
+  border-radius: 20px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+}
+.event-dialog .modal-head {
+  align-items: flex-start;
+  gap: 12px;
+}
+.event-dialog .close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin: -10px -10px 0 0;
+  border-radius: 50%;
+}
+.event-dialog .event-modal-detail h2 {
+  font-size: clamp(20px, 5.6vw, 30px);
+}
+.event-dialog .event-date-time {
+  flex-wrap: wrap;
+}
+.event-dialog .event-date-time > * {
+  min-width: 0;
+}
+body:has(> .event-dialog[open]) {
+  overflow: hidden;
 }
 .event-modal-detail h2 {
   margin: 18px 0 8px;

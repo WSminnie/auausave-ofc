@@ -2448,7 +2448,9 @@ function removeUploadedImage(field) {
   preview.innerHTML = "<span>＋<small>เลือกรูปภาพ</small></span>";
 }
 function closeModal() {
-  document.querySelector("#modal")?.remove();
+  const modal = document.querySelector("#modal");
+  if (modal?.tagName === "DIALOG" && modal.open) modal.close();
+  modal?.remove();
 }
 function submitForm(e, type, id) {
   e.preventDefault();
@@ -7578,9 +7580,23 @@ calendarPage = function () {
 
   document.querySelector(".calendar-section")?.insertAdjacentHTML("afterend", mobile);
 };
+function openEventDialog() {
+  const dialog = document.querySelector("dialog.event-dialog");
+  if (!dialog) return;
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeModal();
+  });
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) closeModal();
+  });
+  dialog.addEventListener("close", () => dialog.remove(), { once: true });
+  dialog.showModal();
+}
 showEvent = function (id) {
   const e = db.events.find((x) => x.id === id);
   if (!e) return;
+  closeModal();
   const dateLabel = new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
@@ -7593,8 +7609,9 @@ showEvent = function (id) {
     );
   document.body.insertAdjacentHTML(
     "beforeend",
-    `<div class="modal-backdrop" id="modal"><div class="modal event-modal event-modal-detail"><div class="modal-head"><span class="eyebrow">${escapePageText(eventBadge(e))} · ${escapePageText(e.type || "")}</span><button class="close" onclick="closeModal()">×</button></div><h2>${escapePageText(e.title)}</h2><p class="event-date-time"><span>${escapePageText(dateLabel)}</span>${timeLabel ? `<b>·</b><time>${escapePageText(timeLabel)}</time>` : ""}</p>${eventParticipationCopy(e)}${e.source ? `<a class="btn" target="_blank" href="${escapePageText(e.source)}">View source </a>` : ""}</div></div>`,
+    `<dialog class="event-dialog" id="modal" aria-labelledby="event-modal-title"><div class="modal event-modal event-modal-detail"><div class="modal-head"><span class="eyebrow">${escapePageText(eventBadge(e))} · ${escapePageText(e.type || "")}</span><button type="button" class="close" onclick="closeModal()" aria-label="ปิดรายละเอียดงาน" autofocus>×</button></div><h2 id="event-modal-title">${escapePageText(e.title)}</h2><p class="event-date-time"><span>${escapePageText(dateLabel)}</span>${timeLabel ? `<b>·</b><time>${escapePageText(timeLabel)}</time>` : ""}</p>${eventParticipationCopy(e)}${e.source ? `<a class="btn" target="_blank" href="${escapePageText(e.source)}" rel="noopener noreferrer">View source </a>` : ""}</div></dialog>`,
   );
+  openEventDialog();
 };
 function updateDashboardArtistSummary(items = db.events) {
   const panel = document.querySelector(".path-panel");
@@ -9169,7 +9186,7 @@ function unifiedScheduleEventRow(event, artistIndex) {
   const clock = Number.isFinite(minutes)
     ? `<b>${Math.floor(minutes / 60) % 12 || 12}:${String(minutes % 60).padStart(2, "0")}</b><small>${minutes >= 720 ? "PM" : "AM"}</small>`
     : "<small>ไม่ระบุเวลา</small>";
-  return `<article class="unified-schedule-row"><time class="unified-schedule-date" datetime="${escapePageText(event.date)}"><b>${event.date.slice(8)}</b><span>${format({ month: "short" })}</span><small>${format({ weekday: "short" })}</small></time><span class="unified-schedule-clock">${clock}</span><div class="unified-schedule-detail"><div class="unified-schedule-badges">${badges}</div><h3>${escapePageText(event.title)}</h3>${meta ? `<p>${escapePageText(meta)}</p>` : ""}${eventParticipationCopy(event)}</div><span class="unified-schedule-type">${escapePageText(event.type || "EVENT")}</span></article>`;
+  return `<article class="unified-schedule-row" data-event-id="${escapePageText(event.id)}" onclick="if (!event.target.closest('a,button')) showEvent(this.dataset.eventId)"><time class="unified-schedule-date" datetime="${escapePageText(event.date)}"><b>${event.date.slice(8)}</b><span>${format({ month: "short" })}</span><small>${format({ weekday: "short" })}</small></time><span class="unified-schedule-clock">${clock}</span><div class="unified-schedule-detail"><div class="unified-schedule-badges">${badges}</div><h3><button type="button" class="unified-schedule-open" data-event-id="${escapePageText(event.id)}" aria-haspopup="dialog" onclick="showEvent(this.dataset.eventId)">${escapePageText(event.title)}</button></h3>${meta ? `<p>${escapePageText(meta)}</p>` : ""}${eventParticipationCopy(event)}</div><span class="unified-schedule-type">${escapePageText(event.type || "EVENT")}</span></article>`;
 }
 function unifiedHomeScheduleSection() {
   const today = homeScheduleBangkokDate();
@@ -10278,6 +10295,7 @@ showEvent = function (id) {
     showEventBeforeSeriesBroadcast(id);
     return;
   }
+  closeModal();
   const series = db.masterData.series.find((item) => item.id === event.seriesId),
     dateLabel = new Intl.DateTimeFormat("en-US", {
       weekday: "long",
@@ -10288,8 +10306,9 @@ showEvent = function (id) {
     rows = normalizeBroadcasts(event.broadcasts);
   document.body.insertAdjacentHTML(
     "beforeend",
-    `<div class="modal-backdrop" id="modal"><div class="modal event-modal series-broadcast-detail"><div class="modal-head"><div><small>SERIES · ON AIR</small><h2>${escapePageText(series?.label || "Series")}</h2></div><button class="close" onclick="closeModal()">×</button></div><strong class="series-episode">EP.${Number(event.episode) || "—"}</strong><p class="series-air-date">${escapePageText(dateLabel)}</p>${eventParticipationCopy(event)}<div class="series-on-air"><span>ช่องทางรับชม</span>${rows.map((row) => `<article><div>${row.watchUrl ? `<a class="series-channel-link" href="${escapePageText(row.watchUrl)}" target="_blank" rel="noopener noreferrer">${escapePageText(row.channel)}</a>` : `<strong>${escapePageText(row.channel)}</strong>`}<small>${escapePageText(seriesBroadcastModeLabel(row))}</small></div><time>${escapePageText(formatBroadcastTime(row.time))}</time></article>`).join("") || '<div class="empty">ยังไม่ระบุช่องทางออกอากาศ</div>'}</div></div></div>`,
+    `<dialog class="event-dialog" id="modal" aria-labelledby="event-modal-title"><div class="modal event-modal series-broadcast-detail"><div class="modal-head"><div><small>SERIES · ON AIR</small><h2 id="event-modal-title">${escapePageText(series?.label || "Series")}</h2></div><button type="button" class="close" onclick="closeModal()" aria-label="ปิดรายละเอียดงาน" autofocus>×</button></div><strong class="series-episode">EP.${Number(event.episode) || "—"}</strong><p class="series-air-date">${escapePageText(dateLabel)}</p>${eventParticipationCopy(event)}<div class="series-on-air"><span>ช่องทางรับชม</span>${rows.map((row) => `<article><div>${row.watchUrl ? `<a class="series-channel-link" href="${escapePageText(row.watchUrl)}" target="_blank" rel="noopener noreferrer">${escapePageText(row.channel)}</a>` : `<strong>${escapePageText(row.channel)}</strong>`}<small>${escapePageText(seriesBroadcastModeLabel(row))}</small></div><time>${escapePageText(formatBroadcastTime(row.time))}</time></article>`).join("") || '<div class="empty">ยังไม่ระบุช่องทางออกอากาศ</div>'}</div></div></dialog>`,
   );
+  openEventDialog();
 };
 const openAdminEventDetailBeforeSeriesBroadcast = openAdminEventDetail;
 openAdminEventDetail = function (id) {
