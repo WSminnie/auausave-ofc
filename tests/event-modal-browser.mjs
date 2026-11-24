@@ -7,13 +7,13 @@ const base = process.env.BROWSER_TEST_URL || "http://127.0.0.1:8765";
 const errors = [], productionRequests = [], results = [];
 try {
   for (const [width, height] of [[390,844],[768,1024],[1440,900],[844,390],[320,568]]) {
-    const context = await browser.newContext({ viewport: {width,height} });
+    const context = await browser.newContext({ viewport: {width,height}, hasTouch: width <= 390 });
     const page = await context.newPage(); page.setDefaultTimeout(10000);
     page.on('pageerror', e=>errors.push(e.message));
     page.on('request', r=>{if(/supabase/i.test(r.url()))productionRequests.push(r.url());});
     await page.goto(`${base}/tmp/event-modal-browser.html`);
     const trigger = page.locator('button:visible').filter({hasText:'ELLEMENStyleAwards2026'}).first();
-    await trigger.click();
+    if (width <= 390) await trigger.tap(); else await trigger.click();
     const modal = page.locator('.event-modal');
     await modal.waitFor();
     const box = await modal.boundingBox();
@@ -21,10 +21,19 @@ try {
     assert.ok(box.x>=12 && box.y>=12 && box.x+box.width<=width-12 && box.y+box.height<=height-12);
     assert.equal(await page.getByRole('dialog').count(),1);
     assert.equal(await modal.locator('.close').evaluate(el=>el===document.activeElement),true);
+    assert.equal(await modal.locator('.close').evaluate(el=>getComputedStyle(el).outlineStyle),'none','Pointer/touch opening must not draw a ring around the close icon');
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#modal').count(),0);
     assert.equal(await trigger.evaluate(el=>document.activeElement===el),true);
+    await page.keyboard.press('Enter');
+    await page.getByRole('dialog').waitFor();
+    assert.equal(await modal.locator('.close').evaluate(el=>el===document.activeElement),true);
+    assert.ok(await modal.locator('.close').evaluate(el=>getComputedStyle(el).outlineStyle!=='none' && parseFloat(getComputedStyle(el).outlineWidth)>0),'Keyboard opening must preserve a visible focus indicator');
+    await page.keyboard.press('Tab'); await page.keyboard.press('Shift+Tab');
+    assert.ok(await modal.locator('.close').evaluate(el=>getComputedStyle(el).outlineStyle!=='none'));
+    await page.keyboard.press('Escape');
     await trigger.click();
+    assert.equal(await modal.locator('.close').evaluate(el=>getComputedStyle(el).outlineStyle),'none','Reopening with a pointer after keyboard input must not retain the autofocus ring');
     await page.mouse.click(4,4);
     assert.equal(await page.locator('#modal').count(),0);
     await trigger.click();

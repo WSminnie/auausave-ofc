@@ -7,6 +7,9 @@ seed.events = [
 ];
 let db =
   JSON.parse(localStorage.getItem("auausave-house-db-v9") || "null") || structuredClone(seed);
+let eventDialogKeyboardInput = false;
+document.addEventListener("keydown", () => { eventDialogKeyboardInput = true; }, true);
+document.addEventListener("pointerdown", () => { eventDialogKeyboardInput = false; }, true);
 const failedVideoThumbnailUrls = new Set();
 const legacyVideoThumbnailPath =
   /\/storage\/v1\/object\/public\/[^/]+\/videos\/[^/?]+\/thumbnail\.jpg(?:[?#]|$)/i;
@@ -7583,6 +7586,8 @@ calendarPage = function () {
 function openEventDialog() {
   const dialog = document.querySelector("dialog.event-dialog");
   if (!dialog) return;
+  dialog.classList.toggle("is-pointer-opened", !eventDialogKeyboardInput);
+  dialog.addEventListener("keydown", () => dialog.classList.remove("is-pointer-opened"));
   dialog.addEventListener("cancel", (event) => {
     event.preventDefault();
     closeModal();
