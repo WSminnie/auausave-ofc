@@ -49,6 +49,15 @@ test('wrapping preserves Thai and long unbroken words without overflow',()=>{
  }
 });
 
+test('colored artist names keep their own colors when a label wraps',()=>{
+ const runs=[{text:'AUAUSAVE',color:'teal'},{text:' · ',color:'gray'},{text:'MHIIPREAW',color:'orange'},{text:' · PRIVATE',color:'gray'}];
+ const lines=E.wrapColorRuns(runs,90,s=>Array.from(s).length*10);
+ assert.ok(lines.every(line=>line.reduce((sum,run)=>sum+Array.from(run.text).length*10,0)<=90));
+ assert.equal(lines.flat().map(run=>run.text).join('').replace(/\s/g,''),runs.map(run=>run.text).join('').replace(/\s/g,''));
+ assert.ok(lines.flat().filter(run=>run.color==='orange').map(run=>run.text).join('').includes('MHIIPREAW'));
+ assert.equal(JSON.stringify(runs),JSON.stringify([{text:'AUAUSAVE',color:'teal'},{text:' · ',color:'gray'},{text:'MHIIPREAW',color:'orange'},{text:' · PRIVATE',color:'gray'}]));
+});
+
 test('auto layout fits short months onto one image and splits overflowing months into fixed halves',()=>{
  const rows=Array.from({length:20},(_,i)=>({id:i,date:`2026-11-${String(i+1).padStart(2,'0')}`,height:200}));
  const before=JSON.stringify(rows);

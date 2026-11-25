@@ -5,7 +5,7 @@ html = html.replace(/<script src="(?:https:\/\/cdn\.jsdelivr\.net\/npm\/@supabas
 html = html.replace(/(src|href)="(?!https?:|\/|#)([^\"]+)"/g, '$1="/$2"');
 html = html.replace('</body>', `<script>
 if (!['localhost','127.0.0.1'].includes(location.hostname)) throw Error('Local fixture only');
-if (!db.artists.some(a=>canonicalArtistId(a.id)==='AT04')) db.artists.push({id:'AT04',name:'MHIIPRAEW'});
+if (!db.artists.some(a=>canonicalArtistId(a.id)==='AT04')) db.artists.push({id:'AT04',name:'MHIIPREAW'});
 db.events = [
  {id:'first',date:'2026-11-01',artistId:'AT02',artistIds:['AT02'],title:'AUAU first half',type:'Event',place:'10 AM | Bangkok',participation:{access:'open',gathering:true}},
  {id:'boundary',date:'2026-11-16',artistId:'AT01',artistIds:['AT01'],title:'AUAUSAVE day sixteen',type:'Private',place:'TBC',participation:{access:'private'}},

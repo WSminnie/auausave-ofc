@@ -88,7 +88,23 @@
     }
     return result;
   }
-  const api = { parseMonth, shiftMonth, buildZip, partition, columns, planPages, wrapText };
+  function wrapColorRuns(runs, width, measure) {
+    let offset = 0;
+    const spans = runs.map(run => {
+      const start = offset; offset += run.text.length;
+      return {...run, start, end: offset};
+    });
+    const text = runs.map(run => run.text).join('');
+    let cursor = 0;
+    return wrapText(text, width, measure).map(line => {
+      const start = text.indexOf(line, cursor), end = start + line.length;
+      cursor = end;
+      return spans.filter(run => run.end > start && run.start < end).map(run => ({
+        text: run.text.slice(Math.max(0, start - run.start), Math.min(run.text.length, end - run.start)), color: run.color
+      }));
+    });
+  }
+  const api = { parseMonth, shiftMonth, buildZip, partition, columns, planPages, wrapText, wrapColorRuns };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.ScheduleImageExport = api;
   if (typeof document === 'undefined') return;
@@ -159,13 +175,14 @@
   }
   function model(event) {
     const ids = artistProfileScheduleTags(event);
-    const labels = ids.map(id => artistName(id));
+    const artists = (ids.length ? ids : [event.artistId].filter(Boolean)).map(id => ({
+      id: canonicalArtistId(id), label: artistName(id).toUpperCase(), color: artistDisplayColor(id, 0)
+    }));
     const baseMeta = unifiedHomeScheduleMeta(event);
     const meta = [event.time && !baseMeta.includes(event.time) ? event.time : '', baseMeta].filter(Boolean).join(' | ');
     const status = eventStatusLabel(event);
     return { ...event,
-      label: labels.join(' · ') || 'EVENT',
-      color: isSeriesBroadcast(event) ? '#6F4CA0' : artistDisplayColor(ids[0] || event.artistId, 0),
+      artists: artists.length ? artists : [{id:'', label:'EVENT', color:'#77736c'}],
       title: String(event.title || 'Untitled event').normalize('NFKC').replace(/[📸🦋🎓]/gu, '').trim(),
       kind: String(event.type || 'Event').replace(/\s*\|\s*/g, ' · '), meta: meta || 'TBC',
       conditions: eventParticipationOptions(event), status
@@ -178,7 +195,14 @@
     const lines = (text, size, weight, width = 555) => {
       font(ctx, size, weight); return wrapText(text, width, s => ctx.measureText(s).width);
     };
-    const label = lines(event.label.toUpperCase() + '  ·  ' + event.kind.toUpperCase(), 14, 600);
+    const runs = [];
+    event.artists.forEach((artist, index) => {
+      if (index) runs.push({text:' · ',color:'#77736c'});
+      runs.push({text:artist.label,color:artist.color});
+    });
+    runs.push({text:' · ' + event.kind.toUpperCase(),color:'#77736c'});
+    font(ctx, 14, 600);
+    const label = wrapColorRuns(runs, 555, text => ctx.measureText(text).width);
     const title = lines(event.title, 25, 600);
     const meta = lines(event.meta, 18, 400);
     const status = lines(event.status, 16, 600);
@@ -193,6 +217,18 @@
     for (const line of lines) { ctx.fillText(line, x, y); y += leading; }
     return y;
   }
+  function drawColorLines(ctx, lines, x, y) {
+    font(ctx, 14, 600);
+    for (const line of lines) {
+      let cursor = x;
+      for (const run of line) {
+        ctx.fillStyle = run.color; ctx.fillText(run.text, cursor, y);
+        cursor += ctx.measureText(run.text).width;
+      }
+      y += 22;
+    }
+    return y;
+  }
   async function renderImages(events, month) {
     const logos = await loadResources();
     const { year, lastDay } = parseMonth(month);
@@ -201,13 +237,14 @@
     const measuring = document.createElement('canvas').getContext('2d');
     const items = partition(events, month).flatMap(part => part.events).map(model);
     const labels = new Map([
-      ['AUAUSAVE', { label: 'AUAUSAVE', color: '#4E8994' }],
-      ['AUAU', { label: 'AUAU', color: '#5F9272' }],
-      ['SAVE', { label: 'SAVE', color: '#D65E64' }],
-      ['SERIES', { label: 'SERIES', color: '#6F4CA0' }]
+      ['AT01', { label: 'AUAUSAVE', color: '#4E8994' }],
+      ['AT02', { label: 'AUAU', color: '#5F9272' }],
+      ['AT03', { label: 'SAVE', color: '#D65E64' }]
     ]);
     items.forEach(e => {
-      if (!labels.has(e.label)) labels.set(e.label, { label: e.label, color: e.color });
+      e.artists.forEach(artist => {
+        if (artist.id && !labels.has(artist.id)) labels.set(artist.id, { label: artist.label, color: artist.color });
+      });
     });
     // Measure real text before deciding whether the full month fits one image.
     font(measuring, 18, 600);
@@ -264,7 +301,7 @@
             drawLines(ctx, [monthShort], left + 2, rowY + 58, 14, 18, 600, '#76736e');
           }
           previousDate = e.date;
-          let cursor = drawLines(ctx, row.label, x, rowY, 14, 22, 600, e.color) + 6;
+          let cursor = drawColorLines(ctx, row.label, x, rowY) + 6;
           cursor = drawLines(ctx, row.title, x, cursor, 25, 34, 600, '#202020') + 7;
           cursor = drawLines(ctx, row.meta, x, cursor, 18, 27, 400, '#77736c');
           if (row.status.length) cursor = drawLines(ctx, row.status, x, cursor + 8, 16, 24, 600, '#ad3937');

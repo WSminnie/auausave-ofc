@@ -142,6 +142,31 @@ try {
   results.push(`${width}x${height}: responsive dialog/sheet, actual thumbnails, PNG download, month arrows, owner/solo filters, automatic month refresh, leap year, focus`);
   await context.close();
  }
+ const paletteContext=await browser.newContext();const palettePage=await paletteContext.newPage();
+ palettePage.on('pageerror',e=>errors.push(e.message));
+ await palettePage.goto(base+'/tmp/schedule-export-browser.html');
+ const palette=await palettePage.evaluate(async()=>{
+  const calls=[],original=CanvasRenderingContext2D.prototype.fillText;
+  CanvasRenderingContext2D.prototype.fillText=function(text,x,y,...rest){
+   calls.push({text,color:this.fillStyle,y});return original.call(this,text,x,y,...rest);
+  };
+  try{
+   const images=await ScheduleImageExport.renderImages([
+    {id:'colors-collab',date:'2026-08-01',artistId:'AT01',artistIds:['AT01','AT04'],title:'DMD SPORT DAY 2026 | High School Vibes',type:'Private',place:'All Day'},
+    {id:'colors-series',date:'2026-08-22',artistId:'AT01',artistIds:['AT01'],title:'The Next Prince · EP.1',type:'Series Broadcast',scheduleType:'series_broadcast',broadcasts:[{mode:'on_air',time:'20:00',channel:'Channel 1'}]}
+   ],'2026-08');
+   return {calls,count:images.reduce((sum,image)=>sum+image.count,0),png:images[0].canvas.toDataURL('image/png').split(',')[1]};
+  }finally{CanvasRenderingContext2D.prototype.fillText=original;}
+ });
+ assert.equal(palette.count,2,'Keep series events in the exported schedule');
+ const legend=palette.calls.filter(call=>call.y===243);
+ assert.deepEqual(legend.map(call=>call.text),['AUAUSAVE','AUAU','SAVE','MHIIPREAW']);
+ assert.ok(!palette.calls.some(call=>call.color.toLowerCase()==='#6f4ca0'),'No purple series category');
+ assert.ok(palette.calls.some(call=>call.y>300 && call.text==='AUAUSAVE' && call.color==='#4e8994'));
+ assert.ok(palette.calls.some(call=>call.y>300 && call.text==='MHIIPREAW' && call.color==='#d59058'));
+ assert.ok(palette.calls.some(call=>call.y>300 && call.text.includes('SERIES BROADCAST') && call.color==='#77736c'));
+ fs.writeFileSync('outputs/schedule-export/artist-colors.png',Buffer.from(palette.png,'base64'));
+ await paletteContext.close();results.push('Collaboration names use separate artist colors and separate legend entries; series events remain without purple');
  const failureContext=await browser.newContext();const failurePage=await failureContext.newPage();
  await failurePage.route('**/assets/schedule-export/*.ttf',r=>r.abort());
  await failurePage.goto(base+'/tmp/schedule-export-browser.html');
