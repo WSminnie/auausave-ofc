@@ -1,0 +1,108 @@
+/* Scoped controls; the export font files load only when creating a PNG. */
+html:has(.schedule-export-dialog[open]) { overflow: hidden; }
+.schedule-export-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.schedule-export-controls > select { min-width: 0; flex: 1 1 auto; width: auto; }
+.artist-schedule-filters { grid-template-columns: minmax(0, 1fr) minmax(0, 188px); }
+.schedule-export-controls > .schedule-export-trigger {
+  display: inline-flex; flex: 0 0 44px; align-items: center; justify-content: center;
+  box-sizing: border-box; width: 44px; height: 44px; margin: 0; padding: 10px; border: 1px solid #d8d4ce;
+  border-radius: 10px; color: #272727; background: #fff; cursor: pointer;
+}
+.schedule-export-trigger svg { width: 22px; height: 22px; }
+.schedule-export-trigger:hover { background: #f1eeea; border-color: #b5afa6; }
+.schedule-export-trigger:focus-visible,
+.schedule-export-dialog :is(button,a,input):focus-visible { outline: 2px solid #b54360; outline-offset: 3px; }
+.schedule-export-dialog {
+  box-sizing: border-box; width: min(540px, calc(100vw - 32px)); max-width: none;
+  max-height: calc(100dvh - 32px); padding: 0; margin: auto;
+  border: 0; border-radius: 24px; background: #fff; color: #20201e;
+  box-shadow: 0 24px 72px rgb(0 0 0 / .2); overflow: auto; overscroll-behavior: contain;
+  font-family: 'DM Sans', 'Noto Sans Thai', sans-serif;
+}
+.schedule-export-dialog::backdrop { background: rgb(0 0 0 / .52); }
+.schedule-export-shell { padding: 30px 32px 28px; }
+.schedule-export-handle { display: none; }
+.schedule-export-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.schedule-export-head h2 { margin: 0 0 7px; font-size: 26px; line-height: 1.2; letter-spacing: -.02em; }
+.schedule-export-subhead { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+.schedule-export-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; background: #f1f1ee; font-weight: 600; max-width: 100%; }
+.schedule-export-badge svg { width: 14px; height: 14px; flex-shrink: 0; }
+.schedule-export-scope { overflow-wrap: anywhere; }
+.schedule-export-subtitle { color: #666660; }
+.schedule-export-close { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; margin: 0 -10px 0 0; padding: 10px; border: 0; border-radius: 8px; background: transparent; color: #252322; cursor: pointer; }
+.schedule-export-close svg { width: 22px; height: 22px; }
+.schedule-export-close:hover { background: #f3f0ed; }
+.schedule-export-dialog.is-pointer-opened .schedule-export-close:focus { outline: none; box-shadow: none; }
+.schedule-export-form { display: grid; gap: 8px; }
+.schedule-export-month-label { font-size: 14px; font-weight: 500; line-height: 1.3; }
+.schedule-export-month-nav { display: flex; align-items: center; gap: 4px; height: 54px; padding: 3px; border: 1px solid #deded8; border-radius: 16px; box-sizing: border-box; }
+.schedule-export-month-nav > button { display: grid; place-items: center; flex: 0 0 44px; height: 44px; padding: 10px; background: #f1f1ee; border: 0; border-radius: 12px; color: #20201e; cursor: pointer; }
+.schedule-export-month-nav svg { width: 20px; height: 20px; }
+.schedule-export-month-nav > button:hover { background: #e5e5df; }
+.schedule-export-month-nav > button:disabled { opacity: .4; cursor: default; }
+.schedule-export-month-picker { position: relative; flex: 1; min-width: 0; display: grid; place-items: center; height: 44px; }
+.schedule-export-month-text { font-size: 16px; font-weight: 600; pointer-events: none; }
+.schedule-export-month-picker input { position: absolute; inset: 0; width: 100%; min-width: 0; height: 100%; box-sizing: border-box; border: 0; background: transparent; opacity: 0; cursor: pointer; font-size: 16px; }
+.schedule-export-month-picker input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; cursor: pointer; }
+.schedule-export-month-picker:focus-within { outline: 2px solid #b54360; outline-offset: 0; border-radius: 8px; }
+.schedule-export-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 24px 0 8px; font-size: 13px; }
+.schedule-export-fit { color: #666660; text-align: right; flex-shrink: 0; }
+.schedule-export-hint { font-size: 13px; color: #666660; margin: 0 0 12px; line-height: 1.5; }
+.schedule-export-hint[hidden] { display: none; }
+.schedule-export-retry, .schedule-export-primary { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 48px; padding: 12px 20px; border: 0; border-radius: 12px; background: #20201e; color: #fff; font: inherit; font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer; box-sizing: border-box; }
+.schedule-export-retry[hidden] { display: none; }
+.schedule-export-retry { margin-top: 12px; }
+.schedule-export-retry:hover, .schedule-export-primary:hover { background: #393936; }
+.schedule-export-primary:disabled { opacity: .5; cursor: wait; }
+.schedule-export-primary svg { width: 18px; height: 18px; }
+.schedule-export-status { font-size: 13px; line-height: 1.5; font-weight: 600; color: #20201e; margin: 0; }
+.schedule-export-status:empty { display: none; }
+.schedule-export-status.has-error { color: #ac302c; }
+.schedule-export-results { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.schedule-export-results.is-single { grid-template-columns: 1fr; }
+.schedule-export-result { min-width: 0; border: 1px solid #e5e5df; border-radius: 18px; overflow: hidden; }
+.schedule-export-thumbnail { display: grid; place-items: center; height: 168px; background: #f4f4f1; }
+.schedule-export-thumbnail img { display: block; width: 112px; height: 136px; border-radius: 7px; object-fit: cover; object-position: top; box-shadow: 0 4px 12px rgb(0 0 0 / .09); }
+.schedule-export-results.is-single .schedule-export-thumbnail { height: 220px; }
+.schedule-export-results.is-single img { width: 148px; height: 184px; }
+.schedule-export-caption { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 68px; padding: 12px 10px 12px 16px; box-sizing: border-box; }
+.schedule-export-caption strong { display: block; font-size: 14px; line-height: 1.4; letter-spacing: -.02em; }
+.schedule-export-caption p { font-size: 13px; color: #666660; margin: 0; line-height: 1.4; }
+.schedule-export-save { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; border: 1px solid #deded8; border-radius: 12px; background: #fff; color: #20201e; }
+.schedule-export-save svg { width: 20px; height: 20px; }
+.schedule-export-save:hover { background: #f1f1ee; }
+.schedule-export-results.is-single .schedule-export-caption { min-height: 44px; }
+.schedule-export-results.is-single .schedule-export-caption > div { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.schedule-export-results.is-single .schedule-export-save { display: none; }
+.schedule-export-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px 24px; margin: 0; padding: 16px 28px 24px; border-top: 1px solid #f0f0ec; background: #fff; }
+.schedule-export-cancel { min-height: 44px; padding: 8px; background: none; color: #20201e; border: 0; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.schedule-export-download-note { width: 100%; font-size: 12px; color: #666660; text-align: right; margin: -4px 0 0; line-height: 1.4; }
+.schedule-export-download-note:empty { display: none; }
+@media (max-width: 600px) {
+  .schedule-export-dialog { width: 100%; margin: auto 0 0; max-height: calc(100dvh - 20px); border-radius: 24px 24px 0 0; box-shadow: none; }
+  .schedule-export-shell { padding: 10px 20px 24px; }
+  .schedule-export-handle { display: block; width: 40px; height: 5px; border-radius: 8px; background: #d6d6d0; margin: 0 auto 16px; }
+  .schedule-export-head { margin-bottom: 20px; }
+  .schedule-export-head h2 { font-size: 22px; line-height: 1.2; margin-bottom: 9px; }
+  .schedule-export-subtitle, .schedule-export-month-label { display: none; }
+  .schedule-export-badge { font-size: 13px; }
+  .schedule-export-close { margin: 0 -6px 0 0; }
+  .schedule-export-month-text { font-size: 16px; }
+  .schedule-export-summary { margin: 20px 0 12px; }
+  .schedule-export-hint { display: none; }
+  .schedule-export-results { gap: 10px; }
+  .schedule-export-thumbnail { height: 132px; }
+  .schedule-export-thumbnail img { width: 88px; height: 108px; }
+  .schedule-export-caption { padding: 12px; min-height: 64px; gap: 2px; }
+  .schedule-export-save { width: 32px; flex-basis: 32px; border: 0; }
+  .schedule-export-caption strong { font-size: 14px; }
+  .schedule-export-caption p { font-size: 12px; }
+  .schedule-export-footer { padding: 0 20px max(28px,env(safe-area-inset-bottom)); border: 0; }
+  .schedule-export-primary { width: 100%; min-height: 52px; font-size: 16px; border-radius: 14px; }
+  .schedule-export-cancel { display: none; }
+  .schedule-export-download-note { text-align: center; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .schedule-export-dialog[open] { animation: schedule-export-enter .2s ease-out; }
+  @keyframes schedule-export-enter { from { transform: translateY(12px); opacity: .7; } to { transform: translateY(0); opacity: 1; } }
+}
