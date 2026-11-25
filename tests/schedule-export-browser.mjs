@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import sharp from 'sharp';
 const browser = await chromium.launch({executablePath:process.env.BROWSER_TEST_EXECUTABLE || 'C:/Users/warintorn.sak/AppData/Local/Google/Chrome/Application/chrome.exe',headless:true});
 const base=process.env.BROWSER_TEST_URL || 'http://127.0.0.1:8765';
 const errors=[], databaseRequests=[], results=[];
@@ -9,6 +10,10 @@ try {
   const context=await browser.newContext({viewport:{width,height},acceptDownloads:true,reducedMotion:'reduce'});
   await context.addInitScript(()=>Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>false}));
   const page=await context.newPage();page.setDefaultTimeout(15000);
+  async function closeExport() {
+   await page.keyboard.press('Escape');
+   await page.locator('.schedule-export-dialog').waitFor({state:'detached'});
+  }
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/supabase/i.test(r.url()))databaseRequests.push(r.url());});
   await page.goto(base+'/tmp/schedule-export-browser.html');
   const trigger=page.getByRole('button',{name:'Export schedule'}).filter({visible:true});
@@ -37,8 +42,14 @@ try {
   const download=page.waitForEvent('download');await dialog.getByRole('button',{name:'Download image',exact:true}).click();
   const file=await download;assert.equal(file.suggestedFilename(),'auausave-2026-11-01-30.png');
   const pngPath=`outputs/schedule-export/browser-export-${width}.png`;await file.saveAs(pngPath);
-  const bytes=fs.readFileSync(pngPath);assert.equal(bytes.subarray(1,4).toString(),'PNG');assert.equal(bytes.readUInt32BE(16),1440);assert.equal(bytes.readUInt32BE(20),1800);
-  await page.keyboard.press('Escape');assert.equal(await page.locator('.schedule-export-dialog').count(),0);
+  const bytes=fs.readFileSync(pngPath);assert.equal(bytes.subarray(1,4).toString(),'PNG');assert.equal(bytes.readUInt32BE(16),2880);assert.equal(bytes.readUInt32BE(20),3600);
+  for(const x of [200,1570]){
+   const pixel=await sharp(bytes).extract({left:x,top:598,width:1,height:1}).ensureAlpha().raw().toBuffer();
+   assert.deepEqual([...pixel],[250,249,246,255],'No separator above the first event in either column');
+  }
+  const legendPixel=await sharp(bytes).extract({left:200,top:562,width:1,height:1}).ensureAlpha().raw().toBuffer();
+  assert.notDeepEqual([...legendPixel],[250,249,246,255],'Keep the full-width line below the legend');
+  await closeExport();assert.equal(await page.locator('.schedule-export-dialog').count(),0);
   assert.equal(await trigger.evaluate(el=>el===document.activeElement),true);
   await page.screenshot({path:`outputs/schedule-export/page-${width}.png`});
   await page.evaluate(()=>{app.innerHTML=artistProfileScheduleSection(db.events.filter(e=>e.date.startsWith('2026-11')),'AT02');});
@@ -47,13 +58,13 @@ try {
   assert.equal(await dialog.locator('.schedule-export-scope').textContent(),'AUAU');
   await dialog.getByText(/^1 image ·/).waitFor();assert.deepEqual(await dialog.locator('.schedule-export-result p').allTextContents(),['4 events']);
   assert.equal(await dialog.locator('.schedule-export-save').getAttribute('download'),'auausave-auautnp-2026-11-01-30.png');
-  await page.keyboard.press('Escape');
+  await closeExport();
   if(width===1440) {
    await page.locator('[data-schedule-collaborator]').selectOption('AT04');
    await page.getByRole('button',{name:'Export schedule'}).click();
    await dialog.getByText(/^1 image ·/).waitFor();
    assert.deepEqual(await dialog.locator('.schedule-export-result p').allTextContents(),['1 event']);
-   await page.keyboard.press('Escape');
+   await closeExport();
    await page.evaluate(()=>{publicTypeFilter='Private';calendarDate=new Date(2026,10,1);calendarPage();});
    await page.getByRole('button',{name:'Export schedule'}).filter({visible:true}).click();
    await dialog.getByText(/^1 image ·/).waitFor();
@@ -62,7 +73,7 @@ try {
    await page.evaluate(()=>{app.innerHTML=artistProfileScheduleSection(db.events.filter(e=>e.date.startsWith('2026-11')),'AT03');});
    await page.getByRole('button',{name:'Export schedule'}).click();await dialog.getByText(/^1 image ·/).waitFor();
    assert.equal(await dialog.locator('.schedule-export-save').getAttribute('download'),'auausave-savewrg-2026-11-01-30.png');
-   await page.keyboard.press('Escape');
+   await closeExport();
    await page.evaluate(()=>{publicTypeFilter='all';app.innerHTML=artistProfileScheduleSection(db.events.filter(e=>e.date.startsWith('2026-11')),'AT02');});
   }
   await page.locator('[data-schedule-collaborator]').selectOption('solo');
@@ -84,7 +95,7 @@ try {
    await dialog.getByText(/^1 image ·/).waitFor();
    assert.ok((await dialog.locator('.schedule-export-save').first().getAttribute('download')).includes('2028-02'),'Latest month wins while generating');
   }
-  await page.keyboard.press('Escape');
+  await closeExport();
   if(width===1440 || width===390) {
    await page.evaluate(()=>{
     db.events=Array.from({length:30},(_,i)=>({id:'dense-'+i,date:'2026-11-'+String(i+1).padStart(2,'0'),artistId:'AT02',artistIds:['AT02'],title:'รายละเอียดกิจกรรม ชื่องานที่ยาวและมีข้อมูลสำคัญ '.repeat(8),type:'Event',place:'10 AM | Bangkok',participation:{access:'open',gathering:true}}));
@@ -102,12 +113,12 @@ try {
     const part=await pending,path=`outputs/schedule-export/auto-dense-${i+1}.png`;await part.saveAs(path);
     const data=fs.readFileSync(path);dimensions.push([data.readUInt32BE(16),data.readUInt32BE(20)]);
    }
-   assert.deepEqual(dimensions[0],dimensions[1]);assert.equal(dimensions[0][0],1440);
+   assert.deepEqual(dimensions[0],dimensions[1]);assert.equal(dimensions[0][0],2880);
    const archiveDownload=page.waitForEvent('download');await dialog.getByRole('button',{name:'Download both',exact:true}).click();
    const archive=await archiveDownload;assert.equal(archive.suggestedFilename(),'auausave-2026-11.zip');
    await archive.saveAs(`outputs/schedule-export/both-${width}.zip`);
    if(width===1440){
-    await page.keyboard.press('Escape');
+    await closeExport();
     await page.evaluate(()=>{app.innerHTML=artistProfileScheduleSection(db.events,'AT02');});
     await page.getByRole('button',{name:'Export schedule'}).click();await dialog.getByText(/^2 images ·/).waitFor();
     const artistArchiveDownload=page.waitForEvent('download');await dialog.getByRole('button',{name:'Download both',exact:true}).click();
@@ -120,12 +131,12 @@ try {
      Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});
      Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{window.sharedExportFiles=data.files.map(f=>({name:f.name,type:f.type,size:f.size}));}});
     });
-    await page.keyboard.press('Escape');await page.getByRole('button',{name:'Export schedule'}).filter({visible:true}).click();
+    await closeExport();await page.getByRole('button',{name:'Export schedule'}).filter({visible:true}).click();
     await dialog.getByText(/^2 images ·/).waitFor();
     await dialog.getByRole('button',{name:'Save both images'}).click();
     const shared=await page.evaluate(()=>window.sharedExportFiles);assert.equal(shared.length,2);assert.ok(shared.every(f=>f.type==='image/png' && f.size>0));
    }
-   await page.keyboard.press('Escape');
+   await closeExport();
   }
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Page stays within viewport');
   results.push(`${width}x${height}: responsive dialog/sheet, actual thumbnails, PNG download, month arrows, owner/solo filters, automatic month refresh, leap year, focus`);

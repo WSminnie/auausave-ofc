@@ -94,6 +94,7 @@
   if (typeof document === 'undefined') return;
 
   const assetBase = new URL('assets/schedule-export/', document.currentScript.src);
+  const outputScale = 2;
   const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4"/></svg>';
   const calendarIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 11h18M7 3v5M17 3v5"/></svg>';
   const chevron = direction => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${direction === 'left' ? 'm14 6-6 6 6 6' : 'm10 6 6 6-6 6'}"/></svg>`;
@@ -127,7 +128,7 @@
   }
   function conditionImage(option) {
     if (!conditionImages.has(option.id)) {
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${option.color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${option.path}</svg>`;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="${option.color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${option.path}</svg>`;
       conditionImages.set(option.id, loadImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg))
         .then(img => { loadedConditionImages.set(option.id, img); return img; })
         .catch(error => { conditionImages.delete(option.id); throw error; }));
@@ -224,8 +225,11 @@
     await Promise.all(items.flatMap(e => e.conditions.map(conditionImage)));
     const updated = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }).format(new Date());
     return pages.map(part => {
-      const canvas = document.createElement('canvas'); canvas.width = 1440; canvas.height = height;
+      const canvas = document.createElement('canvas'); canvas.width = 1440 * outputScale; canvas.height = height * outputScale;
       const ctx = canvas.getContext('2d');
+      // Draw fonts and original logo assets directly at output resolution.
+      ctx.scale(outputScale, outputScale);
+      ctx.imageSmoothingQuality = 'high';
       ctx.fillStyle = '#faf9f6'; ctx.fillRect(0, 0, 1440, height); ctx.textBaseline = 'top';
       ctx.fillStyle = '#ef4b47'; ctx.beginPath(); ctx.arc(58, 52, 6, 0, Math.PI * 2); ctx.fill();
       ctx.letterSpacing = '2px';
@@ -249,10 +253,12 @@
       for (const [colIndex, col] of part.columns.entries()) {
         let y = contentTop, previousDate = '';
         const left = 58 + colIndex * 685;
-        for (const row of col) {
+        for (const [rowIndex, row] of col.entries()) {
           const e = row.event, x = left + 84, rowY = y + 16;
           ctx.strokeStyle = '#ddd9d2'; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(left + 639, y); ctx.stroke();
+          if (rowIndex > 0) {
+            ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(left + 639, y); ctx.stroke();
+          }
           if (e.date !== previousDate) {
             drawLines(ctx, [String(Number(e.date.slice(8)))], left, rowY, 50, 55, 600, '#202020');
             drawLines(ctx, [monthShort], left + 2, rowY + 58, 14, 18, 600, '#76736e');
