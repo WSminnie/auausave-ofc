@@ -1,7 +1,25 @@
 /* Scoped controls; the export font files load only when creating a PNG. */
 html:has(.schedule-export-dialog[open]) { overflow: hidden; }
 .schedule-export-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.schedule-export-controls > select { min-width: 0; flex: 1 1 auto; width: auto; }
+.schedule-export-controls > select,
+.mobile-calendar-card .schedule-export-controls > select {
+  box-sizing: border-box; height: 44px; min-height: 44px; min-width: 0; flex: 1 1 auto; width: auto;
+  margin: 0; padding: 0 36px 0 12px; border: 1px solid #d8d4ce; border-radius: 10px;
+  -webkit-appearance: none; appearance: none; color: #20201e; font: inherit; font-size: 14px; line-height: 20px;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2320201e' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; background-size: 14px 14px; cursor: pointer;
+}
+.artist-schedule-collaborator .schedule-export-controls > select { font-size: 13px; }
+.dynamic-calendar-legend { flex-wrap: wrap; justify-content: flex-start; gap: 12px 20px; }
+.dynamic-calendar-legend > .schedule-export-controls { margin-left: auto; flex: 0 0 auto; gap: 12px; }
+.dynamic-calendar-legend .schedule-export-controls > select { width: 160px; flex: 0 0 160px; }
+.dynamic-calendar-legend .schedule-current-month {
+  box-sizing: border-box; height: 44px; min-height: 44px; margin: 0; padding: 0 16px;
+  border: 1px solid var(--ink); border-radius: 10px; background: var(--ink); color: #fff;
+  font: inherit; font-size: 14px; line-height: 20px; white-space: nowrap; cursor: pointer;
+}
+.calendar-toolbar button { color: var(--ink); }
 .artist-schedule-filters { grid-template-columns: minmax(0, 1fr) minmax(0, 188px); }
 .schedule-export-controls > .schedule-export-trigger {
   display: inline-flex; flex: 0 0 44px; align-items: center; justify-content: center;

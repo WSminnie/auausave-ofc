@@ -466,7 +466,12 @@
   function mount() {
     document.querySelectorAll('.dynamic-calendar-legend > .public-type-filter, .mobile-calendar-controls > select, .artist-schedule-collaborator > select').forEach(select => {
       const controls = element('div', 'schedule-export-controls');
-      select.before(controls); controls.append(select);
+      const currentMonth = select.parentElement.matches('.dynamic-calendar-legend') ? select.previousElementSibling : null;
+      select.before(controls);
+      if (currentMonth?.tagName === 'BUTTON') {
+        currentMonth.classList.add('schedule-current-month'); controls.append(currentMonth);
+      }
+      controls.append(select);
       const button = element('button', 'schedule-export-trigger'); button.type = 'button'; button.innerHTML = icon;
       button.setAttribute('aria-label', 'Export schedule'); button.setAttribute('aria-haspopup', 'dialog'); button.title = 'Export schedule';
       button.addEventListener('click', () => open(button)); controls.append(button);
