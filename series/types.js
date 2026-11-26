@@ -33,6 +33,7 @@ window.SeriesFeature = { components: {}, forms: {} };
         "MV",
         "BTS",
         "REACTION",
+        "HIGHLIGHT",
         "SPECIAL",
         "POSTER",
         "OTHER",

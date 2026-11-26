@@ -41,7 +41,7 @@
         cleanup = () => { desktopCleanup?.(); responsiveCleanup?.(); };
       } catch (error) {
         if (current !== request || currentRoute() !== routeName) return;
-        cleanup?.();S.detailView.pendingTransition=null;
+        cleanup?.();
         app.innerHTML = shell(
           '<div class="series-empty" role="alert"><h1>Series could not load</h1><p>Please check your connection and try again.</p><button class="btn" data-series-retry>Try again</button></div>',
         );
@@ -55,7 +55,6 @@
   const leaveSeries = () => {
     if (!/^series(?:\/|$)/.test(currentRoute())) {
       ++request;
-      S.detailView.pendingTransition=null;
       cleanup?.();
     }
   };

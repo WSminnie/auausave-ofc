@@ -57,15 +57,10 @@
   };
   const label = category => ({BTS:'Behind the Scenes',OST:'OST',REACTION:'Reaction',TV:'TV',MV:'MV'}[category] || String(category).toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()));
   D.categories = rows => {
-    const present=[...new Set(rows.map(row=>row.category))], order=['OST','BTS','REACTION','SPECIAL','LIVE','TRAILER','TEASER','PILOT'];
+    const present=[...new Set(rows.map(row=>row.category))], order=['OST','BTS','REACTION','HIGHLIGHT','SPECIAL','LIVE','TRAILER','TEASER','PILOT'];
     return [...order.filter(type=>present.includes(type)),...present.filter(type=>!order.includes(type))];
   };
   D.defaultRelatedCategory = rows => rows.some(row=>row.category==='OST')?'OST':'';
-  D.swipeDirection = ({dx,dy,duration,width}) => {
-    const distance=Math.abs(dx), threshold=Math.max(56,Math.min(100,width*.18));
-    if(distance<Math.abs(dy)*1.4 || (distance<threshold && !(distance>=28 && distance/Math.max(duration,1)>.45)))return 0;
-    return dx<0?1:-1;
-  };
   const episodeActions = row => {
     const links=row.links || [], watch=D.watchLink(links);
     const teaser=links.find(value=>safe(value.url)&&/teaser/i.test(value.label || value.type || ''));
@@ -111,7 +106,7 @@
   let active;
   D.restore = route => {
     if (!active?.root.isConnected || active.root.dataset.seriesRoute !== route || !/^(?:#(?:overview|episodes|related|series-overview|series-episodes|series-related))?$/.test(location.hash)) return false;
-    active.cancelPending();
+    active.root.removeAttribute('aria-busy');
     active.tab(hashTab(),false); return true;
   };
   D.bind = root => {
@@ -139,46 +134,7 @@
         window.scrollTo({top:window.scrollY+hero.getBoundingClientRect().bottom-(header?.getBoundingClientRect().height || 56),behavior:'instant'});
       }else window.scrollTo({top:scrollY,behavior:'instant'});
     };
-    let gesture,settlingTimer,suppressUntil=0;
     const chips=[...view.querySelectorAll('.sd-series-chips a')],currentIndex=chips.findIndex(chip=>chip.hasAttribute('aria-current'));
-    const resetSwipe=()=>{
-      view.classList.remove('is-dragging');view.classList.add('is-settling');view.style.removeProperty('--sd-swipe-x');
-      clearTimeout(settlingTimer);settlingTimer=setTimeout(()=>view.classList.remove('is-settling'),180);
-    };
-    const touchStart=event=>{
-      if(gesture?.horizontal)resetSwipe();
-      gesture=null;
-      if(!media.matches || event.touches.length!==1 || view.dataset.swipePending || event.target.closest('.sd-series-chips,.sd-latest,.sd-related-filters,input,textarea,select,[contenteditable="true"]'))return;
-      const point=event.touches[0];
-      if(point.clientX<24 || point.clientX>innerWidth-24)return; // Leave native browser edge gestures available.
-      gesture={id:point.identifier,x:point.clientX,y:point.clientY,time:event.timeStamp,horizontal:false};
-    };
-    const touchMove=event=>{
-      if(!gesture)return;
-      if(event.touches.length!==1){gesture=null;resetSwipe();return;}
-      const point=[...event.touches].find(touch=>touch.identifier===gesture.id);if(!point)return;
-      const dx=point.clientX-gesture.x,dy=point.clientY-gesture.y;
-      if(!gesture.horizontal && Math.abs(dy)>12 && Math.abs(dy)>Math.abs(dx)){gesture=null;return;}
-      if(!gesture.horizontal && (Math.abs(dx)<10 || Math.abs(dx)<Math.abs(dy)*1.4))return;
-      gesture.horizontal=true;if(event.cancelable)event.preventDefault();
-      const step=dx<0?1:-1,available=Boolean(chips[currentIndex+step]);
-      view.classList.add('is-dragging');view.classList.remove('is-settling');
-      view.style.setProperty('--sd-swipe-x',(available?Math.sign(dx)*Math.min(Math.abs(dx),innerWidth*.72):dx*.18)+'px');
-    };
-    const touchEnd=event=>{
-      if(!gesture)return;
-      const start=gesture;gesture=null;
-      const point=[...event.changedTouches].find(touch=>touch.identifier===start.id);
-      if(!point || !start.horizontal){resetSwipe();return;}
-      if(event.cancelable)event.preventDefault();suppressUntil=Date.now()+400;resetSwipe();
-      const step=D.swipeDirection({dx:point.clientX-start.x,dy:point.clientY-start.y,duration:event.timeStamp-start.time,width:innerWidth}),target=chips[currentIndex+step];
-      if(!step || !target)return;
-      view.dataset.swipePending='true';
-      const url=new URL(target.href);D.pendingTransition={route:'series/'+decodeURIComponent(url.pathname.split('/').at(-1)),direction:step};
-      history.pushState(null,'',url);window.dispatchEvent(new Event('publicroutechange'));
-    };
-    const touchCancel=()=>{gesture=null;resetSwipe();};
-    const suppressSwipeClick=event=>{if(Date.now()<suppressUntil){event.preventDefault();event.stopImmediatePropagation();}};
     let limit=8,category=view.querySelector('[data-sd-category][aria-pressed="true"]')?.dataset.sdCategory||'',order=view.dataset.defaultOrder;
     const filter=()=>{
       let matched=0;view.querySelectorAll('[data-sd-related]').forEach(card=>{const match=!category||card.dataset.sdRelated===category;card.hidden=!match||matched++>=limit;});
@@ -206,20 +162,11 @@
       tab(tabs[next].dataset.sdTab);tabs[next].focus();
     };
     view.addEventListener('click',click);view.addEventListener('keydown',keydown);tab(hashTab(),false);
-    view.addEventListener('touchstart',touchStart,{passive:true});view.addEventListener('touchmove',touchMove,{passive:false});
-    view.addEventListener('touchend',touchEnd,{passive:false});view.addEventListener('touchcancel',touchCancel,{passive:true});view.addEventListener('click',suppressSwipeClick,true);
     const selected=chips[currentIndex];
     if(selected && media.matches){const strip=selected.parentElement;strip.scrollLeft=selected.offsetLeft-(strip.clientWidth-selected.offsetWidth)/2;}
-    const transition=D.pendingTransition;D.pendingTransition=null;
-    if(transition?.route===root.dataset.seriesRoute){
-      window.scrollTo({top:0,behavior:'instant'});
-      if(!matchMedia('(prefers-reduced-motion: reduce)').matches)view.animate([{transform:`translateX(${transition.direction*30}%)`,opacity:.8},{transform:'translateX(0)',opacity:1}],{duration:220,easing:'cubic-bezier(.16,1,.3,1)'});
-      const heading=view.querySelector('h1');heading.tabIndex=-1;heading.focus({preventScroll:true});
-    }
-    active={root,tab,cancelPending:()=>{delete view.dataset.swipePending;root.removeAttribute('aria-busy');D.pendingTransition=null;resetSwipe();}};
+    active={root,tab};
     return()=>{
       view.removeEventListener('click',click);view.removeEventListener('keydown',keydown);menuObserver.disconnect();if(menu&&oldLabel)menu.setAttribute('aria-label',oldLabel);
-      clearTimeout(settlingTimer);view.removeEventListener('touchstart',touchStart);view.removeEventListener('touchmove',touchMove);view.removeEventListener('touchend',touchEnd);view.removeEventListener('touchcancel',touchCancel);view.removeEventListener('click',suppressSwipeClick,true);
       document.body.classList.remove('series-detail-active');['--series-bg','--series-accent'].forEach((name,i)=>previous[i]?document.body.style.setProperty(name,previous[i]):document.body.style.removeProperty(name));
       if(active?.root===root)active=null;
     };

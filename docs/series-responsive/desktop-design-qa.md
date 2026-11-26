@@ -1,5 +1,7 @@
 # Series desktop detail and creator footer — 26 November 2026
 
+> Follow-up: mobile/tablet swipes no longer navigate between series or animate the page. Series chips remain the explicit navigation control. The six-width browser suite verifies both swipe directions retain the selected series, chip navigation and Back during loading still work, and vertical reading/latest-content scrolling stay native. Twenty targeted Node checks pass.
+
 > Follow-up: the Load more button now has no numeric caption, per the user's preference. It still reveals eight items at a time.
 
 > Related now defaults to OST in desktop Overview and the Related tab on all screen sizes. Series without OST default to All. Desktop and responsive browser suites pass with the updated filter behavior.

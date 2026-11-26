@@ -1,5 +1,11 @@
 # Series themes and swipe follow-up — 26 November 2026
 
+## Media type follow-up: HIGHLIGHT
+
+Added HIGHLIGHT after REACTION in the Media editor and shared Related category order. Existing HIGHLIGHT records stay selected when reopening the form. Mobile and desktop Related render a Highlight filter when this type is present; OST remains the default when available.
+
+Migration `20261126145002_series_media_highlight.sql` is applied and matches remote history. It extends the existing `series_media_type_check` with HIGHLIGHT and preserves all ten earlier types. A rolled-back SQL transaction verified all eleven types, a HIGHLIGHT round-trip and rejection of unsupported types. No existing media records were reclassified. Security-advisor findings match the prior baseline documented below.
+
 ## Delivered
 
 - Edit Series now includes a native color picker and an editable hex value for both Hero background and Accent color. Picker and text stay synchronized. Invalid colors and unreadable foreground/background combinations are rejected before saving.

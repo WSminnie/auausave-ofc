@@ -61,17 +61,28 @@ try{
   for(let step=1;step<=4;step++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x1+(x2-x1)*step/4,y:y1+(y2-y1)*step/4,id:1}]});
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  };
+ const beforeSwipe=page.url();
+ await swipe(300,160,100,163);await page.waitForTimeout(450);
+ assert.equal(page.url(),beforeSwipe,'swiping left does not change the series');
+ // Synthetic right swipe isolates app navigation from Chrome's native Back gesture.
+ await page.locator('.sd-hero').evaluate(element=>{
+  const touch=x=>new Touch({identifier:1,target:element,clientX:x,clientY:160});
+  element.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,cancelable:true,touches:[touch(100)]}));
+  element.dispatchEvent(new TouchEvent('touchmove',{bubbles:true,cancelable:true,touches:[touch(300)]}));
+  element.dispatchEvent(new TouchEvent('touchend',{bubbles:true,cancelable:true,touches:[],changedTouches:[touch(300)]}));
+ });await page.waitForTimeout(100);
+ assert.equal(page.url(),beforeSwipe,'swiping right does not change the series');
+ assert.equal(await page.locator('.sd-hero h1').innerText(),'Completed Series');
  await page.evaluate(()=>window.__seriesDelay=350);
- await swipe(300,160,100,163);
+ await page.locator('.sd-series-chips').getByRole('link',{name:'Ongoing Series',exact:true}).click();
  assert.equal(await page.locator('.series-detail-page').getAttribute('aria-busy'),'true');assert.equal(await page.locator('.sd-hero h1').innerText(),'Completed Series');
  await page.goBack();assert.equal(await page.locator('.series-detail-page').getAttribute('aria-busy'),null,'back during fetch releases the retained page');
- await swipe(300,160,100,163);
+ await page.locator('.sd-series-chips').getByRole('link',{name:'Ongoing Series',exact:true}).click();
  await page.waitForFunction(()=>document.querySelector('main')?.dataset.seriesRoute==='series/ongoing');
  assert.equal(await page.locator('.sd-hero h1').innerText(),'Ongoing Series');
  assert.equal(await page.locator('.sd-series-chips [aria-current]').innerText(),'Ongoing Series');
- await page.evaluate(()=>window.__seriesDelay=0);await swipe(100,160,300,163);
+ await page.evaluate(()=>window.__seriesDelay=0);await page.locator('.sd-series-chips').getByRole('link',{name:'Completed Series',exact:true}).click();
  await page.waitForFunction(()=>document.querySelector('main')?.dataset.seriesRoute==='series/complete');
- await swipe(100,160,300,163);assert.equal(await page.locator('.sd-hero h1').innerText(),'Completed Series'); // First-series edge does not wrap.
  await swipe(200,650,202,400);await page.waitForTimeout(100);assert.equal(await page.locator('.sd-hero h1').innerText(),'Completed Series');assert.ok(await page.evaluate(()=>scrollY)>0,'vertical reading scroll remains native');
  await page.locator('.sd-latest').scrollIntoViewIfNeeded();const strip=await page.locator('.sd-latest').boundingBox();
  await swipe(300,strip.y+30,100,strip.y+32);await page.waitForTimeout(100);assert.ok(await page.locator('.sd-latest').evaluate(e=>e.scrollLeft)>0);assert.equal(await page.locator('.sd-hero h1').innerText(),'Completed Series');
@@ -98,5 +109,5 @@ try{
  assert.equal(await page.locator('.series-header-facts').count(),0);await page.setViewportSize({width:390,height:900});assert.equal(await page.locator('.sd-broadcast').count(),0);assert.equal(await page.locator('.sd-button-primary').isVisible(),true);
  assert.equal(await page.locator('.sd-button-primary').getAttribute('href'),'https://example.com/watch');assert.match(await page.locator('.sd-button-primary').innerText(),/^Watch the series/);
  assert.equal(await page.getByRole('link',{name:/Buy tickets/}).getAttribute('href'),'https://example.com/tickets');assert.equal(await page.getByRole('link',{name:/More updates/}).getAttribute('href'),'https://example.com/updates');
- assert.deepEqual(errors,[]);console.log('PASS: six widths; persistent hero, tabs/history, accordion/sort, filters/paging, touch swipes/edges, native vertical/horizontal scrolling, delayed navigation, theme pickers, fixed X and admin save payload.');
+ assert.deepEqual(errors,[]);console.log('PASS: six widths; persistent hero, tabs/history, accordion/sort, filters/paging, swipes retain the current series, series chips navigate, native vertical/horizontal scrolling, delayed navigation, theme pickers, fixed X and admin save payload.');
 }finally{await browser.close();}
