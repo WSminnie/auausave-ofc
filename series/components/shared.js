@@ -1,6 +1,14 @@
 (() => {
   const C = window.SeriesFeature.components;
   C.e = (value) => escapePageText(String(value ?? ""));
+  C.broadcastFields = item => ({
+    tv: item.show_broadcast_info !== false ? item.broadcast_info || '' : '',
+    uncut: item.show_streaming_info !== false ? item.streaming_info || '' : '',
+  });
+  C.officialXLink = links => (links || []).find(link => {
+    const url = validTimelineUrl(link.url);
+    return url && /^(?:www\.)?(?:x\.com|twitter\.com)$/i.test(new URL(url).hostname);
+  });
   C.hashtagLinks = (value) =>
     String(value || "")
       .split(/(#[\p{L}\p{M}\p{N}_]+)/gu)
@@ -19,11 +27,11 @@
         }).format(new Date(`${value}T12:00:00`))
       : "";
   C.text = (value) => (value ? `<p class="series-copy">${C.e(value)}</p>` : "");
-  C.statusBadge = (value) => {
+  C.statusBadge = (value, fullLabel = false) => {
     const statuses = {
       "ON AIR": ["ON AIR", "is-on-air"],
       UPCOMING: ["UPCOMING", "is-upcoming"],
-      COMPLETED: ["END", "is-ended"],
+      COMPLETED: [fullLabel ? "COMPLETED" : "END", "is-ended"],
     };
     const status = statuses[value];
     return status ? `<span class="series-status ${status[1]}">${status[0]}</span>` : C.badge(value);

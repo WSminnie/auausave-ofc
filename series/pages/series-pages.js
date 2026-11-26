@@ -4,13 +4,16 @@
   let request = 0,
     cleanup;
   const currentRoute = () => globalThis.PublicRoutes?.resolve(location) || location.hash.slice(1);
-  const shell = (body) =>
-    `${nav("series")}<main class="series-public container">${body}</main>${footer()}`;
+  const shell = (body, item, routeName) => {
+    const theme = item ? S.detailView.theme(item) : null;
+    return `${nav("series")}<main class="series-public container${item ? ' series-detail-page' : ''}"${theme ? ` data-series-route="${C.e(routeName)}" style="--series-bg:${theme.bg};--series-accent:${theme.accent}"` : ''}>${body}</main>${item ? C.detailFooter() : footer()}`;
+  };
   S.pages = {
     async render(routeName) {
       const current = ++request;
-      cleanup?.();
-      app.innerHTML = shell('<p class="series-empty" role="status">Loading series…</p>');
+      const mounted = app.querySelector('.series-detail-page');
+      if (mounted) mounted.setAttribute('aria-busy', 'true');
+      else { cleanup?.(); app.innerHTML = shell('<p class="series-empty" role="status">Loading series…</p>'); }
       try {
         let body;
         const rows = await S.api.list("series");
@@ -20,13 +23,7 @@
             : decodeURIComponent(routeName.slice(7));
         const item = slug ? await S.api.detail(slug) : null;
         if (item) {
-          body =
-            C.seriesSelector(rows, item) +
-            C.hero(item) +
-            C.navigation(item) +
-            C.overview(item) +
-            C.episodes(item.episodes) +
-            C.related(item);
+          body = S.desktopView.render(item, rows) + S.detailView.render(item, rows);
         } else if (routeName === "series" && !rows.length) {
           body =
             '<header class="series-landing-head"><h1>Series</h1></header><p class="series-empty">New stories are on their way. Check back soon.</p>';
@@ -36,13 +33,15 @@
             '<div class="series-empty"><h1>Series not found</h1><p>This series is not available.</p><a href="#series">Back to Series</a></div>';
         }
         if (current !== request || currentRoute() !== routeName) return;
-        app.innerHTML = shell(body);
-        cleanup = C.bindNavigation(app.querySelector(".series-public"));
-        app
-          .querySelector(".series-selector [aria-current]")
-          ?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+        if (mounted) cleanup?.();
+        app.innerHTML = shell(body, item, routeName);
+        const root = app.querySelector(".series-public");
+        const responsiveCleanup = S.detailView.bind(root);
+        const desktopCleanup = S.desktopView.bind(root);
+        cleanup = () => { desktopCleanup?.(); responsiveCleanup?.(); };
       } catch (error) {
         if (current !== request || currentRoute() !== routeName) return;
+        cleanup?.();S.detailView.pendingTransition=null;
         app.innerHTML = shell(
           '<div class="series-empty" role="alert"><h1>Series could not load</h1><p>Please check your connection and try again.</p><button class="btn" data-series-retry>Try again</button></div>',
         );
@@ -56,6 +55,7 @@
   const leaveSeries = () => {
     if (!/^series(?:\/|$)/.test(currentRoute())) {
       ++request;
+      S.detailView.pendingTransition=null;
       cleanup?.();
     }
   };

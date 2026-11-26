@@ -790,11 +790,8 @@ nav = function (active = "") {
   return renderNavBeforeLanguages(active);
 };
 function footer() {
-  return `<footer class="footer"><div class="container"><span class="eyebrow">The artist community</span><h2>KEEP THE<br>MEMORIES CLOSE.</h2><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a class="creator-link creator-auausave" href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH</a><a class="creator-link creator-auau" href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC</a><a class="creator-link creator-save" href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC</a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE TH</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
+  return SeriesFeature.components.detailFooter();
 }
-footer = function () {
-  return `<footer class="footer footer-compact"><div class="container"><div class="creator-credit"><span>Website created by</span><div class="creator-links"><a class="creator-link creator-auausave" href="https://x.com/AuauSaveHouseTH" target="_blank" rel="noopener noreferrer">@AuauSaveHouseTH</a><a class="creator-link creator-auau" href="https://x.com/AUAUTNPOFC" target="_blank" rel="noopener noreferrer">@AUAUTNPOFC</a><a class="creator-link creator-save" href="https://x.com/SAVEWRG_OFC" target="_blank" rel="noopener noreferrer">@SAVEWRG_OFC</a></div></div><div class="footer-row"><span>© 2026 AUAUSAVE TH</span><span>MADE FOR EVERY FAN ♡</span></div></div></footer>`;
-};
 function artistCards() {
   const cards = homepageOrderedArtists().filter(
     (artist) => db.siteSettings.homeArtistCards[artist.id]?.visible !== false,
@@ -3738,6 +3735,7 @@ function renderPublicArtistProfile(value) {
 function router(event) {
   window.PublicRoutes?.syncLocation();
   route = window.PublicRoutes?.resolve(location) || location.hash.slice(1) || "home";
+  if (["hashchange", "popstate"].includes(event?.type) && window.SeriesFeature?.detailView?.restore(route)) return;
   const saveTab = window.SaveProfileTabs?.resolve(location);
   if (saveTab) {
     const artistId = window.SaveProfileTabs.resolveArtist(location);
@@ -8112,12 +8110,27 @@ function fanbaseCardAccent(x) {
     "#d86666"
   );
 }
-function fanbaseSocialButton(x) {
+function fanbasePlatform(link) {
+  const name = String(link.platformName || link.displayLabel || "Social");
+  const value = name.toLowerCase().replace(/[\s_-]/g, "");
+  const host = new URL(validFanbaseUrl(link.url) || "https://invalid.local").hostname;
+  if (/wechat/.test(value)) return { name: "WeChat", icon: "brand-wechat", detail: "View QR code" };
+  if (/weibo/.test(value) || /weibo\.(com|cn)$/.test(host)) return { name: "Weibo", icon: "brand-weibo" };
+  if (/instagram/.test(value) || /instagram\.com$/.test(host)) return { name: "Instagram", icon: "brand-instagram" };
+  if (/tiktok/.test(value) || /tiktok\.com$/.test(host)) return { name: "TikTok", icon: "brand-tiktok" };
+  if (/^line/.test(value) || /line\.me$/.test(host)) return { name: "LINE", icon: "brand-line", detail: "Join open chat" };
+  if (/^(x|twitter)$/.test(value) || /^(www\.)?(x|twitter)\.com$/.test(host)) return { name: "X", icon: "brand-x" };
+  return { name, icon: "world" };
+}
+function fanbaseIcon(name, className = "fanbase-platform-icon") {
+  return `<img class="${className}" src="series/assets/icons/${name}.svg" width="20" height="20" alt="" aria-hidden="true" loading="lazy">`;
+}
+function fanbaseSocialButton(x, fanbaseName = "") {
   const url = validFanbaseUrl(x.url);
   if (!url) return "";
-  const platform = escapePageText(x.platformName || x.displayLabel || "Social");
-  const account = escapePageText(x.username || fanbaseAccountLabel({ ...x, url }));
-  return `<a class="fanbase-social-button" href="${escapePageText(url)}" target="_blank" rel="noopener noreferrer"><strong>${platform}</strong>${account ? `<small>${account}</small>` : ""}</a>`;
+  const platform = fanbasePlatform(x);
+  const account = escapePageText(platform.detail || x.username || fanbaseAccountLabel({ ...x, url }));
+  return `<a class="fanbase-social-button" href="${escapePageText(url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapePageText(`${fanbaseName} on ${platform.name}`)}" title="${escapePageText(platform.name)}"><span class="fanbase-icon-tile">${fanbaseIcon(platform.icon)}</span><span class="fanbase-social-copy"><strong>${escapePageText(platform.name)}</strong>${account ? `<small>${account}</small>` : ""}</span>${fanbaseIcon("arrow-up-right", "fanbase-link-arrow")}</a>`;
 }
 function renderFanbaseSocials({ variant = "artists" } = {}) {
   ensureFanbaseSocials();
@@ -8137,7 +8150,14 @@ function renderFanbaseSocials({ variant = "artists" } = {}) {
                   validFanbaseUrl(link.url),
               )
               .sort((a, b) => (Number(a.displayOrder) || 999) - (Number(b.displayOrder) || 999));
-            return `<article class="fanbase-card" style="--fanbase-accent:${escapePageText(fanbaseCardAccent(x))}"><div class="fanbase-card-head"><h3>${escapePageText(x.displayName || "Fanbase")}</h3>${x.username ? `<p class="fanbase-username">${escapePageText(x.username)}</p>` : ""}</div>${links.length ? `<div class="fanbase-socials">${links.map(fanbaseSocialButton).join("")}</div>` : ""}</article>`;
+            const descriptions = {
+              fanbase_auausave: "The couple’s home fanbase for AuAu & Save",
+              fanbase_auau: "Official fanbase for AuAu Thanaphum",
+              fanbase_save: "Official fanbase for Save Worapong",
+            };
+            const description = x.description || descriptions[x.id] || "";
+            const follow = links.find(link => fanbasePlatform(link).name === "X");
+            return `<article class="fanbase-card" style="--fanbase-accent:${escapePageText(fanbaseCardAccent(x))}"><div class="fanbase-card-head"><h3>${escapePageText(x.displayName || "Fanbase")}</h3>${x.username ? `<p class="fanbase-username">${escapePageText(x.username)}</p>` : ""}${description ? `<p class="fanbase-description">${escapePageText(description)}</p>` : ""}</div>${links.length ? `<div class="fanbase-socials">${links.map(link => fanbaseSocialButton(link, x.displayName)).join("")}</div>` : ""}${follow ? `<a class="fanbase-follow" href="${escapePageText(validFanbaseUrl(follow.url))}" target="_blank" rel="noopener noreferrer">${fanbaseIcon("brand-x")}<span>Follow ${escapePageText(x.username || fanbaseAccountLabel(follow))}</span></a>` : ""}</article>`;
           })
           .join("")}</div>`
       : ""

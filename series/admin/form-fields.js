@@ -18,6 +18,10 @@
       )
       .replace("ลบรูปนี้", "Remove image");
   const common = () => "";
+  const color = (name, label, value, fallback) => {
+    const hex = /^#[0-9a-f]{6}$/i.test(value || '') ? value : fallback;
+    return `<div class="field series-color-field"><label for="series-${e(name)}">${e(label)}</label><div class="series-color-controls"><input type="color" data-series-color="${e(name)}" value="${e(hex)}" aria-label="Choose ${e(label.toLowerCase())}"><input id="series-${e(name)}" name="${e(name)}" value="${e(hex)}" pattern="#[0-9a-fA-F]{6}" maxlength="7" spellcheck="false" aria-describedby="series-theme-help"></div></div>`;
+  };
   const parent = (item, rows) =>
     select(
       "series_id",
@@ -25,5 +29,5 @@
       rows.map((row) => ({ value: row.id, label: row.title_en })),
       item.series_id || rows[0]?.id,
     );
-  S.fields = { field, area, select, image, common, parent };
+  S.fields = { field, area, select, image, common, parent, color };
 })();

@@ -6,11 +6,12 @@
     const recordId = item.id || crypto.randomUUID();
     const ticket = ++opening;
     try {
-      const related = { cast: [], links: [] };
+      const related = { cast: [], links: [], media: [] };
       if (item.id && kind === "series")
-        [related.cast, related.links] = await Promise.all([
+        [related.cast, related.links, related.media] = await Promise.all([
           S.api.related("series_cast", "series_id", item.id),
           S.api.related("series_links", "series_id", item.id),
+          S.api.related(S.types.media.table, "series_id", item.id),
         ]);
       if (item.id && kind === "episodes")
         related.links = await S.api.related("series_episode_links", "episode_id", item.id);
@@ -58,7 +59,7 @@
         }
       });
       S.repeat.bind(form);
-      if (kind === "series") S.master.bind(form);
+      if (kind === "series") { S.master.bind(form); S.forms.bindSeries(form); }
       form.querySelector('input:not([type="hidden"]), select')?.focus();
       if (kind === "series") form.elements.slug.pattern = "[a-z0-9]+(-[a-z0-9]+)*";
       if (kind === "episodes") form.elements.episode_number.min = "1";
@@ -70,7 +71,7 @@
         try {
           // Only direct fields belong to the parent; repeatable rows remain relational.
           const fields = form.querySelector(".series-editor-fields > .form-grid");
-          const record = {
+          let record = {
             id: recordId,
             visible: Boolean(item.visible),
             display_order: item.display_order ?? null,
@@ -91,8 +92,9 @@
           for (const key of ["official_url", "related_url"])
             if (record[key] && !validTimelineUrl(record[key]))
               throw new Error("Links must use an http:// or https:// URL.");
-          const cast = S.repeat.collect(form, "cast"),
-            links = S.repeat.collect(form, kind === "episodes" ? "episode-links" : "links");
+          const cast = S.repeat.collect(form, "cast");
+          let links = S.repeat.collect(form, kind === "episodes" ? "episode-links" : "links");
+          if (kind === 'series') ({record,links}=S.forms.prepareSeries(record,related.links));
           busy = true;
           form.querySelector(".series-editor-fields").disabled = true;
           submit.disabled = true;

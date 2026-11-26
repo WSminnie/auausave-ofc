@@ -109,11 +109,16 @@ function seriesContext(list) {
   const item = { slug: 'example', episodes: [] };
   const components = Object.fromEntries(['seriesSelector', 'navigation', 'overview', 'episodes', 'related'].map(key => [key, () => '']));
   components.hero = () => '<h1>Example Series</h1>';
+  components.e = String;
+  components.detailFooter = () => '';
   components.bindNavigation = () => () => {};
   const context = vm.createContext({
     PublicRoutes, location: new URL('https://auausaveth.com/series/example'), console,
     app: { innerHTML: '', querySelector: () => null }, nav: () => '', footer: () => '',
-    SeriesFeature: { components, api: { list, detail: async () => item } },
+    SeriesFeature: { components, desktopView: { render: () => components.hero(), bind: () => () => {} }, api: { list, detail: async () => item }, detailView: {
+      theme: () => ({ bg: '#1C1A22', accent: '#E8D49B' }), status: () => 'ON AIR',
+      render: () => '', bind: () => () => {},
+    } },
     addEventListener: (event, callback) => { listeners[event] = callback; },
   });
   context.window = context;

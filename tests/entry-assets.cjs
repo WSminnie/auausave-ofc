@@ -33,6 +33,6 @@ test("classic scripts compile together in production load order", () => {
 
 test("archive stylesheet retains its position in the cascade", () => {
   const styles = assets.filter(({ stylesheet }) => stylesheet).map(({ url }) => url.split("?")[0]);
-  assert.deepEqual(styles, ["styles.css", "archive.css", "series/styles/series.css", "analytics.css", "save-profile-tabs.css", "schedule-export.css"]);
+  assert.deepEqual(styles, ["styles.css", "archive.css", "series/styles/series.css", "series/styles/responsive-detail.css", "series/styles/desktop-detail.css", "analytics.css", "save-profile-tabs.css", "schedule-export.css"]);
   assert.doesNotMatch(html, /<style\b/);
 });
