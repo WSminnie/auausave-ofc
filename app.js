@@ -120,20 +120,41 @@ function eventTypeValues(value) {
       .map(String)
       .map((item) => item.trim())
       .filter(Boolean);
-  return String(value || "")
-    .split(/\s*(?:\||,|·|•|\/)\s*/)
-    .map((item) => item.trim())
-    .filter(Boolean);
+  const compoundTypes = new Map();
+  (db.masterData?.types || []).forEach((type) => {
+    [type.id, type.label].filter(Boolean).forEach((name) => {
+      if (String(name).includes("/")) compoundTypes.set(normalizedEventType(name), String(name).trim());
+    });
+  });
+  return String(value || "").split(/\s*(?:\||,|·|•)\s*/).flatMap((group) => {
+    const parts = group.split("/").map((item) => item.trim()).filter(Boolean);
+    const result = [];
+    for (let start = 0; start < parts.length;) {
+      let end = start + 1, compound = "";
+      // A slash inside a configured type name is part of that name.
+      // Otherwise it remains a separator for legacy multi-type values.
+      for (let candidate = parts.length; candidate > start + 1; candidate--) {
+        const match = compoundTypes.get(normalizedEventType(parts.slice(start, candidate).join("/")));
+        if (match) { end = candidate; compound = match; break; }
+      }
+      result.push(compound || parts[start]); start = end;
+    }
+    return result;
+  });
+}
+function normalizedEventType(value) {
+  return String(value || "").trim().replace(/\s*\/\s*/g, "/").replace(/\s+/g, " ").toLowerCase();
 }
 function eventHasType(event, typeId) {
-  if (typeId === "all") return true;
+  const target = normalizedEventType(typeId);
+  if (target === "all") return true;
   const master = db.masterData.types.find(
-    (type) => type.id.toLowerCase() === String(typeId).toLowerCase(),
+    (type) => [type.id, type.label].some((value) => normalizedEventType(value) === target),
   );
-  const accepted = [typeId, master?.label]
+  const accepted = [typeId, master?.id, master?.label]
     .filter(Boolean)
-    .map((value) => String(value).toLowerCase());
-  return eventTypeValues(event?.type).some((value) => accepted.includes(value.toLowerCase()));
+    .map(normalizedEventType);
+  return eventTypeValues(event?.type).some((value) => accepted.includes(normalizedEventType(value)));
 }
 function ensureDexxEventType() {
   db.masterData ||= { types: [], series: [] };
