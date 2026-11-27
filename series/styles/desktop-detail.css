@@ -27,22 +27,8 @@
 }
 
 @media (min-width: 1024px) {
-  body.series-detail-active { --site-header-height: 72px; background: #F6F4EF; }
+  body.series-detail-active { background: #F6F4EF; }
   body.series-detail-active:not(.public-menu-open) { overflow-x: clip; overflow-y: visible; }
-  body.series-detail-active .nav { height: 72px; min-height: 72px; background: var(--series-bg, #1C1A22) !important; color: #FFF; border: 0; box-shadow: none; }
-  body.series-detail-active .nav > .nav-inner { width: min(1120px, calc(100% - 48px)); max-width: none; min-height: 72px; padding: 0; gap: 24px; }
-  body.series-detail-active .nav .brand { display: inline-flex; align-items: center; min-height: 44px; color: #FFF; font-size: 16px; font-weight: 700; letter-spacing: 2px; white-space: nowrap; }
-  body.series-detail-active .nav .menu-btn { display: none !important; }
-  body.series-detail-active .nav .links { position: static; display: flex !important; flex-direction: row; align-items: center; gap: 20px; width: auto; max-height: none; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
-  body.series-detail-active .nav .links > a,
-  body.series-detail-active .nav .nav-about > summary { display: inline-flex; align-items: center; justify-content: center; width: auto; min-height: 44px; padding: 0; border-radius: 0; color: #FFF; font-size: 13px; font-weight: 500; }
-  body.series-detail-active .nav .nav-about { width: auto; }
-  body.series-detail-active .nav .links > a.active { color: #FFF; font-weight: 700; border-bottom: 2px solid var(--series-accent); }
-  body.series-detail-active .nav .links a:hover,
-  body.series-detail-active .nav .nav-about > summary:hover { color: var(--series-accent); background: transparent; }
-  body.series-detail-active .nav .nav-about-panel { position: absolute; top: calc(100% + 8px); left: 0; right: auto; min-width: 200px; margin: 0; padding: 8px; border: 1px solid #FFFFFF47; border-radius: 10px; background: var(--series-bg); color: #FFF; box-shadow: 0 8px 24px #0002; }
-  body.series-detail-active .nav .nav-about-panel a { color: #FFF; }
-  body.series-detail-active .nav :focus-visible { outline: 2px solid var(--series-accent); outline-offset: 3px; }
   .series-detail-page.series-public.container { width: 100%; max-width: none; padding: 0; background: #F6F4EF; }
   .dd-detail { display: block; color: #1C1A22; font: 400 14px/1.6 "DM Sans", "Noto Sans Thai", sans-serif; overflow-wrap: anywhere; }
   .dd-detail *, .dd-detail *::before, .dd-detail *::after { box-sizing: border-box; }
@@ -52,7 +38,7 @@
   .dd-detail a { position: relative; text-decoration: none; }
   .dd-detail button { cursor: pointer; border: 0; background: transparent; }
   .dd-detail :focus-visible { outline: 2px solid var(--series-accent); outline-offset: 3px; box-shadow: 0 0 0 1px var(--series-bg); }
-  .dd-container { width: min(1120px, calc(100% - 48px)); margin-inline: auto; }
+  .dd-container { margin-inline: auto; }
   .dd-icon { display: inline-block; width: 18px; height: 18px; flex: 0 0 auto; background: currentColor; mask: var(--dd-icon) center / contain no-repeat; -webkit-mask: var(--dd-icon) center / contain no-repeat; }
   .dd-icon-play { --dd-icon: url('../assets/icons/play.svg'); }
   .dd-icon-youtube { --dd-icon: url('../assets/icons/youtube.svg'); }
@@ -81,7 +67,7 @@
   .dd-hero-actions:empty { display: none; }
   .dd-detail .dd-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: 1; min-width: 0; min-height: 46px; padding: 10px 12px; border-radius: 10px; color: var(--series-bg); background: var(--series-accent); font-weight: 700; font-size: 13px; text-align: center; }
   .dd-detail .dd-icon-button { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 46px; width: 46px; height: 46px; border: 1px solid #FFFFFF47; border-radius: 10px; color: #FFF; }
-  .dd-tabs { position: sticky; top: var(--site-header-height); z-index: 40; height: 56px; background: #FFF; border-bottom: 1px solid #ECE8E1; }
+  .dd-tabs { position: sticky; top: var(--series-header-height, var(--site-header-height)); z-index: 40; height: 56px; background: #FFF; border-bottom: 1px solid #ECE8E1; }
   .dd-tabs > .dd-container { display: flex; align-items: stretch; gap: 32px; height: 100%; }
   .dd-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; padding: 0; border-bottom: 3px solid transparent; color: #5E5866; font-size: 15px; }
   .dd-tabs [aria-selected="true"] { color: #1C1A22; border-bottom-color: #4B3A78; font-weight: 700; }

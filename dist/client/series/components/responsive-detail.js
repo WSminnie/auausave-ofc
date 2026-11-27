@@ -116,11 +116,11 @@
     const previous=['--series-bg','--series-accent'].map(name=>document.body.style.getPropertyValue(name));
     document.body.classList.add('series-detail-active');
     document.body.style.setProperty('--series-bg',theme.bg);document.body.style.setProperty('--series-accent',theme.accent);
-    const menu=document.querySelector('.nav .menu-btn'), oldLabel=menu?.getAttribute('aria-label');
-    const menuLabel=()=>queueMicrotask(()=>menu?.setAttribute('aria-label',menu.getAttribute('aria-expanded')==='true'?'Close menu':'Open menu'));
-    const menuObserver=new MutationObserver(menuLabel);
-    if(menu)menuObserver.observe(menu,{attributes:true,attributeFilter:['aria-expanded']});
-    menuLabel();
+    const header=document.querySelector('.nav');
+    const syncHeader=()=>{if(header)root.style.setProperty('--series-header-height',`${header.getBoundingClientRect().height}px`);};
+    const headerObserver=new ResizeObserver(syncHeader);
+    if(header)headerObserver.observe(header);
+    syncHeader();
     const tab=(key,push=true,revealPanel=false)=>{
       if (!['overview','episodes','related'].includes(key)) key='overview';
       const scrollY=window.scrollY;
@@ -166,7 +166,7 @@
     if(selected && media.matches){const strip=selected.parentElement;strip.scrollLeft=selected.offsetLeft-(strip.clientWidth-selected.offsetWidth)/2;}
     active={root,tab};
     return()=>{
-      view.removeEventListener('click',click);view.removeEventListener('keydown',keydown);menuObserver.disconnect();if(menu&&oldLabel)menu.setAttribute('aria-label',oldLabel);
+      view.removeEventListener('click',click);view.removeEventListener('keydown',keydown);headerObserver.disconnect();
       document.body.classList.remove('series-detail-active');['--series-bg','--series-accent'].forEach((name,i)=>previous[i]?document.body.style.setProperty(name,previous[i]):document.body.style.removeProperty(name));
       if(active?.root===root)active=null;
     };

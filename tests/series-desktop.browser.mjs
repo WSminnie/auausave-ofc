@@ -19,8 +19,14 @@ try{
   await page.setViewportSize({width,height:1000});await open('desktop-completed');
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`overflow ${width}`);
   assert.equal(await page.locator('.sd-detail').isVisible(),false);assert.equal(await page.locator('.dd-detail').isVisible(),true);
-  assert.equal(await page.locator('.nav').evaluate(e=>e.getBoundingClientRect().height),72);assert.equal(await page.locator('.nav .menu-btn').isVisible(),false);
-  assert.ok(await page.locator('.dd-container').first().evaluate(e=>e.getBoundingClientRect().width)<=1120);
+  const headerHeight=await page.locator('.nav').evaluate(e=>e.getBoundingClientRect().height);
+  assert.equal(await page.locator('.nav').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(247, 245, 240)','Series uses the shared site header surface');
+  assert.equal(await page.locator('.nav .menu-btn').isVisible(),width<=1024);
+  assert.ok(await page.locator('.dd-container').first().evaluate(e=>{
+    const standard=document.createElement('div');standard.className='container';document.body.appendChild(standard);
+    const actual=e.getBoundingClientRect(),expected=standard.getBoundingClientRect();standard.remove();
+    return actual.x===expected.x&&actual.width===expected.width;
+  }),'Series content aligns with the shared page container');
   assert.equal(await page.locator('.dd-hero-side').evaluate(e=>e.getBoundingClientRect().width),400);
   assert.equal(await page.locator('.dd-banner-image').evaluate(e=>getComputedStyle(e).objectFit),'contain');
   await page.locator('.dd-primary').hover();assert.equal(await page.locator('.dd-primary').evaluate(e=>getComputedStyle(e).color),'rgb(34, 24, 51)','primary action retains its contrasting foreground on hover');
@@ -36,10 +42,10 @@ try{
   assert.equal(await page.locator('[data-dd-episode=episodes]').first().getAttribute('data-episode-number'),'1');await page.locator('[data-dd-sort]').click();assert.equal(await page.locator('[data-dd-sort]').innerText(),'Newest first');assert.equal(await page.locator('[data-dd-episode=episodes]').first().getAttribute('data-episode-number'),'12');
   const synopsis=page.locator('#dd-panel-episodes [data-dd-synopsis]').first();await synopsis.click();assert.equal(await synopsis.getAttribute('aria-expanded'),'true');assert.equal(await page.locator('#'+await synopsis.getAttribute('aria-controls')).isVisible(),true);
   await page.goBack();assert.equal(await page.getByRole('tab',{name:/Related/}).getAttribute('aria-selected'),'true');await page.goForward();assert.equal(await page.getByRole('tab',{name:/Episodes/}).getAttribute('aria-selected'),'true');assert.equal(await page.evaluate(()=>window.__detailCalls),calls);
-  await page.getByRole('tab',{name:'Overview',exact:true}).click();await page.evaluate(()=>scrollTo(0,1000));assert.equal(await page.locator('.dd-tabs').evaluate(e=>e.getBoundingClientRect().top),72);
-  await page.getByRole('button',{name:'All 12 episodes',exact:false}).click();assert.ok(await page.locator('.dd-episode-toolbar').evaluate(e=>Math.abs(e.getBoundingClientRect().top-168)<2));
+  await page.getByRole('tab',{name:'Overview',exact:true}).click();await page.evaluate(()=>scrollTo(0,1000));assert.equal(await page.locator('.dd-tabs').evaluate(e=>e.getBoundingClientRect().top),headerHeight);
+  await page.getByRole('button',{name:'All 12 episodes',exact:false}).click();assert.ok(await page.locator('.dd-episode-toolbar').evaluate((e,h)=>Math.abs(e.getBoundingClientRect().top-(h+96))<2,headerHeight));
   assert.equal(await page.locator('.series-creator-link').count(),3);
-  await page.locator('.nav-about').evaluate(e=>e.open=true);assert.equal(await page.locator('.nav-about-panel').evaluate(e=>getComputedStyle(e).position),'absolute');await page.locator('.nav-about').evaluate(e=>e.open=false);
+  await page.locator('.nav-about').evaluate(e=>e.open=true);assert.equal(await page.locator('.nav-about-panel').evaluate(e=>getComputedStyle(e).position),width<=1024?'static':'absolute');await page.locator('.nav-about').evaluate(e=>e.open=false);
  }
  await open('desktop-ongoing','episodes');assert.equal(await page.locator('[data-dd-sort]').innerText(),'Newest first');assert.equal(await page.locator('[data-dd-episode=episodes]').first().getAttribute('data-episode-number'),'2');assert.equal(await page.locator('.dd-broadcast dt').allTextContents().then(x=>x.join(',')),'UNCUT');
  await open('desktop-fallback');assert.equal(await page.locator('main').evaluate(e=>e.style.getPropertyValue('--series-bg')),'#1C1A22');assert.equal(await page.locator('#dd-panel-overview [data-dd-episode]').count(),0);assert.match(await page.locator('#dd-panel-overview').innerText(),/added soon/);

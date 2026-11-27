@@ -3792,19 +3792,48 @@ function personalProfileLines(value) {
     .filter((item) => item.label || item.value);
 }
 
+function personalProfileRange(value) {
+  return String(value || "").replace(/(\d[\d.]*)\s*[-–]\s*(?=\d)/g, "$1–");
+}
+
+function personalProfileMoreAbout(value) {
+  const groups = [];
+  let group;
+  for (const line of String(value || "").split(/\r?\n/)) {
+    if (/^(Pets|Pet Instagram Accounts?)$/i.test(line.trim())) {
+      group = { label: line.trim(), lines: [] };
+      groups.push(group);
+    } else {
+      if (!group) { group = { label: "", lines: [] }; groups.push(group); }
+      group.lines.push(line);
+    }
+  }
+  const content = groups.map(({label, lines}) => {
+    const accounts = /^Pet Instagram Accounts?$/i.test(label);
+    const copy = lines.join("\n").trim().split("\n").map(line => {
+      if (accounts) line = line.replace(/^\s*•\s*/, "").replace(/\s*:\s*(?=@)/, " · ");
+      const escaped = escapePageText(line);
+      return accounts ? escaped.replace(/(^|[^\w@])@([A-Za-z0-9_](?:[A-Za-z0-9_.]{0,28}[A-Za-z0-9_])?)(?![\w.])/g,
+        (_, prefix, handle) => `${prefix}<a href="https://www.instagram.com/${handle}/" target="_blank" rel="noopener noreferrer">@${handle}</a>`) : escaped;
+    }).join("\n");
+    if (!label && !copy) return "";
+    return `<div class="personal-more-detail">${label ? `<span>${escapePageText(label)}</span>` : ""}<p>${copy}</p></div>`;
+  }).join("");
+  return content ? `<div class="personal-more-grid">${content}</div>` : '<p class="personal-empty">No information added yet.</p>';
+}
+
 function renderPersonalProfile(artist) {
   if (!artist || !["AT02", "AT03"].includes(canonicalArtistId(artist.id))) return "";
   ensureHomePageSettings();
   const artistId = canonicalArtistId(artist.id);
   const info = db.siteSettings.personalProfiles[artistId] || {};
-  const moreAboutTitle =
-    artistId === "AT02"
-      ? "More About Auau"
-      : artistId === "AT03"
-        ? "More About Save"
-        : "More About " + escapePageText(artist.name || "");
+  const profileName = artistId === "AT02" ? "AuAu" : "Save";
+  const moreAboutTitle = "More About " + profileName;
+  const birth = formatArtistBirthEnglish(artist.birthDate || artist.birth || info.birthday);
+  const updatedDate = /^\d{4}-\d{2}-\d{2}$/.test(info.updatedDate || "")
+    ? formatArtistBirthEnglish(info.updatedDate, {day:"numeric",month:"short"}) : "";
   const basics = [
-    ["Birthday", artist.birth],
+    ["Birthday", birth],
     ["Zodiac sign", info.zodiac],
     ["Chinese zodiac", info.chineseZodiac],
     ["Blood type", info.bloodType],
@@ -3821,26 +3850,27 @@ function renderPersonalProfile(artist) {
     personalProfileLines(info.sizing).map((item) => [item.label.toLowerCase(), item.value]),
   );
   const sizeValue = (key, legacyLabel = "") =>
-    info[key] || legacySizing[legacyLabel.toLowerCase()] || "";
+    personalProfileRange(info[key] || legacySizing[legacyLabel.toLowerCase()] || "");
   const mainSizes = [
     ["Bust", sizeValue("bust", "bust")],
     ["Waist", sizeValue("waist", "waist")],
     ["Shirt/Tops", sizeValue("shirtTops", "shirt/tops")],
     ["Shoe", sizeValue("shoe", "shoe")],
   ].filter((item) => item[1]);
-  const fingers = ["T", "I", "M", "R", "L"]
-    .map((code) => ({
-      code,
-      left: info[`fingerLeft${code}`] || "",
-      right: info[`fingerRight${code}`] || "",
-    }))
-    .filter((item) => item.left || item.right);
+  const fingers = [["T","Thumb"],["I","Index"],["M","Middle"],["R","Ring"],["L","Little"]]
+    .map(([code,label]) => ({
+      label,
+      left: personalProfileRange(info[`fingerLeft${code}`]),
+      right: personalProfileRange(info[`fingerRight${code}`]),
+    }));
+  const hasFingers = fingers.some(item => item.left || item.right);
+  const fingerTable = hasFingers ? `<div class="finger-size-heading"><span>FINGER SIZE</span><span>Unit: cm</span></div><div class="finger-table"><table aria-label="Finger size in centimeters"><thead><tr><th scope="col">Hand</th>${fingers.map(item => `<th scope="col">${item.label}</th>`).join("")}</tr></thead><tbody>${[["Left","left"],["Right","right"]].map(([label,key]) => `<tr><th scope="row">${label}</th>${fingers.map(item => `<td>${escapePageText(item[key])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : "";
   const hasSizing =
-    info.height || info.weight || mainSizes.length || info.wristSize || fingers.length;
+    info.height || info.weight || mainSizes.length || info.wristSize || hasFingers;
   const sizingCard = hasSizing
-    ? `<div class="sizing-metrics">${info.height ? `<div><span>Height</span><strong>${escapePageText(info.height)}</strong></div>` : ""}${info.weight ? `<div><span>Weight</span><strong>${escapePageText(info.weight)}</strong></div>` : ""}</div>${mainSizes.length ? `<div class="sizing-box-grid">${mainSizes.map((item) => `<div><span>${escapePageText(item[0])}</span><strong>${escapePageText(item[1])}</strong></div>`).join("")}</div>` : ""}${info.wristSize ? `<div class="wrist-size"><span>Wrist Size</span><strong>${escapePageText(info.wristSize)}</strong></div>` : ""}${fingers.length ? `<div class="finger-table"><div class="finger-row finger-head"><span></span>${fingers.map((item) => `<b>${item.code}</b>`).join("")}</div>${fingers.some((item) => item.left) ? `<div class="finger-row"><span>Left</span>${fingers.map((item) => `<strong>${escapePageText(item.left || "")}</strong>`).join("")}</div>` : ""}${fingers.some((item) => item.right) ? `<div class="finger-row"><span>Right</span>${fingers.map((item) => `<strong>${escapePageText(item.right || "")}</strong>`).join("")}</div>` : ""}</div><small class="sizing-note">Finger diameters</small>` : ""}`
+    ? `<div class="sizing-metrics">${info.height ? `<div><span>Height</span><strong>${escapePageText(personalProfileRange(info.height))}</strong></div>` : ""}${info.weight ? `<div><span>Weight</span><strong>${escapePageText(personalProfileRange(info.weight))}</strong></div>` : ""}</div>${mainSizes.length ? `<div class="sizing-box-grid">${mainSizes.map((item) => `<div><span>${escapePageText(item[0])}</span><strong>${escapePageText(item[1])}</strong></div>`).join("")}</div>` : ""}${info.wristSize ? `<div class="wrist-size"><span>Wrist Size</span><strong>${escapePageText(personalProfileRange(info.wristSize))}</strong></div>` : ""}${fingerTable}`
     : '<p class="personal-empty">No sizing information yet.</p>';
-  return `<section class="section personal-profile-section"><div class="container"><div class="personal-profile-heading"><span>GET TO KNOW</span><div class="personal-profile-title"><h2>${escapePageText(artist.name)} Profile</h2>${/^\d{4}-\d{2}-\d{2}$/.test(info.updatedDate || "") ? `<small class="personal-profile-updated">Last updated: <time datetime="${escapePageText(info.updatedDate)}">${escapePageText(info.updatedDate)}</time></small>` : ""}</div><p>Personal details, sizing and favorites.</p></div><div class="personal-profile-layout"><article class="personal-profile-card personal-basics"><h3>Personal Information</h3>${list(basics)}${info.education ? `<div class="personal-copy"><span>Education</span><p>${escapePageText(info.education)}</p></div>` : ""}</article><article class="personal-profile-card personal-sizing"><h3>Sizing</h3>${sizingCard}</article><article class="personal-profile-card personal-more-about"><h3>${moreAboutTitle}</h3>${info.moreAbout ? `<div class="personal-about-copy">${escapePageText(info.moreAbout)}</div>` : '<p class="personal-empty">No information added yet.</p>'}</article><article class="personal-profile-card personal-favorites"><h3>Favorites</h3>${list(personalProfileLines(info.favorites)) || '<p class="personal-empty">No favorites added yet.</p>'}${info.motto ? `<blockquote><small>MOTTO</small>${escapePageText(info.motto)}</blockquote>` : ""}</article></div></div></section>`;
+  return `<section class="section personal-profile-section"><div class="container"><div class="personal-profile-heading"><div class="personal-profile-title"><h2>${profileName}’s Profile</h2>${updatedDate ? `<small class="personal-profile-updated">Profile info last updated on <time datetime="${escapePageText(info.updatedDate)}">${escapePageText(updatedDate)}</time></small>` : ""}</div><p>Personal details, sizing and favorites.</p></div><div class="personal-profile-layout"><article class="personal-profile-card personal-basics"><h3>Personal Information</h3>${list(basics)}${info.education ? `<div class="personal-copy"><span>Education</span><p>${escapePageText(info.education)}</p></div>` : ""}</article><article class="personal-profile-card personal-sizing"><h3>Sizing</h3>${sizingCard}</article><article class="personal-profile-card personal-more-about"><h3>${moreAboutTitle}</h3>${personalProfileMoreAbout(info.moreAbout)}</article><article class="personal-profile-card personal-favorites"><h3>Favorites</h3>${list(personalProfileLines(info.favorites)) || '<p class="personal-empty">No favorites added yet.</p>'}${info.motto ? `<blockquote><small>MOTTO</small>${escapePageText(info.motto)}</blockquote>` : ""}</article></div></div></section>`;
 }
 
 const renderProfileWithPersonalDetails = profile;
@@ -7758,7 +7788,7 @@ profile = function (id) {
   profileBeforeCoupleAwardsRestore(id);
   if (sameArtistId(id, "duo")) restoreCoupleAwardsCards();
 };
-function formatArtistBirthEnglish(value) {
+function formatArtistBirthEnglish(value, options = {}) {
   value = legacyBirthToDateInput(value);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return "";
   const [year, month, day] = value.split("-").map(Number);
@@ -7766,6 +7796,7 @@ function formatArtistBirthEnglish(value) {
     day: "2-digit",
     month: "long",
     year: "numeric",
+    ...options,
   }).format(new Date(year, month - 1, day));
 }
 function validArtistSocials(artist) {

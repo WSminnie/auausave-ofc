@@ -21,7 +21,7 @@
           routeName === "series"
             ? S.defaultSeries(rows)?.slug
             : decodeURIComponent(routeName.slice(7));
-        const item = slug ? await S.api.detail(slug) : null;
+        const item = slug ? await S.api.detail(slug, rows.find(row => row.slug === slug)) : null;
         if (item) {
           body = S.desktopView.render(item, rows) + S.detailView.render(item, rows);
         } else if (routeName === "series" && !rows.length) {

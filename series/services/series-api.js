@@ -15,7 +15,43 @@
       );
     return data;
   };
-  async function list(kind, { seriesId, admin = false } = {}) {
+  // Public reads only: coalesce hydration/router requests and short repeat visits.
+  // Never persist these records or share them with uncached admin list reads.
+  const publicReads = new Map(), summaries = new WeakMap(), publicTtl = 30000;
+  let publicClient, generation = 0;
+  const invalidate = () => { ++generation; publicReads.clear(); };
+  const copy = value => typeof structuredClone === "function"
+    ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  function publicRead(key, load) {
+    const currentClient = client();
+    if (publicClient !== currentClient) { invalidate(); publicClient = currentClient; }
+    for (const [name, entry] of publicReads) if (entry.expires <= Date.now()) publicReads.delete(name);
+    let entry = publicReads.get(key);
+    if (!entry) {
+      entry = { expires: Infinity, generation, client:currentClient };
+      publicReads.set(key, entry);
+      entry.promise = Promise.resolve().then(load).then(value => {
+        entry.expires = Date.now() + publicTtl;
+        return value;
+      }, error => {
+        if (publicReads.get(key) === entry) publicReads.delete(key);
+        throw error;
+      });
+    }
+    const source = entry;
+    return source.promise.then(value => {
+      const cloned = copy(value);
+      if (key === "series:" && Array.isArray(cloned)) {
+        for (const row of cloned) summaries.set(row, {generation:source.generation, client:source.client, expires:source.expires});
+      }
+      return cloned;
+    });
+  }
+  async function list(kind, options = {}) {
+    return kind === "series" && !options.admin
+      ? publicRead(`series:${options.seriesId || ""}`, () => loadList(kind, options)) : loadList(kind, options);
+  }
+  async function loadList(kind, { seriesId, admin = false } = {}) {
     let query = client().from(S.types[kind].table).select("*");
     if (!admin) query = query.eq("visible", true);
     if (seriesId) query = query.eq("series_id", seriesId);
@@ -44,8 +80,13 @@
       if (page.length < 500) return rows;
     }
   }
-  async function detail(slug) {
-    const item = await result(
+  async function detail(slug, summary) {
+    return publicRead(`detail:${slug}`, () => loadDetail(slug, summary));
+  }
+  async function loadDetail(slug, summary) {
+    const source = summary && summaries.get(summary);
+    const currentSummary = source?.generation === generation && source.client === client() && source.expires > Date.now();
+    const item = currentSummary && summary.slug === slug && summary.visible === true ? copy(summary) : await result(
       client()
         .from("series_archives")
         .select("*")
@@ -121,5 +162,11 @@
       }),
     );
   }
-  S.api = { list, detail, related, save, remove, setVisible, setDefault, reorder };
+  const mutation = action => async (...args) => {
+    invalidate();
+    try { return await action(...args); }
+    finally { invalidate(); }
+  };
+  S.api = { list, detail, related, save:mutation(save), remove:mutation(remove),
+    setVisible:mutation(setVisible), setDefault:mutation(setDefault), reorder:mutation(reorder) };
 })();

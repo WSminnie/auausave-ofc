@@ -1,0 +1,58 @@
+/* Scope additions to About AUAUSAVE. Existing Journey selectors remain untouched. */
+.couple-overview-hero .couple-award-group { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 22px; }
+.couple-overview-hero .couple-hero-award { display: flex; align-items: center; align-self: flex-start; gap: 14px; max-width: 100%; padding: 10px 18px 10px 10px; color: #1C1A22; background: #FFF; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.05); text-decoration: none; }
+.couple-award-photo { flex: 0 0 48px; width: 48px; height: 64px; object-fit: cover; border-radius: 10px; }
+.couple-award-trophy { flex: 0 0 22px; width: 22px; height: 22px; color: #B07A1E; }
+.couple-award-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.couple-award-copy strong { font-size: 15px; line-height: 1.35; font-weight: 700; }
+.couple-award-copy > span { color: #6B6B6B; font-size: 12px; line-height: 1.5; }
+.couple-award-source { margin-left: 8px; color: #B63842; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.couple-overview-hero .couple-awards-more { display: inline-flex; align-items: center; min-height: 44px; color: #B63842; font-size: 13px; font-weight: 700; }
+.couple-overview-hero .couple-profile-schedule-link { background: #B94D50; border-color: #B94D50; }
+.couple-overview-hero .couple-profile-link { min-height: 44px; }
+.couple-overview-highlights { margin: 0; padding: 96px 0 48px; background: #F6F4EF; }
+.couple-highlights-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); margin: 0; padding: 12px; border: 1px solid #ECE6DF; border-radius: 20px; background: #FFF; }
+.couple-highlights-grid > div { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 16px 24px; }
+.couple-highlights-grid > div + div { border-left: 1px solid #E4DED6; }
+.couple-highlights-grid dt { color: #6B6B6B; font-size: 13px; line-height: 1.5; }
+.couple-highlights-grid dd { order: -1; margin: 0 0 6px; color: #1C1A22; font-size: 44px; font-weight: 700; line-height: 1.15; letter-spacing: -.02em; }
+.couple-explore { margin: 0; padding: 48px 0 96px; background: #F6F4EF; }
+.couple-explore .section-head { margin-bottom: 28px; }
+.couple-explore-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 20px; }
+.couple-explore-card { position: relative; display: flex; flex-direction: column; align-items: flex-start; min-width: 0; min-height: 210px; padding: 24px; color: #1C1A22; background: #FFF; border: 1px solid #ECE6DF; border-radius: 18px; text-decoration: none; }
+.couple-explore-card h3 { margin: 0 0 10px; font-size: 24px; font-weight: 700; line-height: 1.3; }
+.couple-explore-card p { margin: 0 0 20px; color: #6B6B6B; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.couple-explore-arrow { display: flex; flex: 0 0 40px; align-items: center; justify-content: center; align-self: flex-end; width: 40px; height: 40px; margin-top: auto; border-radius: 50%; background: #F3EFEA; }
+.couple-explore-arrow img { width: 20px; height: 20px; }
+.couple-explore-card:hover, .couple-overview-hero .couple-hero-award:hover { color: #1C1A22; text-decoration: none; border-color: #BEB4A7; }
+.couple-explore-card::after, .couple-overview-hero .couple-hero-award::after { display: none !important; }
+.couple-explore-card:focus-visible, .couple-overview-hero .couple-hero-award:focus-visible, .couple-awards-more:focus-visible { outline: 2px solid #1C1A22; outline-offset: 4px; }
+@media (max-width: 767px) {
+  .couple-overview-hero .couple-profile-grid { grid-template-columns: minmax(0,1fr) !important; gap: 24px; }
+  .couple-overview-hero .couple-profile-image { width: 100%; height: auto; aspect-ratio: 1; min-height: 0; border-radius: 50% 50% 16px 16px; }
+  .couple-overview-hero h1 { margin: 0 0 18px; font-size: 60px; line-height: 1; letter-spacing: -.04em; }
+  .couple-overview-hero .couple-profile-grid > div > p { margin: 0; font-size: 15px; line-height: 1.7; }
+  .couple-overview-hero .couple-award-group { width: 100%; margin-top: 20px; }
+  .couple-overview-hero .couple-hero-award { align-self: stretch; width: 100%; gap: 14px; }
+  .couple-overview-hero .couple-award-source { display: none; }
+  .couple-overview-hero .couple-profile-links { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; width: 100%; max-width: none; margin-top: 16px; }
+  .couple-overview-hero .couple-profile-link { min-height: 44px; height: 44px; padding: 8px 10px; border-radius: 999px; font-size: 12px; letter-spacing: .04em; }
+  .couple-overview-hero .couple-profile-schedule-link { grid-column: 1 / -1; }
+  .couple-overview-highlights { padding: 48px 0 0; }
+  .couple-highlights-grid { grid-template-columns: repeat(2,minmax(0,1fr)); row-gap: 12px; }
+  .couple-highlights-grid > div { justify-content: flex-start; padding: 12px; }
+  .couple-highlights-grid > div:nth-child(odd) { border-left: 0; }
+  .couple-highlights-grid dd { font-size: 34px; }
+  .couple-explore { padding: 0 0 48px; }
+  .couple-explore .section-head { margin-bottom: 20px; }
+  .couple-explore-grid { grid-template-columns: minmax(0,1fr); gap: 10px; }
+  .couple-explore-card { justify-content: center; min-height: 110px; padding: 18px 76px 18px 18px; }
+  .couple-explore-card h3 { margin-bottom: 8px; font-size: 20px; }
+  .couple-explore-card p { margin: 0; }
+  .couple-explore-arrow { position: absolute; top: calc(50% - 20px); right: 18px; margin: 0; }
+}
+@media (max-width: 600px) {
+  /* Journey already contributes 32px on each side at this breakpoint. */
+  .couple-overview-highlights { padding-bottom: 16px; }
+  .couple-explore { padding-top: 16px; }
+}

@@ -22,7 +22,8 @@ try{
   await page.setViewportSize({width,height:900});await open('complete');
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`overflow at ${width}`);
   if(width>=1024){assert.equal(await page.locator('.sd-detail').isVisible(),false);assert.equal(await page.locator('.series-desktop-detail').isVisible(),true);continue;}
-  assert.equal(await page.locator('.nav').evaluate(e=>e.getBoundingClientRect().height),56);
+  const headerHeight=await page.locator('.nav').evaluate(e=>e.getBoundingClientRect().height);
+  assert.equal(await page.locator('.nav').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(247, 245, 240)','Series uses the shared site header surface');
   assert.ok(await page.locator('.nav .brand').evaluate(e=>e.getBoundingClientRect().height)>=44);
   assert.equal(await page.locator('.sd-status').innerText(),'COMPLETED');
   assert.equal(await page.locator('main').evaluate(e=>e.style.getPropertyValue('--series-bg')),'#1C1A22');
@@ -46,9 +47,9 @@ try{
   await page.goForward();assert.equal(await page.getByRole('tab',{name:/Related/}).getAttribute('aria-selected'),'true');
   await page.getByRole('tab',{name:/Related/}).focus();await page.keyboard.press('Home');assert.equal(new URL(page.url()).hash,'#overview');
   const height=await page.locator('.sd-synopsis').evaluate(e=>e.clientHeight);await page.locator('[data-sd-synopsis]').click();assert.ok(await page.locator('.sd-synopsis').evaluate(e=>e.clientHeight)>height);
-  await page.evaluate(()=>scrollTo(0,1000));assert.equal(await page.locator('.sd-tabs').evaluate(e=>e.getBoundingClientRect().top),56);await page.evaluate(()=>scrollTo(0,0));
+  await page.evaluate(()=>scrollTo(0,1000));assert.equal(await page.locator('.sd-tabs').evaluate(e=>e.getBoundingClientRect().top),headerHeight);await page.evaluate(()=>scrollTo(0,0));
   await page.getByRole('button',{name:'Read less'}).click();
-  await page.locator('.nav .menu-btn').click();assert.equal(await page.locator('.nav .menu-btn').getAttribute('aria-expanded'),'true');await page.keyboard.press('Escape');assert.equal(await page.locator('.nav .menu-btn').getAttribute('aria-label'),'Open menu');
+  await page.locator('.nav .menu-btn').click();assert.equal(await page.locator('.nav .menu-btn').getAttribute('aria-expanded'),'true');await page.keyboard.press('Escape');assert.equal(await page.locator('.nav .menu-btn').getAttribute('aria-label'),'เปิดเมนู');
  }
  await page.setViewportSize({width:390,height:900});await open('ongoing','episodes');
  assert.equal(await page.locator('[data-sd-sort]').innerText(),'Newest first');assert.equal(await page.locator('.sd-episode').first().getAttribute('data-episode-number'),'2');

@@ -543,3 +543,38 @@
     font-size: 9px;
   }
 }
+
+/* Shared AUAU / SAVE Profile details; the Hero and other panels keep their styles. */
+.save-profile-page .personal-profile-heading { display: block; }
+.save-profile-page .personal-profile-heading > .personal-profile-title { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+.save-profile-page .personal-profile-heading h2 { margin: 0; font-size: 28px; font-weight: 700; line-height: 1.25; letter-spacing: -.02em; }
+.save-profile-page .personal-profile-heading .personal-profile-updated { margin: 0; font-size: 13px; font-weight: 400; line-height: 1.5; color: #6B6B6B; }
+.save-profile-page .personal-profile-heading > p { display: none; }
+.save-profile-page .personal-profile-card :is(.personal-row > span, .personal-copy > span, .personal-more-detail > span) { color: #C9383F; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.save-profile-page .personal-more-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px 32px; }
+.save-profile-page .personal-more-detail { min-width: 0; border-top: 1px solid var(--line); padding-top: 14px; }
+.save-profile-page .personal-more-detail > p { margin: 8px 0 0; white-space: pre-line; color: var(--ink); font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
+.save-profile-page .personal-more-detail a { display: inline-flex; align-items: center; min-height: 44px; color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.save-profile-page .personal-more-detail a:focus-visible { outline: 2px solid #C9383F; outline-offset: 3px; }
+.save-profile-page .finger-size-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 22px 0 10px; color: #6B6B6B; font-size: 12px; line-height: 1.5; }
+.save-profile-page .finger-size-heading > span:first-child { font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.save-profile-page .finger-table { margin: 0; padding: 0 12px; border: 1px solid var(--line); border-radius: 13px; background: #FFF; }
+.save-profile-page .finger-table table { width: 100%; table-layout: fixed; border-collapse: collapse; color: var(--ink); background: #FFF; }
+.save-profile-page .finger-table :is(th,td) { padding: 13px 4px; text-align: center; background: #FFF; color: var(--ink); border: 0; font-size: 15px; line-height: 1.5; }
+.save-profile-page .finger-table th { font-size: 12px; font-weight: 700; }
+.save-profile-page .finger-table tr { border-bottom: 1px solid var(--line); }
+.save-profile-page .finger-table tbody tr:last-child { border-bottom: 0; }
+.save-profile-page .finger-table th:first-child { text-align: left; }
+@media (max-width: 767px) {
+  .save-profile-tabs { flex-shrink: 0; }
+  .save-profile-tabs a { flex-shrink: 0; }
+  .save-profile-page .personal-profile-heading > .personal-profile-title { display: block; }
+  .save-profile-page .personal-profile-heading h2 { font-size: 22px; }
+  .save-profile-page .personal-profile-heading .personal-profile-updated { margin-top: 8px; }
+  .save-profile-page .personal-profile-heading > p { display: block; margin: 14px 0 0; text-align: left; white-space: normal; font-size: 13px; line-height: 1.6; }
+  .save-profile-page .personal-more-grid { grid-template-columns: minmax(0,1fr); gap: 24px; }
+  .save-profile-page .finger-table { padding: 0 8px; }
+  .save-profile-page .finger-table :is(th,td) { padding: 12px 2px; }
+  .save-profile-page .finger-table th { font-size: 11px; }
+  .save-profile-page .finger-table td { font-size: 13px; }
+}
