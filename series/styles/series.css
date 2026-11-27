@@ -1187,3 +1187,6 @@
     width: 100%;
   }
 }
+.series-detail-page .series-part-status { min-height: 100px; padding: 18px 0; color: #5E5866; font-size: 14px; line-height: 1.6; }
+.series-detail-page .series-part-status button { min-height: 44px; margin-left: 8px; padding: 8px 14px; border: 1px solid #DAD4CA; border-radius: 10px; background: #FFF; color: #1C1A22; font: inherit; cursor: pointer; }
+.series-detail-page .series-part-status button:focus-visible { outline: 2px solid #4B3A78; outline-offset: 3px; }

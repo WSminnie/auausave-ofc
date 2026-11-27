@@ -114,8 +114,9 @@ function seriesContext(list) {
   components.bindNavigation = () => () => {};
   const context = vm.createContext({
     PublicRoutes, location: new URL('https://auausaveth.com/series/example'), console,
-    app: { innerHTML: '', querySelector: () => null }, nav: () => '', footer: () => '',
-    SeriesFeature: { components, desktopView: { render: () => components.hero(), bind: () => () => {} }, api: { list, detail: async () => item }, detailView: {
+    document: {documentElement:{classList:{remove(){}}}},
+    app: { innerHTML: '', querySelector(selector) {return this.innerHTML.includes('<h1>Example Series</h1>')&&selector==='.series-detail-page'?{dataset:{},removeAttribute(){},addEventListener(){},removeEventListener(){}}:null;} }, nav: () => '', footer: () => '',
+    SeriesFeature: { progressiveView:{markup:()=>components.hero(),restore(){}}, components, desktopView: { render: () => components.hero(), bind: () => () => {} }, api: { list, detail: async () => item }, detailView: {
       theme: () => ({ bg: '#1C1A22', accent: '#E8D49B' }), status: () => 'ON AIR',
       render: () => '', bind: () => () => {},
     } },
@@ -140,4 +141,16 @@ test('a pending Series response is discarded after clean-path navigation away', 
   finish([]);
   await work;
   assert.equal(context.app.innerHTML, '<h1>Projects</h1>');
+});
+
+test('empty and failed Series pages reveal without waiting for global hydration', async () => {
+  for(const failed of [false,true]) {
+    const {context}=seriesContext(async()=>{if(failed)throw new Error('offline');return [];});
+    const removed=[];context.location.pathname='/series';context.SeriesFeature.defaultSeries=()=>null;
+    context.document.documentElement.classList.remove=value=>removed.push(value);
+    const query=context.app.querySelector.bind(context.app);
+    context.app.querySelector=selector=>selector==='[data-series-retry]'?{addEventListener(){}}:query(selector);
+    await context.SeriesFeature.pages.render('series');
+    assert.ok(removed.includes('initial-route-loading'),failed?'fatal error':'empty archive');
+  }
 });

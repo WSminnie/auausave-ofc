@@ -3717,7 +3717,7 @@ async function hydrateFromSupabase() {
     restoreNewerLocalPageCopy(localPageCopy);
     localStorage.setItem("auausave-house-db-v9", JSON.stringify(db));
     if (homepageOrderNeedsMigration) save();
-    router();
+    router({ type: 'hydrate' });
   } catch (error) {
     console.info("Supabase ยังไม่พร้อม:", error.message);
   }
@@ -3751,7 +3751,7 @@ function router(event) {
   else if (route === "admin") requestAdminAccess();
   else home();
   document.documentElement.lang = "th";
-  scrollPageToTop();
+  if (!(event?.type === 'hydrate' && /^series(?:\/|$)/.test(route) && app.querySelector('.series-detail-page'))) scrollPageToTop();
 }
 function scrollPageToTop() {
   requestAnimationFrame(() => {
@@ -8039,8 +8039,8 @@ function applyResponsiveContentStructure() {
   });
 }
 const routerBeforeResponsiveUI = router;
-router = function () {
-  routerBeforeResponsiveUI();
+router = function (...args) {
+  routerBeforeResponsiveUI(...args);
   applyResponsiveContentStructure();
 };
 
@@ -8056,7 +8056,7 @@ hydrateFromSupabase = async function () {
       save();
     }
   } finally {
-    scrollPageToTop();
+    if (!document.querySelector('.series-detail-page')) scrollPageToTop();
     requestAnimationFrame(() =>
       requestAnimationFrame(() =>
         document.documentElement.classList.remove("initial-route-loading"),
@@ -8545,8 +8545,8 @@ function applySimplifiedPublicContent() {
   }
 }
 const routerBeforeSimplifiedContent = router;
-router = function () {
-  routerBeforeSimplifiedContent();
+router = function (...args) {
+  routerBeforeSimplifiedContent(...args);
   applySimplifiedPublicContent();
 };
 const publicEyebrowObserver = new MutationObserver((records) =>
@@ -8645,8 +8645,8 @@ calendarPage = function () {
   applyUnifiedPublicPageContent();
 };
 const routerBeforeUnifiedPageContent = router;
-router = function () {
-  routerBeforeUnifiedPageContent();
+router = function (...args) {
+  routerBeforeUnifiedPageContent(...args);
   applyUnifiedPublicPageContent();
 };
 ensureUnifiedPageContent();

@@ -18,6 +18,7 @@
     const parts = decoded.replace(/^\/+|\/+$/g, "").split("/");
     if (parts.some((part) => part === "." || part === "..")) return null;
     const first = parts[0].toLowerCase();
+    if (!fromHash && first === 'series' && parts.length === 2 && parts[1].toLowerCase() === 'index.html') return {route:'series',path:'/series'};
     if (parts.length === 1) {
       if (["", "home", "index.html"].includes(first)) return { route: "home", path: "/" };
       if (first === "admin.html") return { route: "admin", path: "/admin" };

@@ -105,7 +105,7 @@
   };
   let active;
   D.restore = route => {
-    if (!active?.root.isConnected || active.root.dataset.seriesRoute !== route || !/^(?:#(?:overview|episodes|related|series-overview|series-episodes|series-related))?$/.test(location.hash)) return false;
+    if (!active?.root.isConnected || active.root.dataset.seriesRoute !== route || (active.root.dataset.seriesRequestRoute && active.root.dataset.seriesRequestRoute !== route) || !/^(?:#(?:overview|episodes|related|series-overview|series-episodes|series-related))?$/.test(location.hash)) return false;
     active.root.removeAttribute('aria-busy');
     active.tab(hashTab(),false); return true;
   };
@@ -116,9 +116,11 @@
     const previous=['--series-bg','--series-accent'].map(name=>document.body.style.getPropertyValue(name));
     document.body.classList.add('series-detail-active');
     document.body.style.setProperty('--series-bg',theme.bg);document.body.style.setProperty('--series-accent',theme.accent);
-    const header=document.querySelector('.nav');
+    let header=document.querySelector('.nav');
     const syncHeader=()=>{if(header)root.style.setProperty('--series-header-height',`${header.getBoundingClientRect().height}px`);};
     const headerObserver=new ResizeObserver(syncHeader);
+    const replaceHeader=()=>{headerObserver.disconnect();header=document.querySelector('.nav');if(header)headerObserver.observe(header);syncHeader();};
+    root.addEventListener('series-headerchange',replaceHeader);
     if(header)headerObserver.observe(header);
     syncHeader();
     const tab=(key,push=true,revealPanel=false)=>{
@@ -166,7 +168,7 @@
     if(selected && media.matches){const strip=selected.parentElement;strip.scrollLeft=selected.offsetLeft-(strip.clientWidth-selected.offsetWidth)/2;}
     active={root,tab};
     return()=>{
-      view.removeEventListener('click',click);view.removeEventListener('keydown',keydown);headerObserver.disconnect();
+      view.removeEventListener('click',click);view.removeEventListener('keydown',keydown);headerObserver.disconnect();root.removeEventListener('series-headerchange',replaceHeader);
       document.body.classList.remove('series-detail-active');['--series-bg','--series-accent'].forEach((name,i)=>previous[i]?document.body.style.setProperty(name,previous[i]):document.body.style.removeProperty(name));
       if(active?.root===root)active=null;
     };

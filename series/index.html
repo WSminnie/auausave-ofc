@@ -1,17 +1,72 @@
 <!doctype html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
-  <title>series · AUAUSAVE TH</title>
-  <script>
-    const entry = new URL('/', location.origin);
-    entry.search = location.search;
-    entry.hash = location.hash;
-    entry.searchParams.set('__page', 'series');
-    location.replace(entry.href);
-  </script>
+  <base href="/" />
+  <meta charset="UTF-8" />
+  <script src="public-routes.js?v=20261127-progressive"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Your fan hub for Auau–Save schedules, series, brand partnerships, and memorable moments." />
+  <title>AUAUSAVE TH</title>
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="AUAUSAVE TH" />
+  <meta property="og:url" content="https://auausaveth.com/" />
+  <meta property="og:title" content="AUAUSAVE TH" />
+  <meta property="og:description" content="Your fan hub for Auau–Save schedules, series, brand partnerships, and memorable moments." />
+  <meta property="og:image" content="https://auausaveth.com/share-preview.png?v=20261024" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="AUAUSAVE TH" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="AUAUSAVE TH" />
+  <meta name="twitter:description" content="Your fan hub for Auau–Save schedules, series, brand partnerships, and memorable moments." />
+  <meta name="twitter:image" content="https://auausaveth.com/share-preview.png?v=20261024" />
+  <meta name="twitter:image:alt" content="AUAUSAVE TH" />
+  <script>document.documentElement.classList.add('initial-route-loading');if('scrollRestoration' in history)history.scrollRestoration='manual';window.scrollTo(0,0);</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20261127-transparent-sections" />
+  <link rel="stylesheet" href="archive.css?v=20261110-clean-urls" />
+  <link rel="stylesheet" href="series/styles/series.css?v=20261127-progressive">
+  <link rel="stylesheet" href="series/styles/responsive-detail.css?v=20261127-shared-header">
+  <link rel="stylesheet" href="series/styles/desktop-detail.css?v=20261127-shared-header">
 </head>
-<body><a href="/?__page=series">เปิดหน้า series</a></body>
+<body>
+  <div id="app"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js?v=20261110-clean-urls"></script>
+  <script src="supabase-db.js?v=20261110-clean-urls"></script>
+  <script src="data.js?v=20261110-clean-urls"></script>
+  <script src="series/types.js?v=20261126-media-highlight"></script>
+  <script src="series/services/series-api.js?v=20261127-progressive"></script>
+  <script src="series/components/shared.js?v=20261126-series-broadcast-visibility"></script>
+  <script src="series/components/series-card.js?v=20261110-clean-urls"></script>
+  <script src="series/components/series-selector.js?v=20261110-clean-urls"></script>
+  <script src="series/components/series-overview.js?v=20261126-series-broadcast-visibility"></script>
+  <script src="series/components/episodes.js?v=20261110-clean-urls"></script>
+  <script src="series/components/appearances.js?v=20261110-clean-urls"></script>
+  <script src="series/components/media-moments.js?v=20261110-clean-urls"></script>
+  <script src="series/components/related-content.js?v=20261110-clean-urls"></script>
+  <script src="series/components/responsive-detail.js?v=20261127-progressive"></script>
+  <script src="series/components/detail-footer.js?v=20261126-series-desktop"></script>
+  <script src="series/components/desktop-detail.js?v=20261127-series-gutters"></script>
+  <script src="series/components/progressive-detail.js?v=20261127-progressive"></script>
+  <script src="series/components/navigation.js?v=20261110-clean-urls"></script>
+  <script src="series/pages/series-pages.js?v=20261127-progressive"></script>
+  <script src="series/admin/load.js?v=20261127-progressive"></script>
+  <!-- Shared event behavior, analytics, and the application entry point. -->
+  <script src="event-participation.js?v=20261110-clean-urls"></script>
+  <link rel="stylesheet" href="analytics.css?v=20261110-clean-urls">
+  <script src="analytics.js?v=20261110-clean-urls"></script>
+  <script src="app.js?v=20261127-progressive"></script>
+  <!-- Solo profile enhancement runs after the application globals exist. -->
+  <link rel="stylesheet" href="save-profile-tabs.css?v=20261127-solo-profile-polish">
+  <script src="save-profile-tabs.js?v=20261110-clean-urls"></script>
+  <link rel="stylesheet" href="schedule-export.css?v=20261126-calendar-controls">
+  <script src="schedule-export.js?v=20261126-calendar-controls"></script>
+<link rel="stylesheet" href="couple-overview.css?v=20261127-transparent-sections">
+  <script src="couple-overview.js?v=20261127-about-auausave"></script>
+</body>
 </html>

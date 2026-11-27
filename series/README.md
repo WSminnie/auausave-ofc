@@ -49,6 +49,10 @@ No new keys or storage buckets are needed. Deploy the updated three shared files
 
 ## Verification
 
+Public Series detail now publishes its parent record first, then cast/official links, episodes with watch links, and Related independently. Pending counts remain unknown; failed sections offer retry after other in-flight sections settle. A retry retains successful sections within their original 30-second freshness window. Shared site hydration refreshes navigation without resetting the detail controls or scroll position. Editor modules load on demand.
+
+After changing the public app shell, run `node scripts/sync-series-entry.cjs` so `/series/` serves the same complete document without redirecting through the homepage. Keep `dist/client` runtime copies in sync. Loading regressions: `node --test tests/series-loading.cjs tests/series-admin-loader.cjs tests/public-route-entries.cjs`; with the local server on 8765, run `node tests/series-progressive.browser.mjs`. These tests mock database responses and do not write production data.
+
 Run `node --test tests/series-unit.cjs`. Run `tests/series-database.sql` in the migrated Supabase database; its fixtures and modifications are rolled back. The suite checks publication, draft ancestry, anonymous/anonymous-auth write rejection, editor saves, repeatable rows, failed-save rollback, duplicate episodes and cascading deletion.
 
 For isolated browser checks, run `node tests/prepare-series-browser.cjs`, start the existing local server (`node .codex-local-server.cjs`) and open `http://127.0.0.1:8765/tmp/series-browser.html#series`. The generated page omits the real Supabase client and uses in-memory fixtures; it must not be deployed as a public page. Refresh resets fixture edits.

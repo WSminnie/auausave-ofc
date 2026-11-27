@@ -12,7 +12,7 @@ test('Schedule clean and legacy URLs resolve without overriding other hashes',()
 });
 test('all existing navigation and detail routes resolve from clean paths',()=>{
   for(const [pathname,want] of [
-    ['/','home'],['/index.html','home'],['/projects/','projects'],['/presenters','presenters'],['/awards','awards'],['/artists','artists'],['/series','series'],['/series/mr-fanboy','series/mr-fanboy'],['/project/example','project/example'],['/admin','admin'],
+    ['/','home'],['/index.html','home'],['/projects/','projects'],['/presenters','presenters'],['/awards','awards'],['/artists','artists'],['/series','series'],['/series/index.html','series'],['/series/mr-fanboy','series/mr-fanboy'],['/project/example','project/example'],['/admin','admin'],
     ['/auausave','/AUAUSAVE'],['/auautnp','/AUAU'],['/savewrg/journey','/SAVE'],['/mhiipraew/awards','/MhiiPraew'],['/artist/custom-id','artist/custom-id'],
   ])assert.equal(api.resolve({pathname,hash:''}),want,pathname);
   for(const pathname of ['/not-a-page','/project','/project/a/b','/series/components/shared.js'])assert.equal(api.resolve({pathname,hash:''}),null,pathname);

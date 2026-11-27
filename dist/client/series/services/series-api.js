@@ -22,16 +22,30 @@
   const invalidate = () => { ++generation; publicReads.clear(); };
   const copy = value => typeof structuredClone === "function"
     ? structuredClone(value) : JSON.parse(JSON.stringify(value));
-  function publicRead(key, load) {
+  function publicRead(key, load, onProgress) {
     const currentClient = client();
     if (publicClient !== currentClient) { invalidate(); publicClient = currentClient; }
     for (const [name, entry] of publicReads) if (entry.expires <= Date.now()) publicReads.delete(name);
     let entry = publicReads.get(key);
+    let previous, previousExpiry;
+    if (entry?.snapshot && Object.keys(entry.snapshot._errors || {}).length && !Object.values(entry.snapshot._pending || {}).some(Boolean)) {
+      previous = copy(entry.snapshot);
+      previousExpiry = entry.expires;
+      publicReads.delete(key);
+      entry = null;
+    }
     if (!entry) {
-      entry = { expires: Infinity, generation, client:currentClient };
+      entry = { expires: Infinity, generation, client:currentClient, listeners:new Set() };
       publicReads.set(key, entry);
-      entry.promise = Promise.resolve().then(load).then(value => {
-        entry.expires = Date.now() + publicTtl;
+      const current = entry;
+      const publish = value => {
+        current.snapshot = copy(value);
+        for (const listener of current.listeners) {
+          try { listener(copy(value)); } catch (error) { console.warn("Series progress:", error.message); }
+        }
+      };
+      entry.promise = Promise.resolve().then(() => load(publish, previous)).then(value => {
+        entry.expires = previous ? previousExpiry : Date.now() + publicTtl;
         return value;
       }, error => {
         if (publicReads.get(key) === entry) publicReads.delete(key);
@@ -39,13 +53,19 @@
       });
     }
     const source = entry;
+    if (typeof onProgress === "function") {
+      source.listeners.add(onProgress);
+      if (source.snapshot) {
+        try { onProgress(copy(source.snapshot)); } catch (error) { console.warn("Series progress:", error.message); }
+      }
+    }
     return source.promise.then(value => {
       const cloned = copy(value);
       if (key === "series:" && Array.isArray(cloned)) {
         for (const row of cloned) summaries.set(row, {generation:source.generation, client:source.client, expires:source.expires});
       }
       return cloned;
-    });
+    }).finally(() => source.listeners.delete(onProgress));
   }
   async function list(kind, options = {}) {
     return kind === "series" && !options.admin
@@ -80,28 +100,48 @@
       if (page.length < 500) return rows;
     }
   }
-  async function detail(slug, summary) {
-    return publicRead(`detail:${slug}`, () => loadDetail(slug, summary));
+  async function detail(slug, summary, onProgress) {
+    const value = await publicRead(`detail:${slug}`, (publish, previous) => loadDetail(slug, summary, publish, previous), onProgress);
+    if (!onProgress && Object.keys(value?._errors || {}).length) throw new Error(Object.values(value._errors)[0]);
+    return value;
   }
-  async function loadDetail(slug, summary) {
+  async function loadDetail(slug, summary, publish, previous) {
     const source = summary && summaries.get(summary);
     const currentSummary = source?.generation === generation && source.client === client() && source.expires > Date.now();
-    const item = currentSummary && summary.slug === slug && summary.visible === true ? copy(summary) : await result(
+    const item = previous || (currentSummary && summary.slug === slug && summary.visible === true ? copy(summary) : await result(
       client()
         .from("series_archives")
         .select("*")
         .eq("slug", slug)
         .eq("visible", true)
         .maybeSingle(),
-    );
+    ));
     if (!item) return null;
-    const [cast, links, episodes, appearances, media, moments] = await Promise.all([
-      related("series_cast", "series_id", item.id),
-      related("series_links", "series_id", item.id),
-      ...["episodes", "appearances", "media", "moments"].map((kind) =>
-        list(kind, { seriesId: item.id }),
-      ),
+    const snapshot = previous ? {...previous, _pending:Object.fromEntries(['core','episodes','related'].map(key=>[key,Boolean(previous._errors[key])])), _errors:{}}
+      : {...item,cast:[],links:[],episodes:[],appearances:[],media:[],moments:[],
+        _pending:{core:true,episodes:true,related:true},_errors:{}};
+    publish(snapshot);
+    const group = async (name, load) => {
+      if (!snapshot._pending[name]) return;
+      try { Object.assign(snapshot, await load()); }
+      catch (error) { snapshot._errors[name] = error.message; }
+      finally { snapshot._pending[name] = false; publish(snapshot); }
+    };
+    await Promise.all([
+      group("core", async () => {
+        const [cast,links] = await Promise.all([related("series_cast","series_id",item.id),related("series_links","series_id",item.id)]);
+        return {cast,links};
+      }),
+      group("episodes", async () => ({episodes:await episodeDetails(item.id)})),
+      group("related", async () => {
+        const [appearances,media,moments] = await Promise.all(["appearances","media","moments"].map(kind => list(kind,{seriesId:item.id})));
+        return {appearances,media,moments};
+      }),
     ]);
+    return snapshot;
+  }
+  async function episodeDetails(seriesId) {
+    const episodes = await list("episodes", {seriesId});
     // Batch link requests rather than issue one network request per episode.
     // RLS additionally checks both episode and series publication.
     const linksByEpisode = new Map(episodes.map((episode) => [episode.id, []]));
@@ -124,7 +164,7 @@
     episodes.forEach((episode) => {
       episode.links = linksByEpisode.get(episode.id);
     });
-    return { ...item, cast, links, episodes, appearances, media, moments };
+    return episodes;
   }
   async function save(kind, values, { cast = [], links = [] } = {}) {
     const { data, error } = await window.auausaveDB.session();

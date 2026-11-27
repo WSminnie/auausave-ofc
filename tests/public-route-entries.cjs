@@ -16,12 +16,16 @@ function redirects(file, href) {
   return calls;
 }
 test('top-level static entries load the shared app and restore clean URLs with query parameters', () => {
-  for (const page of ['projects', 'presenters', 'awards', 'artists', 'series', 'schedule', 'admin', 'auausave']) {
+  for (const page of ['projects', 'presenters', 'awards', 'artists', 'schedule', 'admin', 'auausave']) {
     const href = `https://auausaveth.com/${page}?utm_source=test`;
     const calls = redirects(`${page}/index.html`, href);
     assert.equal(calls.length, 1, page);
     assert.equal(routes.canonicalHref(calls[0]), href, page);
   }
+});
+
+test('Series static entry serves the complete shared app without a JavaScript redirect', () => {
+  assert.equal(fs.readFileSync('series/index.html', 'utf8'), fs.readFileSync('index.html', 'utf8'));
 });
 test('GitHub Pages fallback recovers dynamic details without changing the final shared URL', () => {
   for (const path of ['/project/final-episode', '/series/mr-fanboy', '/artist/custom-id']) {
