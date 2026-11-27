@@ -16209,7 +16209,7 @@ main > .project-hub-section {
 }
 
 /* Fanbase channel cards: compact icon links on mobile, detailed lists on desktop. */
-.fanbase-section { background: #F6F4EF; border-top: 0; padding-block: 56px; }
+.fanbase-section { background: transparent; border-top: 0; padding-block: 56px; }
 .fanbase-section > .container { width: min(1120px, calc(100% - 40px)); max-width: none; }
 .fanbase-section .fanbase-section-head { margin-bottom: 40px; }
 .fanbase-section .fanbase-section-head h2 { font-size: clamp(24px, 3.9vw, 56px); line-height: 1.12; color: #1C1A22; }
